@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Minimal husky pre-commit for lint-staged
+pnpm exec lint-staged
+

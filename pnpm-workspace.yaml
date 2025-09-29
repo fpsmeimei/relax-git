@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+  - 'libs/*'
+
+# 确保所有工作区包都被正确识别
+# 支持 monorepo 架构的依赖管理

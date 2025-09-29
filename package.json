@@ -1,0 +1,66 @@
+{
+  "name": "relax-git",
+  "version": "0.1.0",
+  "description": "基于 Git worktree 的现代化协作平台",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "packageManager": "pnpm@8.15.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
+    "clean": "turbo run clean",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "health-check": "node tools/scripts/health-check.js",
+    "setup": "pnpm install && pnpm health-check",
+    "db:generate": "cd apps/api && pnpm db:generate",
+    "db:setup": "node tools/scripts/db-setup.js setup",
+    "db:reset": "node tools/scripts/db-setup.js reset",
+    "db:studio": "node tools/scripts/db-setup.js studio",
+    "temp:clean": "node tools/scripts/cleanup-temp.js cleanup",
+    "temp:list": "node tools/scripts/cleanup-temp.js list",
+    "lint:garbled": "node tools/scripts/lint-garbled.js",
+    "lint:garbled:web": "node tools/scripts/lint-garbled.js apps/web/src",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.0",
+    "prettier": "^3.2.0",
+    "turbo": "^1.12.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "git",
+    "collaboration",
+    "worktree",
+    "snapshot",
+    "code-review"
+  ],
+  "author": "Relax-Git Team",
+  "license": "MIT",
+  "dependencies": {
+    "@nestjs/schedule": "^6.0.1",
+    "date-fns": "^3.6.0",
+    "react-easy-crop": "^5.5.2",
+    "sonner": "^2.0.7"
+  }
+}

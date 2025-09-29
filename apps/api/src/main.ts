@@ -1,0 +1,128 @@
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+import fastifyMultipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import { join } from 'path';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { mkdir } from 'fs/promises';
+
+async function bootstrap() {
+  // 创建 Fastify 应用
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({
+      logger: {
+        level: process.env['LOG_LEVEL'] ?? 'info',
+      },
+    })
+  );
+
+  // 文件上传（头像）与静态资源（/uploads）
+  // 确保静态根目录存在
+  const uploadsRoot = join(process.cwd(), 'uploads');
+  await mkdir(uploadsRoot, { recursive: true });
+  await app.register(
+    fastifyMultipart as any,
+    {
+      limits: { fileSize: 2 * 1024 * 1024, files: 1 }, // 2MB, 单文件
+    } as any
+  );
+  await app.register(
+    fastifyStatic as any,
+    {
+      root: uploadsRoot,
+      prefix: '/uploads/',
+      decorateReply: false,
+    } as any
+  );
+
+  // 全局验证管道
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    })
+  );
+
+  // 全局异常过滤器：统一 code/message 格式
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // WebSocket 适配器配置 (支持 Fastify)
+  app.useWebSocketAdapter(new IoAdapter(app));
+
+  // CORS 配置（支持通过 CORS_ORIGIN 控制；当为 "*" 时最宽松：反射来源 + 允许携带凭据）
+  const corsFromEnv = (process.env['CORS_ORIGIN'] || '').trim();
+  if (corsFromEnv === '*') {
+    app.enableCors({
+      origin: true, // 反射请求来源（允许任意来源）
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['*'],
+      maxAge: 86400,
+    });
+  } else {
+    const corsList = corsFromEnv
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    app.enableCors({
+      origin: (origin, cb) => {
+        // SSR/非浏览器请求（如curl/postman）无 origin，直接放行
+        if (!origin) return cb(null, true);
+        // 显式白名单（逗号分隔）优先
+        if (corsList.length > 0) {
+          return cb(null, corsList.includes(origin));
+        }
+        // 开发默认：允许 localhost / 127.0.0.1 的任意端口
+        const ok = /^http:\/\/(localhost|127\.0\.0\.1)(:\\d+)?$/.test(origin);
+        return cb(null, ok);
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['*'],
+      maxAge: 86400,
+    });
+  }
+
+  // Swagger 文档配置
+  if (process.env['NODE_ENV'] !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Relax-Git API')
+      .setDescription(
+        '聚焦评论与社区的现代化协作平台 API（已下线 Diff/PR 审核流）'
+      )
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .addTag('auth', '认证相关')
+      .addTag('users', '用户管理')
+      .addTag('health', '健康检查')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
+
+  // 启动服务器
+  const port = parseInt(process.env['API_PORT'] ?? '3001', 10);
+  await app.listen(port, '0.0.0.0');
+
+  console.log(`🚀 Relax-Git API Server is running on http://localhost:${port}`);
+  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+}
+
+bootstrap().catch(error => {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
+});

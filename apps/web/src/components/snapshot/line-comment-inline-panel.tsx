@@ -1,0 +1,791 @@
+'use client';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { apiClient } from '@/services/apiClient';
+import { useAuth } from '@/stores/auth-store';
+import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { EmptyHint } from './empty-hint';
+
+// Time constants in milliseconds
+const TIME_MINUTE = 60000;
+const TIME_HOUR = 3600000;
+const TIME_DAY = 86400000;
+const TIME_WEEK = 604800000;
+
+// Number formatting thresholds
+const NUM_THOUSAND = 1000;
+const NUM_TEN_THOUSAND = 10000;
+
+export interface LineCommentInlineData {
+  filePath: string;
+  lineNumber: number;
+  repoOwnerId?: string; // 仓库所有者ID，用于标识楼主
+  comments: Array<{
+    id: string;
+    content: string;
+    author: string;
+    authorId?: string;
+    authorAvatar?: string;
+    createdAt: string;
+    likes?: number;
+    isLiked?: boolean;
+    replies?: Array<{
+      id: string;
+      content: string;
+      author: string;
+      authorId?: string;
+      authorAvatar?: string;
+      createdAt: string;
+      likes?: number;
+      isLiked?: boolean;
+    }>;
+  }>;
+}
+
+type CommentItem = LineCommentInlineData['comments'][number];
+type ReplyItem = NonNullable<CommentItem['replies']>[number];
+type PendingEntry = {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: string;
+  authorId?: string;
+  authorAvatar?: string;
+};
+
+const createReplyItem = (payload: {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: string;
+  likes?: number;
+  isLiked?: boolean;
+  authorId?: string;
+  authorAvatar?: string;
+}): ReplyItem => {
+  const result: ReplyItem = {
+    id: payload.id,
+    content: payload.content,
+    author: payload.author,
+    createdAt: payload.createdAt,
+    likes: payload.likes ?? 0,
+    isLiked: payload.isLiked ?? false,
+  };
+  if (payload.authorId !== undefined) {
+    result.authorId = payload.authorId;
+  }
+  if (payload.authorAvatar !== undefined) {
+    (result as any).authorAvatar = payload.authorAvatar;
+  }
+  return result;
+};
+
+const createCommentItem = (payload: {
+  id: string;
+  content: string;
+  author: string;
+  createdAt: string;
+  likes?: number;
+  isLiked?: boolean;
+  authorId?: string;
+  replies?: ReplyItem[];
+  authorAvatar?: string;
+}): CommentItem => {
+  const result: CommentItem = {
+    id: payload.id,
+    content: payload.content,
+    author: payload.author,
+    createdAt: payload.createdAt,
+    likes: payload.likes ?? 0,
+    isLiked: payload.isLiked ?? false,
+  };
+  if (payload.authorId !== undefined) {
+    result.authorId = payload.authorId;
+  }
+  if (payload.replies !== undefined) {
+    result.replies = [...payload.replies];
+  }
+  if (payload.authorAvatar !== undefined) {
+    (result as any).authorAvatar = payload.authorAvatar;
+  }
+  return result;
+};
+
+export function LineCommentInlinePanel({
+  data,
+  snapshotId,
+  commitSha,
+  onUpdate,
+}: {
+  data: LineCommentInlineData;
+  snapshotId: string;
+  commitSha: string;
+  onUpdate: (updated: LineCommentInlineData) => void;
+}) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [newComment, setNewComment] = useState('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submittingReply, setSubmittingReply] = useState<string | null>(null);
+  const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const [pendingComments, setPendingComments] = useState<PendingEntry[]>([]);
+  const [pendingReplies, setPendingReplies] = useState<Record<string, PendingEntry[]>>({});
+
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const replyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const isLoggedIn = !!user?.id;
+
+  const formatTime = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    if (diff < TIME_MINUTE) return '刚刚';
+    if (diff < TIME_HOUR) return `${Math.floor(diff / TIME_MINUTE)}分钟前`;
+    if (diff < TIME_DAY) return `${Math.floor(diff / TIME_HOUR)}小时前`;
+    if (diff < TIME_WEEK) return `${Math.floor(diff / TIME_DAY)}天前`;
+    return date.toLocaleDateString('zh-CN');
+  }, []);
+
+  const formatCount = useCallback((value?: number) => {
+    const num = Number(value ?? 0);
+    if (Number.isNaN(num)) return '0';
+    if (num >= NUM_TEN_THOUSAND) return `${(num / NUM_TEN_THOUSAND).toFixed(1).replace(/\.0$/, '')}万`;
+    if (num >= NUM_THOUSAND) return `${(num / NUM_THOUSAND).toFixed(1).replace(/\.0$/, '')}k`;
+    return `${num}`;
+  }, []);
+
+  const sorted = useMemo(() => {
+    return [...(data.comments || [])]
+      .map(comment => ({
+        ...comment,
+        replies: Array.isArray(comment.replies)
+          ? [...comment.replies].sort((ra, rb) => {
+              const diff = Number(rb.likes ?? 0) - Number(ra.likes ?? 0);
+              if (diff !== 0) return diff;
+              return (
+                new Date(ra.createdAt).getTime() - new Date(rb.createdAt).getTime()
+              );
+            })
+          : [],
+      }))
+      .sort((a, b) => {
+        const diff = Number(b.likes ?? 0) - Number(a.likes ?? 0);
+        if (diff !== 0) return diff;
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      });
+  }, [data.comments]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!newComment.trim() || submitting) return;
+    if (!isLoggedIn) {
+      toast({ title: '请先登录', variant: 'destructive' });
+      return;
+    }
+
+    const tempId = `temp:${Date.now()}`;
+    const optimistic = {
+      id: tempId,
+      content: newComment.trim(),
+      author: user?.username || '匿名用户',
+      createdAt: new Date().toISOString(),
+      ...(user?.id ? { authorId: user.id } : {}),
+      ...(user?.avatar ? { authorAvatar: user.avatar } : {}),
+    };
+    setPendingComments(prev => [...prev, optimistic]);
+    setNewComment('');
+    setTimeout(() => textareaRef.current?.focus(), 0);
+
+    try {
+      setSubmitting(true);
+      const { data: res } = await apiClient.post('/comments', {
+        snapshotId,
+        content: optimistic.content,
+        anchorType: 'LINE',
+        commitSha,
+        filePath: data.filePath,
+        lineStart: data.lineNumber,
+        lineEnd: data.lineNumber,
+      });
+      const createdComment = createCommentItem({
+        id: res.id,
+        content: res.content,
+        author: user?.username || '匿名用户',
+        createdAt: res.createdAt,
+        authorId: user?.id,
+        replies: [],
+        ...(user?.avatar ? { authorAvatar: user.avatar } : {}),
+      });
+      onUpdate({
+        ...data,
+        comments: [...data.comments, createdComment],
+      });
+    } catch (e: any) {
+      toast({
+        title: '发布失败',
+        description: e?.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+      setPendingComments(prev => prev.filter(c => c.id !== tempId));
+    }
+  }, [
+    newComment,
+    submitting,
+    isLoggedIn,
+    toast,
+    snapshotId,
+    commitSha,
+    data,
+    onUpdate,
+    user?.username,
+    user?.id,
+    user?.avatar,
+  ]);
+
+  const handleReply = useCallback(
+    async (parentId: string) => {
+      if (!replyText.trim() || submittingReply) return;
+      if (!isLoggedIn) {
+        toast({ title: '请先登录', variant: 'destructive' });
+        return;
+      }
+
+      const tempId = `temp:${Date.now()}`;
+      const optimistic: PendingEntry = {
+        id: tempId,
+        content: replyText.trim(),
+        author: user?.username || '匿名用户',
+        createdAt: new Date().toISOString(),
+      };
+      if (user?.id) {
+        optimistic.authorId = user.id;
+      }
+      if (user?.avatar) {
+        optimistic.authorAvatar = user.avatar;
+      }
+      setPendingReplies(prev => ({
+        ...prev,
+        [parentId]: [...(prev[parentId] || []), optimistic],
+      }));
+      setReplyText('');
+      setReplyingTo(null);
+
+      try {
+        setSubmittingReply(parentId);
+        const { data: res } = await apiClient.post('/comments', {
+          snapshotId,
+          content: optimistic.content,
+          anchorType: 'LINE',
+          commitSha,
+          filePath: data.filePath,
+          lineStart: data.lineNumber,
+          lineEnd: data.lineNumber,
+          parentId,
+        });
+        const newReply = createReplyItem({
+          id: res.id,
+          content: res.content,
+          author: user?.username || '匿名用户',
+          createdAt: res.createdAt,
+          authorId: user?.id,
+          ...(user?.avatar ? { authorAvatar: user.avatar } : {}),
+        });
+        onUpdate({
+          ...data,
+          comments: data.comments.map(c =>
+            c.id === parentId
+              ? createCommentItem({
+                  ...c,
+                  replies: [...(c.replies || []), newReply],
+                })
+              : c
+          ),
+        });
+      } catch (e: any) {
+        toast({
+          title: '回复失败',
+          description: e?.message,
+          variant: 'destructive',
+        });
+      } finally {
+        setSubmittingReply(null);
+        setPendingReplies(prev => {
+          const next = { ...prev };
+          const list = next[parentId];
+          if (!list) return next;
+          const filtered = list.filter(r => r.id !== tempId);
+          if (filtered.length > 0) {
+            next[parentId] = filtered;
+          } else {
+            delete next[parentId];
+          }
+          return next;
+        });
+      }
+    },
+    [
+      replyText,
+      submittingReply,
+      isLoggedIn,
+      toast,
+      snapshotId,
+      commitSha,
+      data,
+      onUpdate,
+      user?.username,
+      user?.id,
+      user?.avatar,
+    ]
+  );
+
+  const handleLike = useCallback(
+    async (commentId: string, isReply = false) => {
+      try {
+        if (!isLoggedIn) {
+          toast({ title: '请先登录', variant: 'destructive' });
+          return;
+        }
+        if (likingIds.has(commentId)) return;
+        setLikingIds(prev => new Set(prev).add(commentId));
+
+        let parentId: string | null = null;
+        let liked = false;
+        let likes = 0;
+        for (const c of data.comments) {
+          if (c.id === commentId && !isReply) {
+            liked = !!c.isLiked;
+            likes = Number(c.likes || 0);
+            break;
+          }
+          if (isReply && c.replies) {
+            const r = c.replies.find(x => x.id === commentId);
+            if (r) {
+              parentId = c.id;
+              liked = !!r.isLiked;
+              likes = Number(r.likes || 0);
+              break;
+            }
+          }
+        }
+
+        const optimisticLikes = Math.max(0, likes + (liked ? -1 : 1));
+        const optimistic = {
+          ...data,
+          comments: data.comments.map(c => {
+            if (!isReply && c.id === commentId) {
+              return { ...c, likes: optimisticLikes, isLiked: !liked };
+            }
+            if (isReply && c.id === parentId) {
+              return {
+                ...c,
+                replies: (c.replies || []).map(r =>
+                  r.id === commentId
+                    ? { ...r, likes: optimisticLikes, isLiked: !liked }
+                    : r
+                ),
+              };
+            }
+            return c;
+          }),
+        };
+        onUpdate(optimistic);
+
+        const res = liked
+          ? await apiClient.delete(`/comments/${commentId}/like`)
+          : await apiClient.post(`/comments/${commentId}/like`);
+        const serverLikes = Number(
+          (res as any)?.data?.likesCount ?? optimisticLikes
+        );
+        const serverLiked = !!(res as any)?.data?.liked;
+        const corrected = {
+          ...optimistic,
+          comments: optimistic.comments.map(c => {
+            if (!isReply && c.id === commentId)
+              return { ...c, likes: serverLikes, isLiked: serverLiked };
+            if (isReply && c.id === parentId)
+              return {
+                ...c,
+                replies: (c.replies || []).map(r =>
+                  r.id === commentId
+                    ? { ...r, likes: serverLikes, isLiked: serverLiked }
+                    : r
+                ),
+              };
+            return c;
+          }),
+        };
+        onUpdate(corrected as any);
+      } catch (e: any) {
+        onUpdate({ ...data });
+        toast({
+          title: '点赞失败',
+          description: e?.message,
+          variant: 'destructive',
+        });
+      } finally {
+        setLikingIds(prev => {
+          const s = new Set(prev);
+          s.delete(commentId);
+          return s;
+        });
+      }
+    },
+    [isLoggedIn, toast, likingIds, data, onUpdate]
+  );
+
+  const handleDelete = useCallback(
+    async (commentId: string, isReply = false) => {
+      try {
+        if (!isLoggedIn) {
+          toast({ title: '请先登录', variant: 'destructive' });
+          return;
+        }
+        if (!confirm('确认删除该评论？')) return;
+        if (deletingIds.has(commentId)) return;
+        setDeletingIds(prev => new Set(prev).add(commentId));
+
+        const optimistic: LineCommentInlineData = {
+          ...data,
+          comments: data.comments
+            .filter(c => (!isReply && c.id === commentId ? false : true))
+            .map(c =>
+              isReply
+                ? {
+                    ...c,
+                    replies: (c.replies || []).filter(r => r.id !== commentId),
+                  }
+                : c
+            ),
+        };
+        onUpdate(optimistic);
+
+        await apiClient.delete(`/comments/${commentId}`);
+        toast({ title: '已删除' });
+      } catch (e: any) {
+        onUpdate({ ...data });
+        toast({
+          title: '删除失败',
+          description: e?.message,
+          variant: 'destructive',
+        });
+      } finally {
+        setDeletingIds(prev => {
+          const s = new Set(prev);
+          s.delete(commentId);
+          return s;
+        });
+      }
+    },
+    [isLoggedIn, toast, deletingIds, data, onUpdate]
+  );
+
+  const reactionButtonClass =
+    'flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40';
+  const subReactionButtonClass =
+    'flex items-center gap-1 text-[12px] text-muted-foreground/80 hover:text-muted-foreground transition-colors disabled:opacity-40';
+  const canDelete = useCallback(
+    (authorId?: string | null, author?: string | null) => {
+      if (user?.id && authorId) return user.id === authorId;
+      if (user?.username && author) return user.username === author;
+      return false;
+    },
+    [user?.id, user?.username]
+  );
+
+
+  return (
+    <div className="my-5 rounded-[26px] border border-border bg-card text-card-foreground shadow-lg backdrop-blur">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
+          <span className="text-[15px] font-semibold tracking-wide text-foreground">
+            {data.filePath}
+          </span>
+          <span className="text-muted-foreground/70">第 {data.lineNumber} 行</span>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {pendingComments.length > 0 && (
+          <div className="space-y-4 opacity-70">
+            {pendingComments.map(comment => (
+              <div key={comment.id} className="flex gap-4">
+                <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
+                  {comment.authorAvatar && (
+                    <AvatarImage src={comment.authorAvatar} alt={comment.author} />
+                  )}
+                  <AvatarFallback className="text-[13px] font-semibold text-foreground/85">
+                    {comment.author.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <span className="text-[15px] font-semibold text-foreground">
+                      {comment.author}
+                    </span>
+                    <span className="text-muted-foreground/70">{formatTime(comment.createdAt)}</span>
+                  </div>
+                  <div className="mt-2 text-[16px] leading-relaxed tracking-wide text-foreground/90 font-rounded-cn">
+                    {comment.content}
+                  </div>
+                  <div className="mt-2 flex items-center gap-3 text-[12px] text-muted-foreground/70">
+                    <Loader2 className="h-3 w-3 animate-spin" /> 正在发布...
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {sorted.length > 0 ? (
+          <div className="space-y-6">
+            {sorted.map(comment => (
+              <div key={comment.id} className="flex gap-4">
+                <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
+                  {(comment as any).authorAvatar && (
+                    <AvatarImage src={(comment as any).authorAvatar} alt={comment.author} />
+                  )}
+                  <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+                    {comment.author.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <span className="text-[16px] font-semibold text-foreground">
+                      {comment.author}
+                    </span>
+                    <span className="text-muted-foreground/70">{formatTime(comment.createdAt)}</span>
+                  </div>
+                  <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
+                    {comment.content}
+                  </div>
+                  <div className="mt-3 flex items-center gap-6">
+                    <button
+                      type="button"
+                      className={reactionButtonClass}
+                      onClick={() => void handleLike(comment.id, false)}
+                      disabled={likingIds.has(comment.id)}
+                    >
+                      <Heart
+                        className={`h-4 w-4 ${
+                          comment.isLiked
+                            ? 'fill-current text-destructive'
+                            : 'text-muted-foreground'
+                        }`}
+                      />
+                      <span>{formatCount(comment.likes)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={reactionButtonClass}
+                      onClick={() =>
+                        setReplyingTo(prev => (prev === comment.id ? null : comment.id))
+                      }
+                      aria-label={replyingTo === comment.id ? '收起回复框' : `回复 ${comment.author}`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      <span>回复</span>
+                    </button>
+                    {canDelete(comment.authorId, comment.author) && (
+                      <button
+                        type="button"
+                        className={reactionButtonClass}
+                        onClick={() => void handleDelete(comment.id, false)}
+                        disabled={deletingIds.has(comment.id)}
+                        aria-label="删除评论"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {(pendingReplies[comment.id] || []).length > 0 && (
+                    <div className="mt-4 space-y-3 border-l border-border pl-6">
+                      {pendingReplies[comment.id]!.map(reply => (
+                        <div key={reply.id} className="opacity-70">
+                          <div className="flex items-center gap-2 text-[12px] text-muted-foreground/80">
+                            <span className="font-semibold text-foreground">
+                              {reply.author}
+                            </span>
+                            <span className="text-muted-foreground/70">刚刚</span>
+                          </div>
+                          <div className="mt-1 text-[15px] leading-relaxed text-foreground/85 font-rounded-cn">
+                            {reply.content}
+                          </div>
+                          <div className="mt-2 flex items-center gap-3 text-[12px] text-muted-foreground/70">
+                            <Loader2 className="h-3 w-3 animate-spin" /> 正在发布...
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {Array.isArray(comment.replies) && comment.replies.length > 0 && (
+                    <div className="mt-6 space-y-6">
+                      {comment.replies.map(reply => (
+                        <div key={reply.id} className="flex gap-4">
+                          <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
+                            {(reply as any).authorAvatar && (
+                              <AvatarImage src={(reply as any).authorAvatar} alt={reply.author} />
+                            )}
+                            <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+                              {reply.author.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                              <span className="text-[16px] font-semibold text-foreground">
+                                {reply.author}
+                              </span>
+                              <span className="text-muted-foreground">▶</span>
+                              <span className="text-[16px] font-semibold text-foreground">
+                                {comment.author}
+                              </span>
+                              <span className="text-muted-foreground/70">{formatTime(reply.createdAt)}</span>
+                            </div>
+                            <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
+                              {reply.content}
+                            </div>
+                            <div className="mt-3 flex items-center gap-6">
+                              <button
+                                type="button"
+                                className={reactionButtonClass}
+                                onClick={() => void handleLike(reply.id, true)}
+                                disabled={likingIds.has(reply.id)}
+                              >
+                                <Heart
+                                  className={`h-4 w-4 ${
+                                    reply.isLiked ? 'fill-current text-destructive' : 'text-muted-foreground'
+                                  }`}
+                                />
+                                <span>{formatCount(reply.likes)}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={reactionButtonClass}
+                                onClick={() => setReplyingTo(prev => (prev === `${comment.id}:${reply.id}` ? null : `${comment.id}:${reply.id}`))}
+                                aria-label={`回复 ${reply.author}`}
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                                <span>回复</span>
+                              </button>
+                              {canDelete(reply.authorId, reply.author) && (
+                                <button
+                                  type="button"
+                                  className={reactionButtonClass}
+                                  onClick={() => void handleDelete(reply.id, true)}
+                                  disabled={deletingIds.has(reply.id)}
+                                  aria-label="删除回复"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {replyingTo === comment.id && (
+                    <div className="mt-4 ml-2 rounded-[20px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+                      <Textarea
+                        ref={replyRef}
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        placeholder={`回复 @${comment.author}:`}
+                        className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 font-rounded-cn"
+                        onKeyDown={e => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            void handleReply(comment.id);
+                          }
+                        }}
+                      />
+                      <div className="mt-3 flex items-center justify-end gap-4">
+                        <button
+                          type="button"
+                          className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                          onClick={() => {
+                            setReplyText('');
+                            setReplyingTo(null);
+                          }}
+                        >
+                          取消
+                        </button>
+                        <Button
+                          size="sm"
+                          onClick={() => void handleReply(comment.id)}
+                          disabled={!replyText.trim() || submittingReply === comment.id}
+                          className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                        >
+                          {submittingReply === comment.id && (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          )}
+                          发布
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyHint message={'暂无评论，来发表第一条吧'} />
+        )}
+      </div>
+
+      <div className="border-t border-border px-6 py-5">
+        <div className="flex gap-4">
+          <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
+            {user?.avatar && (
+              <AvatarImage src={user.avatar} alt={user?.username || 'avatar'} />
+            )}
+            <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+              {user?.username?.charAt(0).toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 rounded-[22px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+            <Textarea
+              ref={textareaRef}
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              placeholder="说点什么吧... 支持 Ctrl/⌘ + Enter 快速发布"
+              className="min-h-[90px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 font-rounded-cn"
+              onKeyDown={e => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleSubmit();
+                }
+              }}
+            />
+            <div className="mt-3 flex items-center justify-end text-[12px] text-muted-foreground">
+              <Button
+                size="sm"
+                onClick={() => void handleSubmit()}
+                disabled={!newComment.trim() || submitting}
+                className="h-9 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+              >
+                {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                发布
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

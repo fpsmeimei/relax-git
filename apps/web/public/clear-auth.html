@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>清理认证数据 - Relax-Git</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #4B69C6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #3a5ab5;
+    }
+    .success {
+      background: #10b981;
+      padding: 12px;
+      border-radius: 6px;
+      color: white;
+      margin-top: 20px;
+      display: none;
+    }
+    .info {
+      background: #f0f9ff;
+      border-left: 4px solid #4B69C6;
+      padding: 12px;
+      margin: 20px 0;
+    }
+    ul {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 清理认证数据</h1>
+    
+    <div class="info">
+      <strong>当前存储的数据：</strong>
+      <ul id="storage-list"></ul>
+    </div>
+
+    <button onclick="clearAll()">清理所有认证数据</button>
+    <button onclick="window.location.href='/auth/login'">前往登录页</button>
+
+    <div class="success" id="success-msg">
+      ✅ 认证数据已清理！请重新登录。
+    </div>
+  </div>
+
+  <script>
+    function displayStorage() {
+      const list = document.getElementById('storage-list');
+      const keys = Object.keys(localStorage);
+      
+      if (keys.length === 0) {
+        list.innerHTML = '<li>无数据</li>';
+        return;
+      }
+
+      list.innerHTML = keys.map(key => {
+        const value = localStorage.getItem(key);
+        const preview = value.length > 50 ? value.substring(0, 50) + '...' : value;
+        return `<li><strong>${key}</strong>: ${preview}</li>`;
+      }).join('');
+    }
+
+    function clearAll() {
+      // 清理所有 localStorage
+      localStorage.clear();
+      
+      // 清理所有 sessionStorage
+      sessionStorage.clear();
+      
+      // 显示成功消息
+      document.getElementById('success-msg').style.display = 'block';
+      
+      // 更新显示
+      displayStorage();
+      
+      // 3秒后跳转到登录页
+      setTimeout(() => {
+        window.location.href = '/auth/login';
+      }, 2000);
+    }
+
+    // 页面加载时显示当前存储
+    displayStorage();
+  </script>
+</body>
+</html>

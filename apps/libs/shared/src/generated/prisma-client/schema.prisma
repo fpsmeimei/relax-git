@@ -1,0 +1,380 @@
+// Relax-Git 数据库 Schema
+// 基于 PostgreSQL 16 + Prisma ORM
+// 应届生学习项目版本：简化设计，重点学习数据库基础
+// 最后更新：2025-01-11 - 新增代码差异对比功能
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../libs/shared/src/generated/prisma-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 用户表
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String // bcrypt 哈希
+  avatar    String? // 头像 URL
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联关系
+  ownedRepositories Repository[]    @relation("RepositoryOwner")
+  snapshots         Snapshot[]      @relation("SnapshotOwner")
+  comments          Comment[]       @relation("CommentAuthor")
+  timelineEvents    TimelineEvent[] @relation("TimelineActor")
+  sessions          UserSession[]
+  diffs             Diff[]          @relation("DiffOwner")
+  searchHistory     SearchHistory[] @relation("UserSearchHistory")
+
+  @@map("users")
+}
+
+// 用户角色枚举
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+
+  @@map("user_roles")
+}
+
+// 用户会话表（学习项目版本：简化JWT管理）
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // 关联关系
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+// 仓库表
+model Repository {
+  id            String               @id @default(cuid())
+  name          String
+  gitUrl        String
+  ownerId       String
+  defaultBranch String               @default("main")
+  visibility    RepositoryVisibility @default(PRIVATE)
+  description   String?
+  isActive      Boolean              @default(true)
+  lastSyncAt    DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  // 关联关系
+  owner          User            @relation("RepositoryOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  snapshots      Snapshot[]      @relation("RepositorySnapshots")
+  timelineEvents TimelineEvent[] @relation("RepositoryTimeline")
+  diffs          Diff[]          @relation("RepositoryDiffs")
+  searchHistory  SearchHistory[] @relation("RepositorySearchHistory")
+
+  @@unique([ownerId, name])
+  @@index([ownerId])
+  @@index([visibility])
+  @@map("repositories")
+}
+
+// 仓库可见性枚举
+enum RepositoryVisibility {
+  PUBLIC
+  PRIVATE
+  INTERNAL
+
+  @@map("repository_visibility")
+}
+
+// 快照表
+model Snapshot {
+  id           String         @id @default(cuid())
+  repoId       String
+  ownerId      String
+  commitSha    String
+  branchName   String
+  worktreePath String? // Git worktree 路径
+  bundlePath   String? // Git bundle 存储路径
+  status       SnapshotStatus @default(QUEUED)
+  title        String? // 快照标题
+  description  String? // 快照描述
+  expiresAt    DateTime // TTL 过期时间
+  processedAt  DateTime? // 处理完成时间
+  errorMessage String? // 错误信息
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // 关联关系
+  repository     Repository      @relation("RepositorySnapshots", fields: [repoId], references: [id], onDelete: Cascade)
+  owner          User            @relation("SnapshotOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  comments       Comment[]       @relation("SnapshotComments")
+  timelineEvents TimelineEvent[] @relation("SnapshotTimeline")
+  searchHistory  SearchHistory[] @relation("SnapshotSearchHistory")
+
+  @@index([repoId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([commitSha])
+  @@map("snapshots")
+}
+
+// 快照状态枚举
+enum SnapshotStatus {
+  QUEUED // 队列中
+  PROCESSING // 处理中
+  READY // 就绪
+  EXPIRED // 已过期
+  FAILED // 失败
+
+  @@map("snapshot_status")
+}
+
+// 评论表
+model Comment {
+  id         String            @id @default(cuid())
+  snapshotId String
+  authorId   String
+  content    String // Markdown 内容
+  anchorType CommentAnchorType
+
+  // 锚点信息
+  commitSha String? // 提交级锚点
+  filePath  String? // 文件级锚点
+  lineStart Int? // 行级锚点开始
+  lineEnd   Int? // 行级锚点结束
+
+  status     CommentStatus @default(PUBLISHED)
+  parentId   String? // 回复评论的父评论ID
+  isResolved Boolean       @default(false)
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  // 关联关系
+  snapshot       Snapshot        @relation("SnapshotComments", fields: [snapshotId], references: [id], onDelete: Cascade)
+  author         User            @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  parent         Comment?        @relation("CommentReplies", fields: [parentId], references: [id])
+  replies        Comment[]       @relation("CommentReplies")
+  timelineEvents TimelineEvent[] @relation("CommentTimeline")
+
+  @@index([snapshotId])
+  @@index([authorId])
+  @@index([status])
+  @@index([parentId])
+  @@index([commitSha])
+  @@index([filePath])
+  @@map("comments")
+}
+
+// 评论锚点类型枚举
+enum CommentAnchorType {
+  SNAPSHOT // 快照级评论
+  COMMIT // 提交级评论
+  FILE // 文件级评论
+  LINE // 行级评论
+
+  @@map("comment_anchor_types")
+}
+
+// 评论状态枚举
+enum CommentStatus {
+  DRAFT // 草稿
+  PUBLISHED // 已发布
+  HIDDEN // 已隐藏
+
+  @@map("comment_status")
+}
+
+// 时间线事件表
+model TimelineEvent {
+  id      String            @id @default(cuid())
+  repoId  String
+  type    TimelineEventType
+  actorId String
+
+  // 关联资源ID（可选）
+  snapshotId String?
+  commentId  String?
+
+  // 事件载荷（JSON）
+  payload Json
+
+  createdAt DateTime @default(now())
+
+  // 关联关系
+  repository Repository @relation("RepositoryTimeline", fields: [repoId], references: [id], onDelete: Cascade)
+  actor      User       @relation("TimelineActor", fields: [actorId], references: [id], onDelete: Cascade)
+  snapshot   Snapshot?  @relation("SnapshotTimeline", fields: [snapshotId], references: [id], onDelete: Cascade)
+  comment    Comment?   @relation("CommentTimeline", fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([repoId])
+  @@index([actorId])
+  @@index([type])
+  @@index([createdAt])
+  @@index([snapshotId])
+  @@index([commentId])
+  @@map("timeline_events")
+}
+
+// 时间线事件类型枚举
+enum TimelineEventType {
+  REPOSITORY_CREATED // 仓库创建
+  SNAPSHOT_CREATED // 快照创建
+  SNAPSHOT_READY // 快照就绪
+  SNAPSHOT_EXPIRED // 快照过期
+  COMMENT_CREATED // 评论创建
+  COMMENT_UPDATED // 评论更新
+  COMMENT_RESOLVED // 评论解决
+  USER_JOINED // 用户加入
+  DIFF_CREATED // 差异对比创建
+  DIFF_COMPLETED // 差异对比完成
+
+  @@map("timeline_event_types")
+}
+
+// 差异对比类型枚举
+enum DiffType {
+  SNAPSHOT_COMPARE // 快照间对比
+  COMMIT_COMPARE // 提交间对比
+  BRANCH_COMPARE // 分支间对比
+
+  @@map("diff_types")
+}
+
+// 差异对比状态枚举
+enum DiffStatus {
+  QUEUED // 队列中
+  PROCESSING // 处理中
+  COMPLETED // 已完成
+  FAILED // 失败
+
+  @@map("diff_status")
+}
+
+// 文件变更类型枚举
+enum FileChangeType {
+  ADDED // 新增文件
+  DELETED // 删除文件
+  MODIFIED // 修改文件
+  RENAMED // 重命名文件
+  COPIED // 复制文件
+
+  @@map("file_change_types")
+}
+
+// 差异对比表
+model Diff {
+  id           String     @id @default(cuid())
+  type         DiffType // 对比类型
+  sourceId     String // 源快照/提交ID
+  targetId     String // 目标快照/提交ID
+  repositoryId String // 仓库ID
+  ownerId      String // 创建者ID
+  status       DiffStatus @default(QUEUED)
+
+  // 统计信息
+  filesCount     Int @default(0) // 文件数量
+  additionsCount Int @default(0) // 新增行数
+  deletionsCount Int @default(0) // 删除行数
+
+  // 性能优化字段
+  contentHash String? // 用于缓存去重
+
+  // 元数据
+  title        String? // 对比标题
+  description  String? // 对比描述
+  errorMessage String? // 错误信息
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联关系
+  repository Repository @relation("RepositoryDiffs", fields: [repositoryId], references: [id], onDelete: Cascade)
+  owner      User       @relation("DiffOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  files      DiffFile[] @relation("DiffFiles")
+
+  // 索引优化
+  @@index([repositoryId, type])
+  @@index([ownerId, createdAt])
+  @@index([status])
+  @@index([contentHash])
+  @@index([sourceId, targetId])
+  @@map("diffs")
+}
+
+// 差异文件表
+model DiffFile {
+  id         String         @id @default(cuid())
+  diffId     String // 差异对比ID
+  filePath   String // 文件路径
+  changeType FileChangeType // 变更类型
+
+  // 统计信息
+  additions Int @default(0) // 新增行数
+  deletions Int @default(0) // 删除行数
+
+  // 内容存储优化
+  content     Json? // 存储解析后的diff块
+  contentSize Int   @default(0) // 用于分页判断
+
+  // 文件元信息
+  oldFilePath String? // 重命名前的文件路径
+  isBinary    Boolean @default(false) // 是否为二进制文件
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联关系
+  diff Diff @relation("DiffFiles", fields: [diffId], references: [id], onDelete: Cascade)
+
+  // 索引优化
+  @@index([diffId, changeType])
+  @@index([filePath])
+  @@index([contentSize])
+  @@map("diff_files")
+}
+
+// 搜索历史表
+model SearchHistory {
+  id           String     @id @default(cuid())
+  userId       String
+  repositoryId String
+  snapshotId   String? // 可选：指定快照搜索
+  query        String // 搜索关键词
+  searchType   SearchType @default(CONTENT) // 搜索类型
+  resultsCount Int        @default(0) // 结果数量
+  createdAt    DateTime   @default(now())
+
+  // 关联关系
+  user       User       @relation("UserSearchHistory", fields: [userId], references: [id], onDelete: Cascade)
+  repository Repository @relation("RepositorySearchHistory", fields: [repositoryId], references: [id], onDelete: Cascade)
+  snapshot   Snapshot?  @relation("SnapshotSearchHistory", fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([repositoryId])
+  @@index([createdAt])
+  @@map("search_history")
+}
+
+// 搜索类型枚举
+enum SearchType {
+  CONTENT // 文件内容搜索
+  FILENAME // 文件名搜索
+  REGEX // 正则表达式搜索
+
+  @@map("search_type")
+}

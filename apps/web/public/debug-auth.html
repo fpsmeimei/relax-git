@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>认证调试 - Relax-Git</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    .container {
+      background: #252526;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #3e3e42;
+    }
+    h1 {
+      color: #4ec9b0;
+      margin-bottom: 20px;
+    }
+    .section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #1e1e1e;
+      border-radius: 4px;
+      border-left: 3px solid #4ec9b0;
+    }
+    .label {
+      color: #9cdcfe;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .value {
+      color: #ce9178;
+      word-break: break-all;
+      margin-left: 10px;
+    }
+    .empty {
+      color: #f48771;
+      font-style: italic;
+    }
+    button {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      font-family: inherit;
+    }
+    button:hover {
+      background: #1177bb;
+    }
+    .success {
+      color: #4ec9b0;
+    }
+    .error {
+      color: #f48771;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 认证状态调试</h1>
+    
+    <div class="section">
+      <div class="label">localStorage 数据：</div>
+      <div id="localStorage-data"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">sessionStorage 数据：</div>
+      <div id="sessionStorage-data"></div>
+    </div>
+
+    <div class="section">
+      <div class="label">Cookies：</div>
+      <div id="cookies-data"></div>
+    </div>
+
+    <div>
+      <button onclick="refreshData()">🔄 刷新数据</button>
+      <button onclick="clearAll()">🗑️ 清理所有数据</button>
+      <button onclick="window.location.href='/auth/login'">🔐 前往登录</button>
+      <button onclick="window.location.href='/'">🏠 返回首页</button>
+    </div>
+  </div>
+
+  <script>
+    function displayStorage(storageType, elementId) {
+      const element = document.getElementById(elementId);
+      const storage = storageType === 'local' ? localStorage : sessionStorage;
+      const keys = Object.keys(storage);
+      
+      if (keys.length === 0) {
+        element.innerHTML = '<div class="empty">无数据</div>';
+        return;
+      }
+
+      element.innerHTML = keys.map(key => {
+        const value = storage.getItem(key);
+        let displayValue = value;
+        
+        // 尝试格式化 JSON
+        try {
+          const parsed = JSON.parse(value);
+          displayValue = JSON.stringify(parsed, null, 2);
+        } catch (e) {
+          // 不是 JSON，保持原样
+        }
+        
+        return `
+          <div style="margin: 10px 0;">
+            <div class="label">${key}:</div>
+            <pre class="value">${displayValue}</pre>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function displayCookies() {
+      const element = document.getElementById('cookies-data');
+      const cookies = document.cookie.split(';').filter(c => c.trim());
+      
+      if (cookies.length === 0) {
+        element.innerHTML = '<div class="empty">无 Cookies</div>';
+        return;
+      }
+
+      element.innerHTML = cookies.map(cookie => {
+        const [key, value] = cookie.split('=').map(s => s.trim());
+        return `
+          <div style="margin: 10px 0;">
+            <span class="label">${key}:</span>
+            <span class="value">${value}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function refreshData() {
+      displayStorage('local', 'localStorage-data');
+      displayStorage('session', 'sessionStorage-data');
+      displayCookies();
+    }
+
+    function clearAll() {
+      if (confirm('确定要清理所有认证数据吗？')) {
+        localStorage.clear();
+        sessionStorage.clear();
+        document.cookie.split(";").forEach(c => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        alert('✅ 所有数据已清理！');
+        refreshData();
+      }
+    }
+
+    // 页面加载时显示数据
+    refreshData();
+
+    // 每秒自动刷新
+    setInterval(refreshData, 1000);
+  </script>
+</body>
+</html>

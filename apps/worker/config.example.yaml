@@ -1,0 +1,41 @@
+# Relax-Git Worker 配置文件示例
+# 复制此文件为 config.yaml 并根据需要修改
+
+# Redis 配置
+redis:
+  host: localhost
+  port: 6379
+  password: ''
+  db: 0
+
+# 数据库配置
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: ''
+  db_name: relax_git
+  ssl_mode: disable
+
+# Worker 配置
+worker:
+  # 并发处理数量
+  concurrency: 3
+  # 队列名称
+  queue_name: 'snapshot:queue'
+  # 工作目录
+  work_dir: '/tmp/relax-git-worker'
+
+# Git 配置
+git:
+  # 临时目录
+  temp_dir: '/tmp/relax-git-repos'
+  # Bundle 存储目录
+  bundle_dir: '/tmp/relax-git-bundles'
+  # 最大仓库大小（字节）
+  max_repo_size: 1073741824 # 1GB
+
+# 日志配置
+log:
+  # 日志级别: trace, debug, info, warn, error, fatal, panic
+  level: info

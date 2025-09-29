@@ -1,0 +1,44 @@
+# Relax-Git Worker 配置文件
+# 基于 .env 中的配置生成
+
+# Redis 配置
+redis:
+  host: localhost
+  port: 6379
+  password: ''
+  db: 0
+
+# 数据库配置
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: postgres
+  db_name: relax_git_dev
+  ssl_mode: disable
+
+# Worker 配置
+worker:
+  # 并发处理数量
+  concurrency: 3
+  # 队列名称（必须与 API 推送一致）
+  queue_name: 'snapshot:queue'
+  # 工作目录
+  work_dir: 'C:\\temp\\relax-git-worker'
+
+# Git 配置
+git:
+  # 临时目录 - Windows 路径
+  temp_dir: 'C:\temp\relax-git-repos'
+  # Bundle 存储目录
+  bundle_dir: 'C:\temp\relax-git-bundles'
+  # 最大仓库大小（字节）
+  max_repo_size: 1073741824 # 1GB
+  # HTTP代理配置（可选）
+  http_proxy: 'http://127.0.0.1:7899'
+  https_proxy: 'http://127.0.0.1:7899'
+
+# 日志配置
+log:
+  # 日志级别: trace, debug, info, warn, error, fatal, panic
+  level: info

@@ -1,0 +1,612 @@
+{
+  "timestamp": "2025-09-26T17:49:27.887Z",
+  "summary": {
+    "totalDependencies": 29,
+    "deprecatedUsage": 12,
+    "criticalDependencies": 0,
+    "moduleImports": 3,
+    "issues": 0,
+    "warnings": 13
+  },
+  "analysis": {
+    "byService": {
+      "SnapshotsService": [
+        {
+          "file": "src\\snapshots\\snapshots.service.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.controller.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\artifacts.controller.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\repositories\\repositories.service.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        }
+      ],
+      "SessionSnapshotService": [
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshot-cleanup.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.controller.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "BaseSnapshotService": [
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\base-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\artifacts.controller.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\artifact.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\repositories\\repositories.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "UnifiedSnapshotService": [
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\controllers\\unified-snapshots.controller.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "UnifiedSnapshotAccessService": [
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-access.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        }
+      ]
+    },
+    "byFile": {
+      "src\\snapshots\\snapshots.service.ts": [
+        {
+          "file": "src\\snapshots\\snapshots.service.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\snapshots.module.ts": [
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\snapshots.module.optimized.ts": [
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\snapshots.controller.ts": [
+        {
+          "file": "src\\snapshots\\snapshots.controller.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\snapshot-cleanup.service.ts": [
+        {
+          "file": "src\\snapshots\\snapshot-cleanup.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\session-snapshot.service.ts": [
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\session-snapshot.controller.ts": [
+        {
+          "file": "src\\snapshots\\session-snapshot.controller.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\base-snapshot.service.ts": [
+        {
+          "file": "src\\snapshots\\base-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\artifacts.controller.ts": [
+        {
+          "file": "src\\snapshots\\artifacts.controller.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\artifacts.controller.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\artifact.service.ts": [
+        {
+          "file": "src\\snapshots\\artifact.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\services\\unified-snapshot.service.ts": [
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\services\\unified-access.service.ts": [
+        {
+          "file": "src\\snapshots\\services\\unified-access.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        }
+      ],
+      "src\\snapshots\\controllers\\unified-snapshots.controller.ts": [
+        {
+          "file": "src\\snapshots\\controllers\\unified-snapshots.controller.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        }
+      ],
+      "src\\repositories\\repositories.service.ts": [
+        {
+          "file": "src\\repositories\\repositories.service.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\repositories\\repositories.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        }
+      ]
+    },
+    "byType": {
+      "reference": [
+        {
+          "file": "src\\snapshots\\snapshots.service.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.module.optimized.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshots.controller.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\snapshot-cleanup.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\session-snapshot.controller.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\base-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\artifacts.controller.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\artifacts.controller.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\artifact.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "SessionSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\services\\unified-access.service.ts",
+          "service": "UnifiedSnapshotAccessService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\snapshots\\controllers\\unified-snapshots.controller.ts",
+          "service": "UnifiedSnapshotService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\repositories\\repositories.service.ts",
+          "service": "SnapshotsService",
+          "type": "reference"
+        },
+        {
+          "file": "src\\repositories\\repositories.service.ts",
+          "service": "BaseSnapshotService",
+          "type": "reference"
+        }
+      ]
+    },
+    "criticalDependencies": [],
+    "deprecatedUsage": [
+      {
+        "file": "src\\snapshots\\snapshots.service.ts",
+        "service": "SnapshotsService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\snapshots.module.ts",
+        "service": "SnapshotsService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\snapshots.module.ts",
+        "service": "SessionSnapshotService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\snapshots.module.optimized.ts",
+        "service": "SnapshotsService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\snapshots.module.optimized.ts",
+        "service": "SessionSnapshotService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\snapshots.controller.ts",
+        "service": "SnapshotsService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\snapshot-cleanup.service.ts",
+        "service": "SessionSnapshotService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\session-snapshot.service.ts",
+        "service": "SessionSnapshotService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\session-snapshot.controller.ts",
+        "service": "SessionSnapshotService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\artifacts.controller.ts",
+        "service": "SnapshotsService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\snapshots\\services\\unified-snapshot.service.ts",
+        "service": "SessionSnapshotService",
+        "type": "reference"
+      },
+      {
+        "file": "src\\repositories\\repositories.service.ts",
+        "service": "SnapshotsService",
+        "type": "reference"
+      }
+    ]
+  },
+  "moduleImports": [
+    {
+      "file": "src\\app.module.ts",
+      "content": "import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';\nimport { ConfigModule } from '@nestjs/config';\nimport { APP_GUARD } from '@nestjs/core';\nimport { ScheduleModule } from '@nestjs/schedule';\nimport s3Config from './config/s3.config';\nimport performanceConfig from './config/performance.config';\nimport { AuthModule } from './auth/auth.module';\nimport { JwtAuthGuard } from './auth/guards/jwt-auth.guard';\nimport { CommentsModule } from './comments/comments.module';\nimport { SecurityHeadersMiddleware } from './common/middleware/security-headers.middleware';\nimport { ConfigModule as AppConfigModule } from './config/config.module';\nimport { DatabaseModule } from './database/database.module';\n\nimport { ChatsModule } from './chats/chats.module';\nimport { CommunityModule } from './community/community.module';\nimport { HealthModule } from './health/health.module';\nimport { JoinRequestsModule } from './join-requests/join-requests.module';\nimport { MembersModule } from './members/members.module';\nimport { NotificationsModule } from './notifications/notifications.module';\nimport { RedisModule } from './redis/redis.module';\nimport { RepositoriesModule } from './repositories/repositories.module';\nimport { SearchModule } from './search/search.module';\nimport { SnapshotsModule } from './snapshots/snapshots.module';\nimport { TimelineModule } from './timeline/timeline.module';\nimport { UsersModule } from './users/users.module';\nimport { WebSocketModule } from './websocket/websocket.module';\n\n/**\n * 应用主模块\n * 集成所有功能模块\n */\n@Module({\n  imports: [\n    // 环境变量配置\n    ConfigModule.forRoot({\n      isGlobal: true,\n      envFilePath: ['.env.local', '.env'],\n      expandVariables: true,\n      load: [s3Config, performanceConfig], // 加载性能和S3配置\n    }),\n\n    // 定时任务模块\n    ScheduleModule.forRoot(),\n\n    // 核心模块\n    DatabaseModule,\n    RedisModule,\n    HealthModule,\n    WebSocketModule,\n\n    // 业务模块\n    AuthModule,\n    UsersModule,\n    RepositoriesModule,\n    SnapshotsModule,\n    CommunityModule,\n    SearchModule,\n\n    CommentsModule,\n    MembersModule,\n    JoinRequestsModule,\n    TimelineModule,\n    NotificationsModule,\n    AppConfigModule,\n    ChatsModule,\n  ],\n  controllers: [],\n  providers: [\n    // 全局 JWT 认证守卫\n    {\n      provide: APP_GUARD,\n      useClass: JwtAuthGuard,\n    },\n  ],\n})\nexport class AppModule implements NestModule {\n  configure(consumer: MiddlewareConsumer) {\n    // 应用安全头中间件到所有路由\n    consumer.apply(SecurityHeadersMiddleware).forRoutes('*');\n  }\n}\n"
+    },
+    {
+      "file": "src\\snapshots\\snapshots.module.ts",
+      "content": "import { Module } from '@nestjs/common';\nimport { EventEmitterModule } from '@nestjs/event-emitter';\nimport { ScheduleModule } from '@nestjs/schedule';\nimport { ConfigModule } from '../config/config.module';\nimport { DatabaseModule } from '../database/database.module';\nimport { RedisModule } from '../redis/redis.module';\nimport { GitValidationService } from '../repositories/services/git-validation.service';\nimport { WebSocketModule } from '../websocket/websocket.module';\nimport { ArtifactService } from './artifact.service';\nimport { ArtifactsController } from './artifacts.controller';\nimport { BaseSnapshotService } from './base-snapshot.service';\nimport {\n  DeprecatedSessionSnapshotsController,\n  UnifiedSnapshotsController,\n} from './controllers/unified-snapshots.controller';\nimport { MetricsController } from './metrics.controller';\nimport { PerformanceOptimizerController } from './performance-optimizer.controller';\nimport { PerformanceOptimizerService } from './performance-optimizer.service';\nimport { UnifiedSnapshotAccessService } from './services/unified-access.service';\nimport { UnifiedSnapshotService } from './services/unified-snapshot.service';\nimport { SessionLifecycleService } from './session-lifecycle.service';\nimport { SessionSnapshotController } from './session-snapshot.controller';\nimport { SessionSnapshotService } from './session-snapshot.service';\nimport { SnapshotCleanupService } from './snapshot-cleanup.service';\nimport { SnapshotMetricsService } from './snapshot-metrics.service';\nimport { SnapshotsController } from './snapshots.controller';\nimport { SnapshotsService } from './snapshots.service';\n\n/**\n * 快照管理模块\n * 包含传统快照服务和新的社区化快照架构\n */\n@Module({\n  imports: [\n    DatabaseModule,\n    RedisModule,\n    WebSocketModule,\n    ConfigModule,\n    ScheduleModule.forRoot(), // Phase 2: 支持定时任务\n    EventEmitterModule.forRoot(),\n  ],\n  controllers: [\n    SnapshotsController,\n    SessionSnapshotController,\n    // 统一快照控制器\n    UnifiedSnapshotsController,\n    DeprecatedSessionSnapshotsController, // 向后兼容\n    ArtifactsController,\n    MetricsController, // Phase 1.4: 监控API\n    PerformanceOptimizerController, // Phase 3.2: 性能优化API\n  ],\n  providers: [\n    SnapshotsService,\n    BaseSnapshotService,\n    SessionSnapshotService,\n    SnapshotCleanupService,\n    GitValidationService,\n    // 统一权限验证服务\n    UnifiedSnapshotAccessService,\n    // 统一快照服务\n    UnifiedSnapshotService,\n    // Phase 2 新增服务\n    ArtifactService,\n    SessionLifecycleService,\n    // Phase 1.4 监控服务\n    SnapshotMetricsService,\n    // Phase 3.2 性能优化服务\n    PerformanceOptimizerService,\n  ],\n  exports: [\n    SnapshotsService,\n    BaseSnapshotService,\n    SessionSnapshotService,\n    SnapshotCleanupService,\n    // 统一服务导出\n    UnifiedSnapshotAccessService,\n    UnifiedSnapshotService,\n    // Phase 2 导出\n    ArtifactService,\n    SessionLifecycleService,\n    SnapshotMetricsService,\n    // Phase 3.2 导出\n    PerformanceOptimizerService,\n  ],\n})\nexport class SnapshotsModule {}\n"
+    },
+    {
+      "file": "src\\repositories\\repositories.module.ts",
+      "content": "import { Module } from '@nestjs/common';\nimport { RepoAccessGuard } from '../auth/guards/repo-access.guard';\nimport { DatabaseModule } from '../database/database.module';\n\nimport { SnapshotsModule } from '../snapshots/snapshots.module';\nimport { RepositoriesController } from './repositories.controller';\nimport { RepositoriesService } from './repositories.service';\nimport { GitValidationService } from './services/git-validation.service';\n\n/**\n * 仓库管理模块\n */\n@Module({\n  imports: [DatabaseModule, SnapshotsModule],\n  controllers: [RepositoriesController],\n  providers: [RepositoriesService, GitValidationService, RepoAccessGuard],\n  exports: [RepositoriesService, GitValidationService],\n})\nexport class RepositoriesModule {}\n"
+    }
+  ],
+  "suggestions": {
+    "immediateActions": [
+      {
+        "action": "Update deprecated service usage",
+        "description": "Replace SnapshotsService and SessionSnapshotService with UnifiedSnapshotService",
+        "files": [
+          "src\\snapshots\\snapshots.service.ts",
+          "src\\snapshots\\snapshots.module.ts",
+          "src\\snapshots\\snapshots.module.ts",
+          "src\\snapshots\\snapshots.module.optimized.ts",
+          "src\\snapshots\\snapshots.module.optimized.ts",
+          "src\\snapshots\\snapshots.controller.ts",
+          "src\\snapshots\\snapshot-cleanup.service.ts",
+          "src\\snapshots\\session-snapshot.service.ts",
+          "src\\snapshots\\session-snapshot.controller.ts",
+          "src\\snapshots\\artifacts.controller.ts",
+          "src\\snapshots\\services\\unified-snapshot.service.ts",
+          "src\\repositories\\repositories.service.ts"
+        ],
+        "priority": "medium"
+      }
+    ],
+    "futureActions": [],
+    "riskAssessment": "high"
+  },
+  "issues": [],
+  "warnings": [
+    "Found 12 usages of deprecated services:",
+    "  - src\\snapshots\\snapshots.service.ts: SnapshotsService (reference)",
+    "  - src\\snapshots\\snapshots.module.ts: SnapshotsService (reference)",
+    "  - src\\snapshots\\snapshots.module.ts: SessionSnapshotService (reference)",
+    "  - src\\snapshots\\snapshots.module.optimized.ts: SnapshotsService (reference)",
+    "  - src\\snapshots\\snapshots.module.optimized.ts: SessionSnapshotService (reference)",
+    "  - src\\snapshots\\snapshots.controller.ts: SnapshotsService (reference)",
+    "  - src\\snapshots\\snapshot-cleanup.service.ts: SessionSnapshotService (reference)",
+    "  - src\\snapshots\\session-snapshot.service.ts: SessionSnapshotService (reference)",
+    "  - src\\snapshots\\session-snapshot.controller.ts: SessionSnapshotService (reference)",
+    "  - src\\snapshots\\artifacts.controller.ts: SnapshotsService (reference)",
+    "  - src\\snapshots\\services\\unified-snapshot.service.ts: SessionSnapshotService (reference)",
+    "  - src\\repositories\\repositories.service.ts: SnapshotsService (reference)"
+  ]
+}
