@@ -37,7 +37,6 @@ interface Repository {
   owner: {
     id: string;
     username: string;
-    email: string;
   };
   coverImage?: string | null;
   isPublished?: boolean;

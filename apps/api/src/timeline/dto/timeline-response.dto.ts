@@ -65,14 +65,12 @@ export class TimelineEventResponseDto {
     properties: {
       id: { type: 'string', example: 'clm0987654321fedcba' },
       username: { type: 'string', example: 'john_doe' },
-      email: { type: 'string', example: 'john@example.com' },
       avatar: { type: 'string', example: 'https://example.com/avatar.jpg' },
     },
   })
   actor?: {
     id: string;
     username: string;
-    email: string;
     avatar?: string;
   };
 

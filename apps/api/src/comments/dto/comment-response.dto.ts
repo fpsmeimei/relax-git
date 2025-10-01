@@ -20,12 +20,6 @@ export class CommentAuthorDto {
   })
   username: string;
 
-  @ApiProperty({
-    description: '邮箱',
-    example: 'john@example.com',
-  })
-  email: string;
-
   @ApiPropertyOptional({
     description: '头像URL',
     example: 'https://example.com/avatar.jpg',

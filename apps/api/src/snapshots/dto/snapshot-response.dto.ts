@@ -107,7 +107,6 @@ export class SnapshotResponseDto {
     owner?: {
       id: string;
       username: string;
-      email: string;
     };
   };
 
@@ -117,7 +116,6 @@ export class SnapshotResponseDto {
   owner?: {
     id: string;
     username: string;
-    email: string;
   };
 }
 

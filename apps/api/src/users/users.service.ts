@@ -21,17 +21,15 @@ export class UsersService {
    * 创建用户（管理员功能）
    */
   async create(createUserDto: CreateUserDto) {
-    const { email, username, password, role, avatar } = createUserDto;
+    const { username, password, role, avatar } = createUserDto;
 
     // 检查用户是否已存在
-    const existingUser = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ email }, { username }],
-      },
+    const existingUser = await this.prisma.user.findUnique({
+      where: { username },
     });
 
     if (existingUser) {
-      throw new ConflictException('用户邮箱或用户名已存在');
+      throw new ConflictException('用户名已存在');
     }
 
     // 密码哈希
@@ -44,7 +42,6 @@ export class UsersService {
     // 创建用户
     const user = await this.prisma.user.create({
       data: {
-        email,
         username,
         uid,
         password: hashedPassword,
@@ -96,10 +93,7 @@ export class UsersService {
     const where: any = {};
 
     if (search) {
-      where.OR = [
-        { email: { contains: search, mode: 'insensitive' } },
-        { username: { contains: search, mode: 'insensitive' } },
-      ];
+      where.username = { contains: search, mode: 'insensitive' };
     }
 
     if (role) {
@@ -202,32 +196,24 @@ export class UsersService {
       throw new ForbiddenException('权限不足，无法更新此用户信息');
     }
 
-    const { email, username, password, role, avatar, isActive } = updateUserDto;
+    const { username, password, role, avatar, isActive } = updateUserDto;
 
-    // 检查邮箱和用户名是否冲突
-    if (email || username) {
+    // 检查用户名是否冲突
+    if (username) {
       const conflictUser = await this.prisma.user.findFirst({
         where: {
-          AND: [
-            { id: { not: id } },
-            {
-              OR: [email ? { email } : {}, username ? { username } : {}].filter(
-                condition => Object.keys(condition).length > 0
-              ),
-            },
-          ],
+          AND: [{ id: { not: id } }, { username }],
         },
       });
 
       if (conflictUser) {
-        throw new ConflictException('邮箱或用户名已被其他用户使用');
+        throw new ConflictException('用户名已被其他用户使用');
       }
     }
 
     // 构建更新数据（禁止修改 uid）
     const updateData: any = {};
 
-    if (email) updateData.email = email;
     if (username) updateData.username = username;
     if (avatar !== undefined) updateData.avatar = avatar;
 

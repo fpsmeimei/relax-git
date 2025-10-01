@@ -6,8 +6,6 @@ export class JoinRequestUserDto {
   id!: string;
   @ApiProperty({ description: '用户名' })
   username!: string;
-  @ApiProperty({ description: '邮箱' })
-  email!: string;
   @ApiPropertyOptional({ description: '头像URL' })
   avatar?: string | null;
 }

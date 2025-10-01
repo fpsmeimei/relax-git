@@ -107,7 +107,7 @@ export class CommentsService {
             where: { id: existing },
             include: {
               author: {
-                select: { id: true, username: true, email: true, avatar: true },
+                select: { id: true, username: true, avatar: true },
               },
               snapshot: { select: { id: true, repoId: true } },
             },
@@ -438,7 +438,7 @@ export class CommentsService {
           replies: {
             include: {
               author: {
-                select: { id: true, username: true, email: true, avatar: true },
+                select: { id: true, username: true, avatar: true },
               },
               _count: { select: { likes: true, replies: true } },
             },

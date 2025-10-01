@@ -76,7 +76,7 @@ export class UnifiedSnapshotService {
           },
         },
         user: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true },
         },
       },
     });

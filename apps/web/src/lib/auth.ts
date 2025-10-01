@@ -33,8 +33,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         try {
           // 🔥 使用 Next.js 代理路由，确保 Cookie 正确传递
           const loginUrl = `${API_BASE}/api/_auth/login`;
-          console.log('[NextAuth] Calling backend login API via proxy:', loginUrl);
-          
+          console.log(
+            '[NextAuth] Calling backend login API via proxy:',
+            loginUrl
+          );
+
           // 通过 Next.js 代理调用后端（SSR 环境也能正确处理 Cookie）
           const response = await fetch(loginUrl, {
             method: 'POST',
@@ -56,18 +59,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           const data = await response.json();
           console.log('[NextAuth] Backend login success:', data);
-          
+
           // 返回用户信息和token
           // 🔥 修复：将accessToken传递给JWT callback
           const user: any = {
             id: data.user.id,
             name: data.user.username,
-            email: data.user.email || `${data.user.username}@relax-git.local`,
             uid: data.user.uid,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
           };
-          
+
           console.log('[NextAuth] Returning user with token');
           return user;
         } catch (error) {

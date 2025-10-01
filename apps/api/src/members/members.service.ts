@@ -197,10 +197,7 @@ export class MembersService {
       ? {
           user: {
             is: {
-              OR: [
-                { username: { contains: query.search, mode: 'insensitive' } },
-                { email: { contains: query.search, mode: 'insensitive' } },
-              ],
+              username: { contains: query.search, mode: 'insensitive' },
             },
           },
         }
@@ -220,7 +217,7 @@ export class MembersService {
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
-            select: { id: true, username: true, email: true, avatar: true },
+            select: { id: true, username: true, avatar: true },
           },
         },
       }),

@@ -203,10 +203,7 @@ export class JoinRequestsService {
     if (search) {
       where.user = {
         is: {
-          OR: [
-            { username: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
-          ],
+          username: { contains: search, mode: 'insensitive' },
         },
       };
     }
@@ -219,7 +216,7 @@ export class JoinRequestsService {
         orderBy: { createdAt: 'desc' },
         include: {
           user: {
-            select: { id: true, username: true, email: true, avatar: true },
+            select: { id: true, username: true, avatar: true },
           },
         },
       }),

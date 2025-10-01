@@ -24,7 +24,6 @@ interface AuthenticatedSocket extends Socket {
   userRole?: UserRole;
   user?: {
     id: string;
-    email: string;
     username: string;
     role: UserRole;
   };
@@ -185,7 +184,9 @@ export class WebSocketGateway
       }
 
       // 4) 连接数限制
-      if (this.getUserConnectionCount(user.id) >= this.MAX_CONNECTIONS_PER_USER) {
+      if (
+        this.getUserConnectionCount(user.id) >= this.MAX_CONNECTIONS_PER_USER
+      ) {
         this.logger.warn(`User ${user.id} exceeded connection limit`);
         client.emit('auth:error', { message: '连接数超限，请关闭其他连接' });
         client.disconnect();
@@ -236,7 +237,9 @@ export class WebSocketGateway
    */
   private extractAccessToken(client: Socket): string | null {
     try {
-      const cookieHeader = client.handshake.headers?.cookie as string | undefined;
+      const cookieHeader = client.handshake.headers?.cookie as
+        | string
+        | undefined;
       const tokenFromCookie = this.getCookie('access_token', cookieHeader);
       if (tokenFromCookie) return tokenFromCookie;
 

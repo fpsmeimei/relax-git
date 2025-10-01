@@ -6,7 +6,6 @@ export interface User {
   id: string;
   uid: string;
   username: string;
-  email: string;
   role: string;
   avatar?: string;
   displayName?: string;
@@ -25,7 +24,6 @@ export function useAuth() {
           id: session.user.id,
           uid: session.user.uid,
           username: session.user.name || '',
-          email: session.user.email || '',
           role: 'USER',
           avatar: session.user.image,
           displayName: session.user.name,

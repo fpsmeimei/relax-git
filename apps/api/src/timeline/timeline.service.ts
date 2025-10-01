@@ -747,7 +747,7 @@ export class TimelineService {
       // 验证用户存在性
       const actor = await this.prisma.user.findUnique({
         where: { id: actorId },
-        select: { id: true, username: true, email: true, avatar: true },
+        select: { id: true, username: true, avatar: true },
       });
 
       if (!actor) {
@@ -833,7 +833,7 @@ export class TimelineService {
         }),
         this.prisma.user.findMany({
           where: { id: { in: actorIds } },
-          select: { id: true, username: true, email: true, avatar: true },
+          select: { id: true, username: true, avatar: true },
         }),
       ]);
 
@@ -842,15 +842,13 @@ export class TimelineService {
       );
       const actorMap = new Map<
         string,
-        { id: string; username: string; email: string; avatar: string }
+        { id: string; username: string; avatar: string | null }
       >(
         actors.map(
-          (a: {
-            id: string;
-            username: string;
-            email: string;
-            avatar: string;
-          }) => [a.id, a]
+          (a: { id: string; username: string; avatar: string | null }) => [
+            a.id,
+            a,
+          ]
         )
       );
 
@@ -1116,13 +1114,11 @@ export class TimelineService {
         ? {
             id: event.actor.id,
             username: event.actor.username,
-            email: event.actor.email,
             avatar: event.actor.avatar,
           }
         : {
             id: '',
             username: '',
-            email: '',
           },
       repository: event.repository
         ? {

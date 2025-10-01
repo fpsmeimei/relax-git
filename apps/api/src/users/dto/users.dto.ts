@@ -1,7 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import {
   IsBoolean,
-  IsEmail,
   IsEnum,
   IsInt,
   IsOptional,
@@ -19,13 +18,6 @@ import { UserRole } from '@relax-git/shared/generated/prisma-client';
  * 创建用户 DTO
  */
 export class CreateUserDto {
-  @ApiProperty({
-    description: '用户邮箱',
-    example: 'user@example.com',
-  })
-  @IsEmail({}, { message: '请输入有效的邮箱地址' })
-  email: string;
-
   @ApiProperty({
     description: '用户名',
     example: 'johndoe',
@@ -118,7 +110,7 @@ export class QueryUsersDto {
   limit?: number = 10;
 
   @ApiProperty({
-    description: '搜索关键词（邮箱或用户名）',
+    description: '搜索关键词（用户名）',
     example: 'john',
     required: false,
   })
@@ -157,9 +149,6 @@ export class QueryUsersDto {
 export class UserResponseDto {
   @ApiProperty({ description: '用户 ID' })
   id: string;
-
-  @ApiProperty({ description: '用户邮箱' })
-  email: string;
 
   @ApiProperty({ description: '用户名' })
   username: string;
