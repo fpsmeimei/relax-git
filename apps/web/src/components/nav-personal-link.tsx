@@ -23,10 +23,9 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
     let stopped = false;
     const load = async () => {
       try {
-        // 必须已登录且已初始化
         if (!isAuthenticated || !isInitialized) return;
         const res = await apiClient.get<{ count: number }>(
-          `/notifications/unread-count`
+          '/notifications/unread-count'
         );
         if (!stopped) setUnreadCount(res.data?.count ?? 0);
       } catch {
@@ -41,19 +40,18 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
     };
   }, [isAuthenticated, isInitialized, setUnreadCount]);
 
-  // 未登录：显示 登录 / 注册
   if (!isAuthenticated) {
     return (
       <div className={cn('flex items-center gap-3', className)}>
         <Link
           href="/auth/login"
-          className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+          className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
         >
           登录
         </Link>
         <Link
           href="/auth/register"
-          className="text-sm text-primary hover:underline"
+          className="rounded-full px-3 py-1 text-sm text-primary transition-colors duration-200 hover:bg-primary/10"
         >
           注册
         </Link>
@@ -61,7 +59,6 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
     );
   }
 
-  // 已登录：显示 个人（角标）/ 退出登录
   const handleLogout = () => {
     try {
       logout();
@@ -75,9 +72,7 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
     <div className={cn('relative flex items-center gap-3', className)}>
       <Link
         href="/me"
-        className={cn(
-          'relative text-sm text-muted-foreground hover:text-foreground hover:underline'
-        )}
+        className="relative rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
       >
         个人
         {unreadCount > 0 && (
@@ -89,7 +84,7 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
       <button
         type="button"
         onClick={handleLogout}
-        className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+        className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
       >
         退出登录
       </button>

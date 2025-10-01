@@ -44,7 +44,7 @@ import { pipeline } from 'stream/promises';
  * 处理用户相关的 HTTP 请求
  */
 @ApiTags('users')
-@Controller('users')
+@Controller('api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

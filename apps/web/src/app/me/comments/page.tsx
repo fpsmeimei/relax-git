@@ -16,6 +16,11 @@ interface Comment {
   createdAt: string;
   likes?: number;
   repliesCount?: number;
+  author?: {
+    id: string;
+    username: string;
+    avatar?: string | null;
+  };
   snapshot: {
     id: string;
     title?: string;
@@ -186,9 +191,18 @@ export default function MyCommentsPage() {
                 <CardContent className="p-6">
                   <div className="flex gap-4">
                     <div className="flex-shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                        <MessageCircle className="h-5 w-5 text-green-600" />
-                      </div>
+                      {comment.author?.avatar ? (
+                        <img
+                          src={comment.author.avatar}
+                          alt={comment.author.username ?? 'avatar'}
+                          className="h-10 w-10 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                          <MessageCircle className="h-5 w-5 text-green-600" />
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">

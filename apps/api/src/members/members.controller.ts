@@ -32,7 +32,7 @@ import {
 import { MembersService } from './members.service';
 
 @ApiTags('members')
-@Controller('repositories/:repoId/members')
+@Controller('api/repositories/:repoId/members')
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
 

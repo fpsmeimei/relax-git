@@ -67,32 +67,35 @@ export class ArtifactsController {
       };
     }
 
-    // 兼容性：尝试从snapshots表获取
-    const snapshot = await this.prisma.snapshot.findUnique({
-      where: { id },
-      include: {
-        repository: true,
-      },
-    });
-
-    if (snapshot) {
-      await this.checkRepositoryAccess(snapshot.repository.id, req.user.id);
-
-      return {
-        id: snapshot.id,
-        repoId: snapshot.repoId,
-        commitSha: snapshot.commitSha,
-        status: snapshot.status,
-        worktreePath: snapshot.worktreePath,
-        bundlePath: snapshot.bundlePath,
-        processedAt: snapshot.processedAt,
-        errorMessage: snapshot.errorMessage,
-        createdAt: snapshot.createdAt,
-        repository: {
-          id: snapshot.repository.id,
-          name: snapshot.repository.name,
+    // 兼容性：尝试从旧 snapshots 表获取（仅当存在时）
+    const legacySnapshots = (this.prisma as any).snapshot;
+    if (legacySnapshots?.findUnique) {
+      const snapshot = await legacySnapshots.findUnique({
+        where: { id },
+        include: {
+          repository: true,
         },
-      };
+      });
+
+      if (snapshot) {
+        await this.checkRepositoryAccess(snapshot.repository.id, req.user.id);
+
+        return {
+          id: snapshot.id,
+          repoId: snapshot.repoId,
+          commitSha: snapshot.commitSha,
+          status: snapshot.status,
+          worktreePath: snapshot.worktreePath,
+          bundlePath: snapshot.bundlePath,
+          processedAt: snapshot.processedAt,
+          errorMessage: snapshot.errorMessage,
+          createdAt: snapshot.createdAt,
+          repository: {
+            id: snapshot.repository.id,
+            name: snapshot.repository.name,
+          },
+        };
+      }
     }
 
     throw new NotFoundException('Artifact not found');
@@ -249,7 +252,7 @@ export class ArtifactsController {
     const artifact = await this.getArtifact(id, req);
 
     // 检查是否为仓库owner或admin
-    const member = await this.prisma.repositoryMember.findUnique({
+    const member = await this.prisma.member.findUnique({
       where: {
         repoId_userId: {
           repoId: artifact.repoId,
@@ -341,30 +344,44 @@ export class ArtifactsController {
     @Param('branchId') branchId: string,
     @Request() req: any
   ) {
-    await this.checkRepositoryAccess(repoId, req.user.id);
-
-    const branch = await this.prisma.repositoryBranch.findUnique({
-      where: { id: branchId },
-    });
-
-    if (!branch || branch.repoId !== repoId) {
-      throw new NotFoundException('Branch not found');
-    }
-
-    const artifact = await this.baseSnapshotService.ensureArtifact(
+    console.log(
+      '🔍 [getArtifactByBranch] START - repoId:',
       repoId,
-      branch.commitSha,
+      'branchId:',
       branchId
     );
+    console.log('🔍 [getArtifactByBranch] req.user:', req.user);
 
-    return {
-      id: artifact.id,
-      status: artifact.status,
-      commitSha: artifact.commitSha,
-      worktreePath: artifact.worktreePath,
-      processedAt: artifact.processedAt,
-      errorMessage: artifact.errorMessage,
-    };
+    try {
+      await this.checkRepositoryAccess(repoId, req.user.id);
+
+      const branch = await this.prisma.repositoryBranch.findUnique({
+        where: { id: branchId },
+      });
+
+      if (!branch || branch.repoId !== repoId) {
+        throw new NotFoundException('Branch not found');
+      }
+
+      const artifact = await this.baseSnapshotService.ensureArtifact(
+        repoId,
+        branch.commitSha,
+        branchId
+      );
+
+      console.log('🔍 [getArtifactByBranch] SUCCESS');
+      return {
+        id: artifact.id,
+        status: artifact.status,
+        commitSha: artifact.commitSha,
+        worktreePath: artifact.worktreePath,
+        processedAt: artifact.processedAt,
+        errorMessage: artifact.errorMessage,
+      };
+    } catch (error) {
+      console.error('❌ [getArtifactByBranch] ERROR:', error);
+      throw error;
+    }
   }
 
   /**
@@ -374,6 +391,22 @@ export class ArtifactsController {
     repoId: string,
     userId: string
   ): Promise<void> {
+    console.log(
+      '🔍 [checkRepositoryAccess] repoId:',
+      repoId,
+      'userId:',
+      userId
+    );
+    console.log('🔍 [checkRepositoryAccess] prisma exists:', !!this.prisma);
+    console.log(
+      '🔍 [checkRepositoryAccess] prisma.repository exists:',
+      !!this.prisma?.repository
+    );
+    console.log(
+      '🔍 [checkRepositoryAccess] typeof prisma.repository:',
+      typeof this.prisma?.repository
+    );
+
     const repository = await this.prisma.repository.findUnique({
       where: { id: repoId },
     });
@@ -393,7 +426,7 @@ export class ArtifactsController {
     }
 
     // PRIVATE: 仅成员可读
-    const member = await this.prisma.repositoryMember.findUnique({
+    const member = await this.prisma.member.findUnique({
       where: {
         repoId_userId: {
           repoId,

@@ -44,7 +44,7 @@ import { TimelineService } from './timeline.service';
  */
 @ApiTags('timeline')
 @UsePipes(new TimelineValidationPipe())
-@Controller('timeline')
+@Controller('api/timeline')
 export class TimelineController {
   constructor(private readonly timelineService: TimelineService) {}
 

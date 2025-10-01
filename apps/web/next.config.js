@@ -148,10 +148,10 @@ const nextConfig = {
           source: '/api/_auth/:path*',
           destination: 'http://localhost:3001/auth/:path*',
         },
-        // 只代理非 auth 的 API 请求到后端
+        // 只代理非 auth 的 API 请求到后端（保留 /api 前缀）
         {
           source: '/api/:path((?!auth).*)',
-          destination: 'http://localhost:3001/:path*',
+          destination: 'http://localhost:3001/api/:path*',
         },
         // 静态上传资源代理
         {

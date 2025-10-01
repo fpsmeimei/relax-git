@@ -66,12 +66,12 @@ export function NavMessagesLink({ className }: NavMessagesLinkProps) {
       <Link
         href="/messages"
         className={cn(
-          'relative text-sm text-muted-foreground hover:text-foreground hover:underline'
+          'relative rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground'
         )}
       >
         消息
         {totalUnread > 0 && (
-          <span className="absolute -top-2 -right-3 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-medium text-white">
+          <span className="absolute -top-2 -right-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-medium text-white">
             {totalUnread > 99 ? '99+' : totalUnread}
           </span>
         )}

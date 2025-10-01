@@ -168,7 +168,8 @@ go run .
 # 等待看到: Relax-Git Worker started successfully
 ```
 
-> **可选**：`apps/worker-sample/` 仅作为示例 Worker，正常导入仓库时请使用 `apps/worker/`。更多配置（如队列、数据库）参见 `apps/worker/README.md`。
+> **可选**：`apps/worker-sample/` 仅作为示例 Worker，正常导入仓库时请使用
+> `apps/worker/`。更多配置（如队列、数据库）参见 `apps/worker/README.md`。
 
 ### 4. 访问应用
 

@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ChatsService } from './chats.service';
 
-@Controller('chats')
+@Controller('api/chats')
 export class ChatsController {
   constructor(private readonly chats: ChatsService) {}
 

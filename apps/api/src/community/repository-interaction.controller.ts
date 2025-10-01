@@ -1,5 +1,19 @@
-import { Controller, Post, Get, Body, Param, Query, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepositoryInteractionService } from './repository-interaction.service';
 import {
@@ -15,7 +29,7 @@ import {
  * 处理仓库的点赞、收藏、评论等社区互动功能
  */
 @ApiTags('仓库互动')
-@Controller('repositories')
+@Controller('api/repositories')
 export class RepositoryInteractionController {
   constructor(
     private readonly repositoryInteractionService: RepositoryInteractionService
@@ -25,7 +39,6 @@ export class RepositoryInteractionController {
    * 切换仓库点赞状态
    */
   @Post(':id/like')
-  
   @ApiOperation({
     summary: '切换仓库点赞状态',
     description: '点赞或取消点赞仓库',
@@ -50,7 +63,6 @@ export class RepositoryInteractionController {
    * 切换仓库收藏状态
    */
   @Post(':id/collect')
-  
   @ApiOperation({
     summary: '切换仓库收藏状态',
     description: '收藏或取消收藏仓库',
@@ -75,7 +87,6 @@ export class RepositoryInteractionController {
    * 创建仓库评论
    */
   @Post(':id/comments')
-  
   @ApiOperation({
     summary: '创建仓库评论',
     description: '为仓库创建新评论或回复已有评论',
@@ -133,7 +144,6 @@ export class RepositoryInteractionController {
    * 切换评论点赞状态
    */
   @Post('comments/:commentId/like')
-  
   @ApiOperation({
     summary: '切换评论点赞状态',
     description: '点赞或取消点赞评论',

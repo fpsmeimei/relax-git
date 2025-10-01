@@ -3,6 +3,7 @@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { useNotificationsStore } from '@/stores/notifications-store';
+import { apiClient } from '@/services/apiClient';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
@@ -54,6 +55,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const subscriptionsRef = useRef<
     Map<string, { event: string; payload?: any }>
   >(new Map());
+  // 防抖防重入：刷新会话（WS 鉴权失败时仅尝试一次）
+  const refreshingRef = useRef(false);
 
   // 根据事件与载荷生成去重Key
   const makeKey = (event: string, payload?: any) => {
@@ -86,7 +89,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
     }
 
     // 仅在用户已登录且不在 auth 页面时连接（避免登录页因重连导致的渲染抖动）
-    const onAuthPage = typeof pathname === 'string' && pathname.startsWith('/auth');
+    const onAuthPage =
+      typeof pathname === 'string' && pathname.startsWith('/auth');
     if (!isAuthenticated || onAuthPage) {
       if (socket) {
         socket.disconnect();
@@ -115,6 +119,29 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     const socketInstance = socketUrl ? io(socketUrl, opts) : io('/', opts);
 
+    // 刷新会话并重连
+    const tryRefreshAndReconnect = async (reason?: unknown) => {
+      if (refreshingRef.current) return;
+      refreshingRef.current = true;
+      try {
+        await apiClient.post('/auth/refresh');
+        // 刷新成功后，触发重连
+        setTimeout(() => {
+          try {
+            socketInstance.connect();
+          } catch {}
+        }, 200);
+      } catch (e) {
+        // 刷新失败：跳转登录
+        console.warn('[WS] refresh failed, redirect to login', reason, e);
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/login?reason=session_expired';
+        }
+      } finally {
+        refreshingRef.current = false;
+      }
+    };
+
     // 连接事件监听
     const replaySubscriptions = () => {
       try {
@@ -138,12 +165,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
       setIsConnecting(false);
     });
 
-    socketInstance.on('connect_error', error => {
-      console.error(
-        'WebSocket connection error:',
-        error || 'Unknown connection error'
-      );
+    socketInstance.on('connect_error', async error => {
+      console.error('WebSocket connection error:', error || 'Unknown');
       setIsConnecting(false);
+      // 尝试静默刷新并重连（例如 access_token 过期）
+      await tryRefreshAndReconnect(error);
     });
 
     socketInstance.on('reconnect', () => {
@@ -219,12 +245,10 @@ export function SocketProvider({ children }: SocketProviderProps) {
       console.log('WebSocket authenticated:', data);
     });
 
-    socketInstance.on('auth:error', error => {
-      console.error(
-        'WebSocket authentication failed:',
-        error || 'Unknown auth error'
-      );
-      socketInstance.disconnect();
+    socketInstance.on('auth:error', async error => {
+      console.error('WebSocket authentication failed:', error || 'Unknown');
+      // 优先尝试刷新并重连，避免直接断开导致长期无实时能力
+      await tryRefreshAndReconnect(error);
     });
 
     // 错误处理

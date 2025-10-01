@@ -32,7 +32,7 @@ import {
 import { JoinRequestsService } from './join-requests.service';
 
 @ApiTags('join-requests')
-@Controller('repositories/:repoId/join-requests')
+@Controller('api/repositories/:repoId/join-requests')
 export class JoinRequestsController {
   constructor(private readonly joinRequestsService: JoinRequestsService) {}
 

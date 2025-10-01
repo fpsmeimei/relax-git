@@ -35,7 +35,7 @@ import {
  * 处理社区功能相关的API请求
  */
 @ApiTags('Community')
-@Controller('community')
+@Controller('api/community')
 export class CommunityController {
   constructor(private readonly communityService: CommunityService) {}
 

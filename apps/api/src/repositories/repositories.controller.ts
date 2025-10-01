@@ -42,7 +42,7 @@ import { pipeline } from 'stream/promises';
  * 仓库管理控制器
  */
 @ApiTags('repositories')
-@Controller('repositories')
+@Controller('api/repositories')
 export class RepositoriesController {
   constructor(private readonly repositoriesService: RepositoriesService) {}
 

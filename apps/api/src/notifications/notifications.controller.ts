@@ -20,7 +20,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { NotificationsService } from './notifications.service';
 
 @ApiTags('notifications')
-@Controller('notifications')
+@Controller('api/notifications')
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 

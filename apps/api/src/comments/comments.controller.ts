@@ -38,7 +38,7 @@ import {
  * 评论管理控制器
  */
 @ApiTags('comments')
-@Controller('comments')
+@Controller('api/comments')
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 

@@ -28,7 +28,7 @@ import { UnifiedSnapshotService } from '../services/unified-snapshot.service';
  * 支持所有快照类型：BaseSnapshot、SessionSnapshot、传统Snapshot
  */
 @ApiTags('Unified Snapshots')
-@Controller('snapshots')
+@Controller('api/snapshots')
 export class UnifiedSnapshotsController {
   constructor(
     private readonly unifiedSnapshotService: UnifiedSnapshotService
@@ -345,7 +345,7 @@ export class UnifiedSnapshotsController {
  * @deprecated 请使用 /snapshots 端点替代
  */
 @ApiTags('Session Snapshots (Deprecated)')
-@Controller('session-snapshots')
+@Controller('api/session-snapshots')
 export class DeprecatedSessionSnapshotsController {
   constructor(
     private readonly unifiedSnapshotService: UnifiedSnapshotService
