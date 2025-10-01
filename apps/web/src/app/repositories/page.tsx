@@ -111,6 +111,16 @@ export default function RepositoriesPage() {
     try {
       setLoading(true);
 
+      console.log('[RepositoriesPage] Loading repositories...', {
+        currentPage,
+        limit: 10,
+        searchQuery,
+        isAuthenticated,
+        userId: user?.id,
+        username: user?.username,
+        user,
+      });
+
       const { data } = await apiClient.get<RepositoryListApiResponse>(
         `/repositories`,
         {
@@ -121,6 +131,13 @@ export default function RepositoriesPage() {
           },
         }
       );
+
+      console.log('[RepositoriesPage] Loaded repositories:', {
+        total: data.total,
+        count: data.repositories.length,
+        repositories: data.repositories,
+      });
+
       setRepositories(data.repositories);
       const computedTotalPages = Math.max(
         1,
@@ -128,7 +145,7 @@ export default function RepositoriesPage() {
       );
       setTotalPages(computedTotalPages);
     } catch (error) {
-      console.error('Failed to load repositories:', error);
+      console.error('[RepositoriesPage] Failed to load repositories:', error);
       setRepositories([]);
     } finally {
       setLoading(false);

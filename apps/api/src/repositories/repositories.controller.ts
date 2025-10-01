@@ -75,7 +75,6 @@ export class RepositoriesController {
         owner: {
           id: String(repo.owner.id),
           username: String(repo.owner.username),
-          email: String(repo.owner.email),
         },
       }),
     };
@@ -153,6 +152,14 @@ export class RepositoriesController {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 10;
 
+    console.log('[RepositoriesController.findAll] Request:', {
+      userId,
+      userRole,
+      pageNum,
+      limitNum,
+      search,
+    });
+
     const result = await this.repositoriesService.findAll(
       userId,
       userRole,
@@ -160,6 +167,12 @@ export class RepositoriesController {
       limitNum,
       search
     );
+
+    console.log('[RepositoriesController.findAll] Result:', {
+      total: result.total,
+      count: result.repositories.length,
+      repositoryIds: result.repositories.map(r => r.id),
+    });
 
     return {
       repositories: result.repositories.map(r =>

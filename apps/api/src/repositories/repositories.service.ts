@@ -65,7 +65,7 @@ export class RepositoriesService {
       data: { coverImage: coverUrl },
       include: {
         owner: {
-          select: { id: true, username: true, email: true },
+          select: { id: true, username: true },
         },
       },
     });
@@ -191,12 +191,16 @@ export class RepositoriesService {
       where.name = { contains: search, mode: 'insensitive' };
     }
 
+    this.logger.log(
+      `[findAll] Query conditions: ${JSON.stringify({ userId, userRole, where, skip, limit })}`
+    );
+
     try {
       const [repositories, total] = await Promise.all([
         this.prisma.repository.findMany({
           where,
           include: {
-            owner: { select: { id: true, username: true, email: true } },
+            owner: { select: { id: true, username: true } },
           },
           orderBy: { updatedAt: 'desc' },
           skip,
@@ -204,6 +208,10 @@ export class RepositoriesService {
         }),
         this.prisma.repository.count({ where }),
       ]);
+
+      this.logger.log(
+        `[findAll] Found ${total} repositories, returning ${repositories.length} items`
+      );
 
       return { repositories, total, page, limit };
     } catch (e) {
@@ -285,7 +293,8 @@ export class RepositoriesService {
     // compute publishedAt update when toggling publish state
     let publishedAtUpdate: Date | null | undefined = undefined;
     if (typeof isPublished === 'boolean') {
-      if (isPublished && !repository.isPublished) publishedAtUpdate = new Date();
+      if (isPublished && !repository.isPublished)
+        publishedAtUpdate = new Date();
       if (!isPublished && repository.isPublished) publishedAtUpdate = null;
     }
 
@@ -297,7 +306,9 @@ export class RepositoriesService {
         ...(visibility && { visibility }),
         ...(description !== undefined && { description }),
         ...(isPublished !== undefined && { isPublished }),
-        ...(publishedAtUpdate !== undefined && { publishedAt: publishedAtUpdate }),
+        ...(publishedAtUpdate !== undefined && {
+          publishedAt: publishedAtUpdate,
+        }),
       },
       include: {
         owner: {

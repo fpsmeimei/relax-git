@@ -95,7 +95,6 @@ export class RepositoryResponseDto {
   owner?: {
     id: string;
     username: string;
-    email: string;
   };
 }
 
