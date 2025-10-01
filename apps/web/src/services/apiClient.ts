@@ -43,17 +43,37 @@ class ApiClient {
         normalized.path = data?.path;
         normalized.raw = error;
 
-        // 401：清理认证信息并跳转登录
+        // 401：按页面与接口类型判断是否跳转登录，避免首页/认证页循环
         if (
           (normalized.status === 401 || normalized.code === 'UNAUTHORIZED') &&
           originalConfig &&
           !originalConfig.__retried
         ) {
-          console.warn('[ApiClient] Unauthorized, redirecting to login');
-          
-          // 只在非登录页面时跳转，避免循环重定向
-          if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth/login')) {
-            window.location.href = '/auth/login?reason=session_expired';
+          try {
+            const reqUrl: string = String(originalConfig.url || '');
+            const isAuthApi =
+              /^\/?api\/_auth\//.test(reqUrl) ||
+              /^\/?_auth\//.test(reqUrl) ||
+              /^\/?auth\//.test(reqUrl);
+            const pathname =
+              typeof window !== 'undefined' ? window.location.pathname : '';
+            const onAuthPage = pathname.startsWith('/auth');
+            const onHome = pathname === '/';
+
+            // 这些场景不重定向（保持静默失败或由页面自行处理）
+            if (isAuthApi || onAuthPage || onHome) {
+              return Promise.reject(normalized);
+            }
+
+            // 其他受保护页面：带回跳参数跳转登录
+            if (typeof window !== 'undefined') {
+              const callback = encodeURIComponent(
+                pathname + window.location.search
+              );
+              window.location.href = `/auth/login?reason=session_expired&callbackUrl=${callback}`;
+            }
+          } catch {
+            // ignore
           }
           return Promise.reject(normalized);
         }
@@ -114,7 +134,6 @@ class ApiClient {
       }
     );
   }
-
 
   // GET 请求
   async get<T = any>(

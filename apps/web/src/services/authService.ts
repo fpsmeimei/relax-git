@@ -43,12 +43,12 @@ export class AuthService {
     return response.data;
   }
 
-
   /**
    * 用户登出
    */
   static async logout(): Promise<void> {
-    await apiClient.post('/auth/logout');
+    // 通过认证专用代理调用后端 /auth/logout，清理 HttpOnly Cookie
+    await apiClient.post('/_auth/logout');
   }
 
   /**

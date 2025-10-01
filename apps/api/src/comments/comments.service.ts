@@ -854,6 +854,13 @@ export class CommentsService {
       this.prisma.comment.findMany({
         where: { authorId: userId },
         include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              avatar: true,
+            },
+          },
           snapshot: {
             select: {
               id: true,

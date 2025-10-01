@@ -124,7 +124,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
       if (refreshingRef.current) return;
       refreshingRef.current = true;
       try {
-        await apiClient.post('/auth/refresh');
+        // 使用认证专用代理（经 Next 重写到后端 /auth/refresh）
+        await apiClient.post('/_auth/refresh');
         // 刷新成功后，触发重连
         setTimeout(() => {
           try {

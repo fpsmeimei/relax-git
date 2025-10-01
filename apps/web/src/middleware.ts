@@ -3,17 +3,14 @@ import { NextResponse } from 'next/server';
 
 const HOME_ROUTE = process.env['NEXT_PUBLIC_HOME_ROUTE'] || '/';
 
-// 🔥 NextAuth middleware 包装
-// @ts-ignore - NextAuth types issue
-const authMiddleware = auth((req) => {
+// 🔥 NextAuth middleware 包装（内联导出，避免类型推断报错）
+const _mw = auth(req => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
 
   const isAuthPage = nextUrl.pathname.startsWith('/auth');
-  // 🔥 公开页面：首页 + 认证页面 + 社区页面
-  const isPublicPage = nextUrl.pathname === '/' || 
-                       nextUrl.pathname === '/community' || 
-                       isAuthPage;
+  // 🔥 公开页面：仅 首页 + 认证页面
+  const isPublicPage = nextUrl.pathname === '/' || isAuthPage;
 
   // 已登录用户访问登录/注册页，重定向到首页（可配置）
   if (isLoggedIn && isAuthPage) {
@@ -31,7 +28,8 @@ const authMiddleware = auth((req) => {
   return NextResponse.next();
 });
 
-export default authMiddleware;
+// 避免默认导出类型推断错误（NextAuth 类型在构建时可用）
+export default _mw as any;
 
 export const config = {
   matcher: [

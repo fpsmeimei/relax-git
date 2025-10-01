@@ -1,9 +1,3 @@
-export { auth as middleware } from '@/lib/auth';
-export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|public).*)',
-    '/repositories/:path*',
-    '/dashboard/:path*',
-    '/settings/:path*',
-  ],
-};
+// 统一从 src/middleware.ts 导出，避免与根规则冲突
+export { default } from './src/middleware';
+export { config } from './src/middleware';

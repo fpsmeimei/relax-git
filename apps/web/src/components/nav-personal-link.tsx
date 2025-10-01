@@ -1,13 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useNotificationsStore } from '@/stores/notifications-store';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
 import { useAuthActions } from '@/stores/auth-store';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { AuthService } from '@/services/authService';
+import { signOut } from 'next-auth/react';
 
 interface NavPersonalLinkProps {
   className?: string;
@@ -18,6 +29,8 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   const { isAuthenticated, isInitialized } = useAuth();
   const { logout } = useAuthActions();
   const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, setPending] = useState(false);
 
   useEffect(() => {
     let stopped = false;
@@ -55,16 +68,32 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
         >
           注册
         </Link>
+        <Button variant="outline-subtle" size="sm" disabled aria-disabled>
+          退出登录
+        </Button>
       </div>
     );
   }
 
   const handleLogout = () => {
+    setConfirmOpen(true);
+  };
+
+  const confirmLogout = async () => {
     try {
-      logout();
-      router.push('/auth/login');
+      setPending(true);
+      // 通知后端清理认证（HttpOnly Cookie）
+      await AuthService.logout();
+      // 退出 NextAuth 会话，避免状态不同步导致的循环请求
+      await signOut({ redirect: false });
     } catch {
       // ignore
+    } finally {
+      // 本地清理并返回首页
+      logout();
+      setPending(false);
+      setConfirmOpen(false);
+      router.push('/');
     }
   };
 
@@ -81,6 +110,13 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
           </span>
         )}
       </Link>
+      {/* 需求：在“退出登录”左侧增加“登录”按钮 */}
+      <Link
+        href="/auth/login"
+        className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+      >
+        登录
+      </Link>
       <button
         type="button"
         onClick={handleLogout}
@@ -88,6 +124,35 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
       >
         退出登录
       </button>
+
+      {/* 退出登录二次确认弹窗 */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent
+          onClose={() => setConfirmOpen(false)}
+          className="max-w-sm"
+        >
+          <DialogHeader>
+            <DialogTitle>确认退出登录？</DialogTitle>
+            <DialogDescription>退出后将返回首页。</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-end">
+            <Button
+              variant="outline-subtle"
+              onClick={() => setConfirmOpen(false)}
+              disabled={pending}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmLogout}
+              loading={pending}
+            >
+              是，退出
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 
 /**
  * 首页组件 - 营销展示页面
- * 
+ *
  * 策略：
  * - 未登录用户 → 跳转到登录页
  * - 已登录用户 → 显示完整的营销展示页面
@@ -87,7 +87,15 @@ export default function HomePage() {
               size="lg"
               className="text-lg px-8"
             >
-              <Link href="/repositories">浏览仓库</Link>
+              <Link
+                href={
+                  isAuthenticated
+                    ? '/repositories'
+                    : '/auth/login?callbackUrl=%2Frepositories'
+                }
+              >
+                浏览仓库
+              </Link>
             </Button>
           </div>
         </div>

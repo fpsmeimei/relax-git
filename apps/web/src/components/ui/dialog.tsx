@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { X } from 'lucide-react';
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 // 简化版 Dialog 组件（不依赖 radix-ui）
 
@@ -13,6 +14,11 @@ interface DialogProps {
 }
 
 const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   React.useEffect(() => {
     if (open) {
       const prevHtmlOverflow = document.documentElement.style.overflow;
@@ -27,21 +33,23 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
     return;
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50">
+  const content = (
+    <div className="fixed inset-0 z-[9999]">
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-foreground/30 backdrop-blur-sm"
+        className="fixed inset-0 bg-background/60 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
       {/* Content */}
-      <div className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         {children}
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 };
 
 const DialogTrigger: React.FC<React.HTMLAttributes<HTMLButtonElement>> = ({
