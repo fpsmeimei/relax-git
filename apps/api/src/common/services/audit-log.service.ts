@@ -112,7 +112,7 @@ export class AuditLogService {
    * 记录认证失败
    */
   async logLoginFailure(
-    email: string,
+    username: string,
     reason: string,
     ipAddress?: string,
     userAgent?: string
@@ -123,7 +123,7 @@ export class AuditLogService {
       ipAddress: ipAddress ?? 'unknown',
       userAgent: userAgent ?? 'unknown',
       details: {
-        email,
+        username,
         reason,
         attemptTime: new Date().toISOString(),
       },
@@ -135,7 +135,7 @@ export class AuditLogService {
    */
   async logUserRegistration(
     userId: string,
-    email: string,
+    username: string,
     ipAddress?: string
   ): Promise<void> {
     await this.log({
@@ -144,7 +144,7 @@ export class AuditLogService {
       userId,
       ipAddress: ipAddress ?? 'unknown',
       details: {
-        email,
+        username,
         registrationTime: new Date().toISOString(),
       },
     });

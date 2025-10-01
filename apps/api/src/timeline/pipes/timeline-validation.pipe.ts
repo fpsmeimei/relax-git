@@ -130,7 +130,6 @@ export class TimelineValidationPipe implements PipeTransform<any> {
       'must not be greater than': `${property} 不能大于`,
 
       // 格式验证
-      'must be a valid email': `${property} 必须是有效的邮箱地址`,
       'must be a UUID': `${property} 必须是有效的UUID格式`,
       'must be a valid date': `${property} 必须是有效的日期格式`,
       'must be a valid ISO 8601 date string': `${property} 必须是有效的ISO 8601日期格式`,

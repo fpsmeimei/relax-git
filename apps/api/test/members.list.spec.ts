@@ -11,7 +11,7 @@ function createPrismaMock() {
 }
 
 describe('MembersService.list', () => {
-  it('applies search (username/email) with relation filter using user.is.OR', async () => {
+  it('applies search (username) with relation filter using user.is', async () => {
     const prisma = createPrismaMock();
     const service = new MembersService(prisma);
 
@@ -24,7 +24,6 @@ describe('MembersService.list', () => {
         user: {
           id: 'u1',
           username: 'alice',
-          email: 'alice@example.com',
           avatar: null,
         },
       },
@@ -41,10 +40,10 @@ describe('MembersService.list', () => {
     const arg = prisma.member.findMany.mock.calls[0][0];
     expect(arg.where).toBeDefined();
     expect(arg.where.repoId).toBe('r1');
-    // ensure relation filter shape uses user.is.OR
+    // ensure relation filter shape uses user.is
     expect(arg.where.user).toBeDefined();
     expect(arg.where.user.is).toBeDefined();
-    expect(Array.isArray(arg.where.user.is.OR)).toBe(true);
+    expect(arg.where.user.is.username).toBeDefined();
     // pagination and sorting
     expect(arg.skip).toBe(0);
     expect(arg.take).toBe(10);

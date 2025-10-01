@@ -12,12 +12,7 @@ import {
   Res,
   UnauthorizedException,
 } from '@nestjs/common';
-import {
-  ApiBody,
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   RateLimit,
   RateLimitPresets,
@@ -25,11 +20,7 @@ import {
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
-import {
-  AuthResponseDto,
-  LoginDto,
-  RegisterDto,
-} from './dto/auth.dto';
+import { AuthResponseDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import { TokenService } from './services/token.service';
 import type { FastifyReply } from 'fastify';
 import type { FastifyRequest } from 'fastify';
@@ -39,7 +30,6 @@ import { PrismaService } from '../database/prisma.service';
 interface _AuthenticatedRequest extends Request {
   user: {
     id: string;
-    email: string;
     username: string;
     role: string;
   };
@@ -69,7 +59,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: 409,
-    description: '用户邮箱或用户名已存在',
+    description: '用户名已存在',
   })
   @ApiResponse({
     status: 400,
@@ -97,7 +87,7 @@ export class AuthController {
   })
   @ApiResponse({
     status: 401,
-    description: '邮箱或密码错误',
+    description: '用户名或密码错误',
   })
   @ApiResponse({
     status: 403,
@@ -127,14 +117,13 @@ export class AuthController {
     this.tokenService.setAuthCookies(reply, access, refresh);
 
     // 🔥 同时在响应体中返回 token（供 NextAuth 使用）
-    return { 
-      user, 
+    return {
+      user,
       accessToken: access,
       refreshToken: refresh,
-      jti 
+      jti,
     };
   }
-
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
@@ -152,7 +141,9 @@ export class AuthController {
     if (rt) {
       const parsed = await this.tokenService.verifyRefreshToken(rt);
       if (parsed?.jti) {
-        await this.tokenService.revokeRefreshToken(parsed.jti).catch(() => void 0);
+        await this.tokenService
+          .revokeRefreshToken(parsed.jti)
+          .catch(() => void 0);
       }
     }
     this.tokenService.clearAuthCookies(reply);
@@ -232,14 +223,16 @@ export class AuthController {
 
       // 从 NextAuth session 中应该也包含了 refreshToken
       // 这里我们需要重新生成 refreshToken 或者接收前端传递的
-      const { token: refreshToken } = await this.tokenService.signRefreshToken(user.id);
+      const { token: refreshToken } = await this.tokenService.signRefreshToken(
+        user.id
+      );
 
       // 设置 Cookie
       this.tokenService.setAuthCookies(reply, accessToken, refreshToken);
 
-      return { 
+      return {
         success: true,
-        message: 'Cookie 设置成功'
+        message: 'Cookie 设置成功',
       };
     } catch (error) {
       throw new UnauthorizedException('Token 验证失败');
@@ -263,7 +256,10 @@ export class AuthController {
     if (!parsed) throw new UnauthorizedException('刷新令牌无效或已过期');
 
     // 轮换刷新令牌
-    const rotated = await this.tokenService.rotateRefreshToken(parsed.jti, parsed.sub);
+    const rotated = await this.tokenService.rotateRefreshToken(
+      parsed.jti,
+      parsed.sub
+    );
 
     // 回源获取用户，签发新的 accessToken
     const user = await this.prisma.user.findUnique({

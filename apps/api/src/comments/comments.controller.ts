@@ -67,7 +67,6 @@ export class CommentsController {
         author: {
           id: comment.author.id,
           username: comment.author.username,
-          email: comment.author.email,
           avatar: comment.author.avatar,
         },
       }),
