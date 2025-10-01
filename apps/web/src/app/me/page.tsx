@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/stores/auth-store';
 import { useNotificationsStore } from '@/stores/notifications-store';
-import { Bell, MessageCircle, Reply, Settings, User } from 'lucide-react';
+import { Bell, MessageCircle, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -220,17 +220,21 @@ export default function MePage() {
       </div>
 
       {tab === 'overview' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 通知概览 */}
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow h-[220px] flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">通知</CardTitle>
               <Bell className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col flex-1">
               <div className="text-2xl font-bold">{unreadCount}</div>
               <p className="text-xs text-muted-foreground">未读通知</p>
-              <Button asChild className="w-full mt-4" variant="outline-subtle">
+              <Button
+                asChild
+                className="w-full mt-auto"
+                variant="outline-subtle"
+              >
                 <Link
                   href="/me?tab=notifications"
                   onClick={() => setTab('notifications')}
@@ -241,62 +245,55 @@ export default function MePage() {
             </CardContent>
           </Card>
 
-          {/* 我的回复 */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">我的回复</CardTitle>
-              <Reply className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">回复他人的评论</p>
-              <Button asChild className="w-full mt-4" variant="outline-subtle">
-                <Link href="/me/replies">查看全部</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
           {/* 我的评论 */}
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow h-[220px] flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">我的评论</CardTitle>
               <MessageCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col flex-1">
               <div className="text-2xl font-bold">{myComments.length}</div>
               <p className="text-xs text-muted-foreground">发表的评论</p>
-              <Button asChild className="w-full mt-4" variant="outline-subtle">
+              <Button
+                asChild
+                className="w-full mt-auto"
+                variant="outline-subtle"
+              >
                 <Link href="/me/comments">查看全部</Link>
               </Button>
             </CardContent>
           </Card>
 
           {/* 个人设置 */}
-          <Card className="hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow h-[220px] flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">个人设置</CardTitle>
               <Settings className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground mb-4">
+            <CardContent className="flex flex-col flex-1">
+              <div className="text-sm text-muted-foreground">
                 管理头像、用户名等个人信息
               </div>
-              <Button asChild className="w-full" variant="outline-subtle">
+              <Button
+                asChild
+                className="w-full mt-auto"
+                variant="outline-subtle"
+              >
                 <Link href="/me/settings">前往设置</Link>
               </Button>
             </CardContent>
           </Card>
 
           {/* 用户信息卡片 */}
-          <Card className="md:col-span-2 hover:shadow-md transition-shadow">
+          <Card className="hover:shadow-md transition-shadow h-[220px] flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
                 用户信息
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
+            <CardContent className="flex flex-col flex-1">
+              <div className="space-y-2 flex-1">
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">用户名:</span>
                   <span className="text-sm font-medium">

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
-import { useAuth, useAuthActions } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import Cropper from 'react-easy-crop';
 import { Plus } from 'lucide-react';
@@ -16,7 +16,6 @@ import 'react-easy-crop/react-easy-crop.css';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const { updateUser } = useAuthActions();
   const { toast } = useToast();
 
   const [file, setFile] = useState<File | null>(null);
@@ -33,11 +32,31 @@ export default function SettingsPage() {
     height: number;
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // 覆盖预览用，本地成功上传后立即生效
+  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
 
   const avatarUrl = useMemo(() => {
-    const a = user?.avatar;
+    const a = avatarOverride ?? user?.avatar;
     return a ? a : null;
-  }, [user?.avatar]);
+  }, [avatarOverride, user?.avatar]);
+
+  // 进入页面拉取最新用户资料，确保左侧圆形预览能拿到最新头像
+  useEffect(() => {
+    let stopped = false;
+    const load = async () => {
+      try {
+        const { data } = await apiClient.get('/_auth/profile');
+        const url = (data as any)?.avatar as string | undefined;
+        if (!stopped && url) setAvatarOverride(url);
+      } catch {
+        // 忽略失败，沿用 session 中的 user.avatar
+      }
+    };
+    void load();
+    return () => {
+      stopped = true;
+    };
+  }, []);
 
   const handleSelectedFile = useCallback(
     (f: File) => {
@@ -218,7 +237,7 @@ export default function SettingsPage() {
       const { data } = await apiClient.post('/users/me/avatar', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      updateUser({ avatar: (data as any)?.avatar });
+      setAvatarOverride((data as any)?.avatar || null);
       toast({ title: '头像已更新' });
       // 清理状态
       setFile(null);

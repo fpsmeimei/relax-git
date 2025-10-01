@@ -55,7 +55,7 @@ export class AuthService {
    * 获取当前用户信息
    */
   static async getCurrentUser(): Promise<AuthResponse['user']> {
-    const response = await apiClient.get('/auth/profile');
+    const response = await apiClient.get('/_auth/profile');
     return response.data;
   }
 }
