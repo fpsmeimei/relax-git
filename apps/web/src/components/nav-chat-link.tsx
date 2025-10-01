@@ -2,7 +2,7 @@
 
 import { useSocket } from '@/components/socket-provider';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
 import { useChatStore } from '@/stores/chat-store';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef } from 'react';

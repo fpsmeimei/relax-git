@@ -2,7 +2,7 @@
 
 import { useSocket } from '@/components/socket-provider';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
 import { useChatStore } from '@/stores/chat-store';
 import { useNotificationsStore } from '@/stores/notifications-store';
 import Link from 'next/link';
@@ -13,18 +13,18 @@ interface NavMessagesLinkProps {
 }
 
 export function NavMessagesLink({ className }: NavMessagesLinkProps) {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isInitialized } = useAuth();
   const { unreadCount } = useNotificationsStore();
   const { chats, loadChats, updateOnNewMessage } = useChatStore();
   const { on } = useSocket();
 
-  // 初次加载聊天会话（登录态）
+  // 初次加载聊天会话（登录态且已初始化）
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isInitialized) {
       void loadChats();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isInitialized]);
 
   // 监听新消息事件，保持未读数实时
   useEffect(() => {
@@ -49,12 +49,17 @@ export function NavMessagesLink({ className }: NavMessagesLinkProps) {
     return () => off?.();
   }, [on, updateOnNewMessage, user?.id]);
 
-  // 合并未读：通知 + 聊天
+  // 合并未读：通知 + 聊天（hooks 必须在条件语句之前）
   const chatUnread = useMemo(
     () => chats.reduce((sum, c) => sum + (c.unreadCount || 0), 0),
     [chats]
   );
   const totalUnread = (unreadCount || 0) + (chatUnread || 0);
+
+  // 未登录时不显示消息链接
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className={cn('relative flex items-center', className)}>

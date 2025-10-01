@@ -13,20 +13,14 @@ export interface RegisterRequest {
 export interface AuthResponse {
   user: {
     id: string;
-    email?: string;
     username: string;
+    uid: string;
     displayName?: string;
     avatar?: string;
     role: 'ADMIN' | 'USER';
     createdAt: string;
     updatedAt: string;
   };
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
 }
 
 /**
@@ -49,15 +43,6 @@ export class AuthService {
     return response.data;
   }
 
-  /**
-   * 刷新token
-   */
-  static async refreshToken(
-    request: RefreshTokenRequest
-  ): Promise<AuthResponse> {
-    const response = await apiClient.post('/auth/refresh', request);
-    return response.data;
-  }
 
   /**
    * 用户登出
@@ -70,7 +55,7 @@ export class AuthService {
    * 获取当前用户信息
    */
   static async getCurrentUser(): Promise<AuthResponse['user']> {
-    const response = await apiClient.get('/auth/me');
+    const response = await apiClient.get('/auth/profile');
     return response.data;
   }
 }

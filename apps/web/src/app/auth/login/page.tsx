@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { AuthService } from '@/services/authService';
-import { useAuthActions } from '@/stores/auth-store';
+import { signIn } from 'next-auth/react';
 import { GitBranch, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
+const HOME_ROUTE = process.env['NEXT_PUBLIC_HOME_ROUTE'] || '/';
 
 export default function LoginPage() {
   return (
@@ -22,17 +22,24 @@ export default function LoginPage() {
 function LoginPageInner() {
   const router = useRouter();
   const { toast } = useToast();
-  const { login, setLoading } = useAuthActions();
   const searchParams = useSearchParams();
-  const forceShow = searchParams?.get('intent') === 'login';
+  const rawCallback = searchParams?.get('callbackUrl') ?? null;
+  const isSafeCallback =
+    !!rawCallback &&
+    rawCallback.startsWith('/') &&
+    !rawCallback.startsWith('/auth') &&
+    !rawCallback.startsWith('/.well-known') &&
+    !rawCallback.startsWith('/icon');
+  const callbackUrl = isSafeCallback ? rawCallback : HOME_ROUTE;
+
+  // 从URL参数获取用户名（注册成功后跳转时携带）
+  const usernameFromUrl = searchParams?.get('username') ?? '';
 
   const [formData, setFormData] = useState({
-    username: '',
+    username: usernameFromUrl,
     password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
-
-  // no-op
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,39 +54,78 @@ function LoginPageInner() {
     }
 
     setIsLoading(true);
-    setLoading(true);
 
     try {
-      const response = await AuthService.login(formData);
+      console.log('[Login] Attempting login with username:', formData.username);
+      
+      const result = await signIn('credentials', {
+        username: formData.username,
+        password: formData.password,
+        redirect: false,
+      });
 
-      // 更新认证状态
-      login(response.user, response.accessToken, response.refreshToken);
+      console.log('[Login] SignIn result:', result);
+
+      if (result?.error) {
+        console.error('[Login] SignIn error:', result.error);
+        
+        toast({
+          title: '登录失败',
+          description: result.error || '用户名或密码错误',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // 🔥 关键修复：使用 NextAuth session 中的 token 设置浏览器 Cookie
+      // 等待 NextAuth session 创建
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      try {
+        console.log('[Login] Getting NextAuth session...');
+        // 获取 NextAuth session（客户端）
+        const { getSession } = await import('next-auth/react');
+        const session = await getSession();
+        
+        const user = session?.user as any;
+        if (user?.accessToken) {
+          console.log('[Login] Setting cookies with session token...');
+          const cookieResp = await fetch('/api/_auth/set-cookie', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${user.accessToken}`,
+            },
+            credentials: 'include',
+          });
+          
+          if (!cookieResp.ok) {
+            console.warn('[Login] Failed to set JWT cookies');
+          } else {
+            console.log('[Login] JWT cookies set successfully');
+          }
+        } else {
+          console.warn('[Login] No accessToken in session');
+        }
+      } catch (e) {
+        console.warn('[Login] Cookie setup error:', e);
+      }
 
       toast({
         title: '登录成功',
-        description: `欢迎回来，${response.user.username}！`,
+        description: `欢迎回来，${formData.username}！`,
       });
 
-      // 重定向：优先使用 redirect 参数，否则进入“主页面”
-      const redirectTo = searchParams?.get('redirect');
-      if (redirectTo && redirectTo.startsWith('/')) {
-        router.push(redirectTo);
-      } else {
-        router.push('/');
-      }
+      // 登录成功，跳转（避免 refresh，且忽略不安全/无效的 callbackUrl）
+      router.replace(callbackUrl);
     } catch (error: any) {
       console.error('Login error:', error);
-
-      const errorMessage =
-        error.response?.data?.message || '登录失败，请检查邮箱和密码';
       toast({
         title: '登录失败',
-        description: errorMessage,
+        description: '登录过程中出现错误',
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
-      setLoading(false);
     }
   };
 

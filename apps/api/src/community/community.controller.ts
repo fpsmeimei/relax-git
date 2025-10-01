@@ -8,10 +8,8 @@ import {
   Post,
   Query,
   Req,
-  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -21,8 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import {
   CommunityFeedItem,
   CommunityFeedQuery,
@@ -46,7 +43,7 @@ export class CommunityController {
    * 获取社区feed流
    */
   @Get('feed')
-  @UseGuards(OptionalJwtAuthGuard) // 支持匿名访问
+  @Public() // 支持匿名访问
   @ApiOperation({
     summary: '获取社区feed流',
     description: '获取社区中公开的仓库列表，支持分页、排序和过滤',
@@ -164,7 +161,7 @@ export class CommunityController {
    * 记录仓库浏览
    */
   @Post('repositories/:id/view')
-  @UseGuards(OptionalJwtAuthGuard) // 支持匿名访问
+  @Public() // 支持匿名访问
   @ApiOperation({
     summary: '记录仓库浏览',
     description: '记录用户浏览仓库的行为，用于统计浏览量',
@@ -256,7 +253,7 @@ export class CommunityController {
    * 获取仓库评论列表
    */
   @Get('repositories/:id/comments')
-  @UseGuards(OptionalJwtAuthGuard) // 支持匿名访问
+  @Public() // 支持匿名访问
   @ApiOperation({
     summary: '获取仓库评论列表',
     description: '获取指定仓库的项目级评论列表',
@@ -298,8 +295,6 @@ export class CommunityController {
    * 创建仓库评论
    */
   @Post('repositories/:id/comments')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: '创建仓库评论',
     description: '为指定仓库创建项目级评论',
@@ -321,8 +316,6 @@ export class CommunityController {
    * 删除仓库评论
    */
   @Delete('repositories/:id/comments/:commentId')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiOperation({
     summary: '删除仓库评论',
     description: '删除指定的仓库评论（仅评论作者、仓库所有者或管理员可删除）',

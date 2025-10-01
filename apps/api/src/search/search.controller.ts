@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -19,7 +18,6 @@ import {
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepoAccess } from '../auth/decorators/repo-access.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RepoAccessGuard } from '../auth/guards/repo-access.guard';
 import {
   CreateSearchDto,
@@ -31,8 +29,6 @@ import {
 import { SearchService } from './search.service';
 
 @ApiTags('search')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('search')
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}

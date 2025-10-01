@@ -95,7 +95,6 @@ export class SessionLifecycleService {
           select: {
             id: true,
             username: true,
-            email: true,
           },
         },
       },
@@ -158,7 +157,6 @@ export class SessionLifecycleService {
           select: {
             id: true,
             username: true,
-            email: true,
           },
         },
       },

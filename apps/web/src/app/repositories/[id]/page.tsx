@@ -147,7 +147,7 @@ const RepositoryBranches = ({ repositoryId }: { repositoryId: string }) => {
       setCreating(true);
       // 0) 确保基础快照(artifact)就绪
       const ensureResp = await apiClient.get<any>(
-        `/api/artifacts/by-branch/${repositoryId}/${selectedBranchId}`
+        `/artifacts/by-branch/${repositoryId}/${selectedBranchId}`
       );
       const artifactId = ensureResp?.data?.id as string | undefined;
       if (!artifactId) {
@@ -162,7 +162,7 @@ const RepositoryBranches = ({ repositoryId }: { repositoryId: string }) => {
       while (Date.now() - aStart < 75000) {
         try {
           const { data: stResp } = await apiClient.get<any>(
-            `/api/artifacts/${artifactId}/status`
+            `/artifacts/${artifactId}/status`
           );
           const st = (stResp as any)?.status as string | undefined;
           if (st === 'READY') {
@@ -172,7 +172,7 @@ const RepositoryBranches = ({ repositoryId }: { repositoryId: string }) => {
           if (st === 'FAILED' && !retried) {
             // 失败时尝试重试一次（仅OWNER/ADMIN生效，其它角色可能403，忽略）
             try {
-              await apiClient.post(`/api/artifacts/${artifactId}/retry`);
+              await apiClient.post(`/artifacts/${artifactId}/retry`);
             } catch {}
             retried = true;
           }

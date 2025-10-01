@@ -144,7 +144,6 @@ export class TimelineService {
               select: {
                 id: true,
                 username: true,
-                email: true,
                 avatar: true,
               },
             },
@@ -770,7 +769,6 @@ export class TimelineService {
             select: {
               id: true,
               username: true,
-              email: true,
               avatar: true,
             },
           },
@@ -899,7 +897,6 @@ export class TimelineService {
             select: {
               id: true,
               username: true,
-              email: true,
               avatar: true,
             },
           },

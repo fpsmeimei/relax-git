@@ -64,9 +64,9 @@ export class WebSocketGateway
   private readonly MAX_CONNECTIONS_PER_USER = 5; // 放宽限制，便于学习测试
 
   constructor(
-    private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
-    private readonly redis: RedisService
+    private readonly redis: RedisService,
+    private readonly jwt: JwtService
   ) {}
 
   afterInit(_server: Server) {
@@ -136,62 +136,73 @@ export class WebSocketGateway
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
-      // 强制鉴权：始终要求提供 JWT token
-      // 从认证信息中获取token
-      const token = client.handshake.auth?.['token'];
+      // 1) 从 Cookie 或 Authorization Bearer 提取 JWT（仅接受 JWT，不再接受明文 uid）
+      const token = this.extractAccessToken(client);
       if (!token) {
-        this.logger.warn(`Client ${client.id} connected without token`);
-        client.emit('auth:error', { message: '缺少认证令牌' });
+        this.logger.warn(`Client ${client.id} connected without JWT`);
+        client.emit('auth:error', { message: '缺少认证凭据' });
         client.disconnect();
         return;
       }
 
-      // 验证JWT token
-      const payload = this.jwtService.verify(token);
-      const userId = payload.sub;
-
-      // 检查用户连接数限制
-      if (
-        this.getUserConnectionCount(userId) >= this.MAX_CONNECTIONS_PER_USER
-      ) {
-        this.logger.warn(`User ${userId} exceeded connection limit`);
-        client.emit('auth:error', { message: '连接数超限，请关闭其他连接' });
+      // 2) 校验并解析 access token（要求 type=access）
+      let decoded: any;
+      try {
+        decoded = await this.jwt.verifyAsync(token);
+      } catch {
+        this.logger.warn(`Client ${client.id} provided invalid JWT`);
+        client.emit('auth:error', { message: '认证令牌无效或已过期' });
         client.disconnect();
         return;
       }
 
-      // 获取用户信息
+      if (!decoded?.sub || (decoded?.type && decoded.type !== 'access')) {
+        this.logger.warn(`Client ${client.id} provided non-access token`);
+        client.emit('auth:error', { message: '认证令牌类型错误' });
+        client.disconnect();
+        return;
+      }
+
+      const userId = String(decoded.sub);
+
+      // 3) 回源确认用户状态
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: {
           id: true,
-          email: true,
           username: true,
+          uid: true,
           role: true,
           isActive: true,
         },
       });
 
       if (!user?.isActive) {
-        this.logger.warn(`Invalid user ${userId} attempted to connect`);
+        this.logger.warn(`Inactive or missing user for JWT sub=${userId}`);
         client.emit('auth:error', { message: '用户不存在或已被禁用' });
         client.disconnect();
         return;
       }
 
-      // 设置客户端用户信息
+      // 4) 连接数限制
+      if (this.getUserConnectionCount(user.id) >= this.MAX_CONNECTIONS_PER_USER) {
+        this.logger.warn(`User ${user.id} exceeded connection limit`);
+        client.emit('auth:error', { message: '连接数超限，请关闭其他连接' });
+        client.disconnect();
+        return;
+      }
+
+      // 5) 注入会话信息
       client.userId = user.id;
       client.userRole = user.role;
       client.user = user;
       client.connectedAt = Date.now();
 
-      // 加入用户房间（用于用户特定的通知）
+      // 6) 加入用户房间
       await client.join(`user:${user.id}`);
 
-      // 记录连接的用户
+      // 7) 记录连接
       this.connectedUsers.set(client.id, client);
-
-      // 记录用户连接
       if (!this.userConnections.has(user.id)) {
         this.userConnections.set(user.id, new Set());
       }
@@ -201,13 +212,12 @@ export class WebSocketGateway
         `User ${user.username} (${user.id}) connected with socket ${client.id}`
       );
 
-      // 发送连接成功消息
+      // 8) 反馈成功
       client.emit('auth:success', {
         message: '连接成功',
         user: {
           id: user.id,
           username: user.username,
-          email: user.email,
           role: user.role,
         },
       });
@@ -219,6 +229,37 @@ export class WebSocketGateway
       client.emit('auth:error', { message: '认证失败' });
       client.disconnect();
     }
+  }
+
+  /**
+   * 从握手中提取 access_token（Cookie 优先，后备 Authorization: Bearer）
+   */
+  private extractAccessToken(client: Socket): string | null {
+    try {
+      const cookieHeader = client.handshake.headers?.cookie as string | undefined;
+      const tokenFromCookie = this.getCookie('access_token', cookieHeader);
+      if (tokenFromCookie) return tokenFromCookie;
+
+      const auth = (client.handshake.headers?.authorization || '').toString();
+      const m = /^Bearer\s+(.+)$/i.exec(auth);
+      return m ? m[1] : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** 简易 Cookie 解析器（避免引入外部依赖） */
+  private getCookie(name: string, cookieHeader?: string): string | null {
+    if (!cookieHeader) return null;
+    const pairs = cookieHeader.split(';');
+    for (const p of pairs) {
+      const [k, ...v] = p.trim().split('=');
+      if (!k) continue;
+      if (k === name) {
+        return decodeURIComponent(v.join('='));
+      }
+    }
+    return null;
   }
 
   handleDisconnect(client: AuthenticatedSocket) {

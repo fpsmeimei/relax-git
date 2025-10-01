@@ -5,7 +5,8 @@ import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useNotificationsStore } from '@/stores/notifications-store';
 import { apiClient } from '@/services/apiClient';
-import { useAuth, useAuthActions } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
+import { useAuthActions } from '@/stores/auth-store';
 import { useRouter } from 'next/navigation';
 
 interface NavMeLinkProps {

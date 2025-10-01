@@ -1,5 +1,5 @@
 import { apiClient } from '@/services/apiClient';
-import { useAuth } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Box,
   Button,

@@ -1,56 +1,28 @@
-import {
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthGuard } from '@nestjs/passport';
-import { PrismaService } from '../../database/prisma.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { AuthGuard } from '@nestjs/passport';
 
-/**
- * JWT 认证守卫
- * 保护需要认证的路由
- */
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(
-    private reflector: Reflector,
-    private readonly prisma: PrismaService
-  ) {
+  constructor(private readonly reflector: Reflector) {
     super();
   }
 
-  override canActivate(
-    context: ExecutionContext
-  ): boolean | Promise<boolean> | import('rxjs').Observable<boolean> {
-    // 检查是否为公开路由
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
-
-    if (isPublic) {
-      return true;
-    }
-
-    return super.canActivate(context) as
-      | boolean
-      | Promise<boolean>
-      | import('rxjs').Observable<boolean>;
+    if (isPublic) return true;
+    return (await super.canActivate(context)) as boolean;
   }
 
-  override handleRequest<TUser = any>(
-    err: any,
-    user: any,
-    _info: any,
-    _context: ExecutionContext,
-    _status?: any
-  ): TUser {
-    // 如果有错误或没有用户信息，抛出未授权异常
-    if (err || !user) {
-      throw err || new UnauthorizedException('访问令牌无效或已过期');
-    }
-    return user;
+  // 允许在 GraphQL/WebSocket 等场景自定义请求提取逻辑时扩展
+  getRequest(context: ExecutionContext) {
+    // 默认从 HTTP 上下文读取
+    const http = context.switchToHttp();
+    const req = http.getRequest();
+    return req;
   }
 }

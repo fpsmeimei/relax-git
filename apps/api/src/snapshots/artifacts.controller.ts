@@ -8,12 +8,10 @@ import {
   Post,
   Query,
   Request,
-  UseGuards,
 } from '@nestjs/common';
 import { BaseSnapshotStatus } from '@relax-git/shared/generated/prisma-client';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PrismaService } from '../database/prisma.service';
 import { BaseSnapshotService } from './base-snapshot.service';
 
@@ -22,7 +20,6 @@ import { BaseSnapshotService } from './base-snapshot.service';
  * 提供清晰的RESTful接口访问快照工件
  */
 @Controller('api/artifacts')
-@UseGuards(JwtAuthGuard)
 export class ArtifactsController {
   constructor(
     private readonly baseSnapshotService: BaseSnapshotService,
@@ -392,7 +389,7 @@ export class ArtifactsController {
 
     // INTERNAL: 登录用户可读
     if (repository.visibility === 'INTERNAL') {
-      return; // 已通过JwtAuthGuard，说明已登录
+      return; // 已通过全局 JwtAuthGuard，说明已登录
     }
 
     // PRIVATE: 仅成员可读

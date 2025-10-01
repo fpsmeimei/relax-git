@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/stores/auth-store';
 import {
   Bell,
   GitBranch,
@@ -13,25 +12,43 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 
+/**
+ * 首页组件 - 营销展示页面
+ * 
+ * 策略：
+ * - 未登录用户 → 跳转到登录页
+ * - 已登录用户 → 显示完整的营销展示页面
+ */
 export default function HomePage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
+  const { data: session, status } = useSession();
+  const [mounted, setMounted] = useState(false);
 
-  const handleGetStarted = () => {
-    if (isAuthenticated) {
-      router.push('/repositories/import');
-      return;
-    }
-    // 临时禁用自动跳转，方便调试
-    console.log('=== HOME PAGE: Would redirect to login ===');
-    // router.push('/auth/login?intent=login');
-  };
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 🔥 不再强制跳转 - 允许未登录用户查看首页
+  // 认证状态加载中
+  if (status === 'loading' || !mounted) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground">加载中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 已登录/未登录用户都可以查看首页
+  const isAuthenticated = !!session?.user;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* 导航栏 */}
-
       {/* 主要内容 */}
       <main className="container-responsive py-20">
         {/* Hero 区域 */}

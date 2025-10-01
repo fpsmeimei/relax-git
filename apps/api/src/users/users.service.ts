@@ -53,7 +53,6 @@ export class UsersService {
       },
       select: {
         id: true,
-        email: true,
         username: true,
         role: true,
         avatar: true,
@@ -117,7 +116,6 @@ export class UsersService {
         where,
         select: {
           id: true,
-          email: true,
           username: true,
           role: true,
           avatar: true,
@@ -157,7 +155,6 @@ export class UsersService {
       where: { id },
       select: {
         id: true,
-        email: true,
         username: true,
         uid: true,
         role: true,
@@ -252,7 +249,6 @@ export class UsersService {
       data: updateData,
       select: {
         id: true,
-        email: true,
         username: true,
         uid: true,
         role: true,
@@ -275,7 +271,6 @@ export class UsersService {
       data: { avatar: avatarUrl },
       select: {
         id: true,
-        email: true,
         username: true,
         uid: true,
         role: true,
@@ -311,7 +306,6 @@ export class UsersService {
       data: { isActive: false },
       select: {
         id: true,
-        email: true,
         username: true,
         role: true,
         isActive: true,

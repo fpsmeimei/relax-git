@@ -304,9 +304,9 @@ export default function MePage() {
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">邮箱:</span>
+                  <span className="text-sm text-muted-foreground">用户ID:</span>
                   <span className="text-sm font-medium">
-                    {user?.email || '未设置'}
+                    {user?.uid || '未设置'}
                   </span>
                 </div>
                 <div className="flex justify-between">

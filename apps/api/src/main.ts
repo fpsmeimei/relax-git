@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
+import fastifyCookie from '@fastify/cookie';
 import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { mkdir } from 'fs/promises';
@@ -43,6 +44,11 @@ async function bootstrap() {
     } as any
   );
 
+  // Cookie 解析（用于 JWT HttpOnly Cookie）
+  await app.register(fastifyCookie as any, {
+    hook: 'onRequest',
+  } as any);
+
   // 全局验证管道
   app.useGlobalPipes(
     new ValidationPipe({
@@ -61,14 +67,29 @@ async function bootstrap() {
   // WebSocket 适配器配置 (支持 Fastify)
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  // CORS 配置（支持通过 CORS_ORIGIN 控制；当为 "*" 时最宽松：反射来源 + 允许携带凭据）
+  // CORS 配置（安全加固版本）
   const corsFromEnv = (process.env['CORS_ORIGIN'] || '').trim();
+  const isProduction = process.env['NODE_ENV'] === 'production';
+
+  // ⚠️ 生产环境禁止使用 CORS_ORIGIN=*
+  if (isProduction && corsFromEnv === '*') {
+    console.error(
+      '❌ 安全警告: 生产环境禁止使用 CORS_ORIGIN=*，这会导致严重的安全漏洞！'
+    );
+    console.error('请设置具体的域名，例如: CORS_ORIGIN=https://yourdomain.com');
+    process.exit(1);
+  }
+
   if (corsFromEnv === '*') {
+    // 开发环境：允许任意来源（仅限本地开发）
+    console.warn(
+      '⚠️  CORS 配置为通配符 (*) - 仅用于开发环境，生产环境必须指定具体域名'
+    );
     app.enableCors({
       origin: true, // 反射请求来源（允许任意来源）
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['*'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
       maxAge: 86400,
     });
   } else {
@@ -79,19 +100,32 @@ async function bootstrap() {
 
     app.enableCors({
       origin: (origin, cb) => {
-        // SSR/非浏览器请求（如curl/postman）无 origin，直接放行
-        if (!origin) return cb(null, true);
+        // SSR/非浏览器请求（如curl/postman）无 origin
+        // 生产环境拒绝，开发环境放行
+        if (!origin) {
+          return cb(null, !isProduction);
+        }
+
         // 显式白名单（逗号分隔）优先
         if (corsList.length > 0) {
-          return cb(null, corsList.includes(origin));
+          if (corsList.includes(origin)) {
+            return cb(null, true);
+          }
+          return cb(new Error('Not allowed by CORS'));
         }
+
         // 开发默认：允许 localhost / 127.0.0.1 的任意端口
-        const ok = /^http:\/\/(localhost|127\.0\.0\.1)(:\\d+)?$/.test(origin);
-        return cb(null, ok);
+        if (!isProduction) {
+          const ok = /^http:\/\/(localhost|127\.0\.0\.1)(:\\d+)?$/.test(origin);
+          return cb(ok ? null : new Error('Not allowed by CORS'), ok);
+        }
+
+        // 生产环境：无白名单则拒绝
+        return cb(new Error('Not allowed by CORS'));
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['*'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
       maxAge: 86400,
     });
   }

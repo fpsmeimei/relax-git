@@ -15,6 +15,7 @@
 - `health-check.js` - 健康检查
 - `import-github-repo.ps1` - GitHub 仓库导入
 - `setup-mcp.ps1` - MCP 设置脚本
+- ~~`generate-secrets.js`~~ - 已废弃（UID 认证不需要 JWT 密钥）
 
 ## 🚀 使用方法
 

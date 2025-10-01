@@ -1,60 +1,59 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AuthService } from '../auth.service';
-import { TokenBlacklistService } from '../services/token-blacklist.service';
+import { PrismaService } from '../../database/prisma.service';
 
-/**
- * JWT 认证策略
- * 用于验证和解析 JWT 令牌
- */
+// 自 Cookie 或 Authorization Bearer 提取 JWT
+const cookieExtractor = (req: any): string | null => {
+  try {
+    const token = req?.cookies?.['access_token'];
+    return typeof token === 'string' && token.length > 0 ? token : null;
+  } catch {
+    return null;
+  }
+};
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly authService: AuthService,
-    private readonly tokenBlacklist: TokenBlacklistService
-  ) {
+  constructor(private readonly prisma: PrismaService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        cookieExtractor,
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
-      secretOrKey:
-        configService.get<string>('JWT_SECRET') ?? 'your-super-secret-jwt-key',
+      secretOrKey: process.env.JWT_SECRET || 'dev_jwt_secret_change_me',
     });
   }
 
-  /**
-   * 验证 JWT 载荷
-   * 当令牌验证成功后，会调用此方法来获取用户信息
-   */
+  // payload 形如 { sub, uid, role }
   async validate(payload: any) {
-    // 检查令牌是否在黑名单中（使用JTI）
-    if (
-      payload.jti &&
-      (await this.tokenBlacklist.isTokenBlacklisted(`jti:${payload.jti}`))
-    ) {
-      throw new UnauthorizedException('令牌已被撤销');
-    }
+    // 允许无 DB 回查的轻量模式，但为安全起见，仍回源确认用户状态
+    const userId = payload?.sub as string | undefined;
+    if (!userId) return null;
 
-    const user = await this.authService.findUserById(payload.sub);
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        uid: true,
+        role: true,
+        avatar: true,
+        isActive: true,
+      },
+    });
 
-    if (!user) {
-      throw new UnauthorizedException('用户不存在');
-    }
+    if (!user || !user.isActive) return null;
 
-    if (!user.isActive) {
-      throw new UnauthorizedException('用户账户已被禁用');
-    }
-
-    // 返回的用户信息会被添加到 request.user 中
+    // 注入 request.user（与 UidAuthGuard 对齐字段）
     return {
       id: user.id,
-      email: user.email,
       username: user.username,
       role: user.role,
       avatar: user.avatar,
       isActive: user.isActive,
+      uid: user.uid,
     };
   }
 }

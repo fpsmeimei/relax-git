@@ -9,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -19,7 +18,6 @@ import {
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepoAccess } from '../auth/decorators/repo-access.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RepoAccessGuard } from '../auth/guards/repo-access.guard';
 import {
   BatchReviewJoinRequestDto,
@@ -34,8 +32,6 @@ import {
 import { JoinRequestsService } from './join-requests.service';
 
 @ApiTags('join-requests')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('repositories/:repoId/join-requests')
 export class JoinRequestsController {
   constructor(private readonly joinRequestsService: JoinRequestsService) {}

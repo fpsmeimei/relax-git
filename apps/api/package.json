@@ -23,6 +23,7 @@
     "db:reset": "prisma db push --force-reset --accept-data-loss"
   },
   "dependencies": {
+    "@fastify/cookie": "^9.3.1",
     "@fastify/multipart": "^7.7.3",
     "@fastify/static": "^6.12.0",
     "@fastify/swagger": "^9.5.1",

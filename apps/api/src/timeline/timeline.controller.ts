@@ -10,7 +10,6 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -23,7 +22,6 @@ import {
 } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepoAccess } from '../auth/decorators/repo-access.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RepoAccessGuard } from '../auth/guards/repo-access.guard';
 import {
   AggregationPeriod,
@@ -45,8 +43,6 @@ import { TimelineService } from './timeline.service';
  * 时间线事件管理控制器
  */
 @ApiTags('timeline')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @UsePipes(new TimelineValidationPipe())
 @Controller('timeline')
 export class TimelineController {

@@ -1,11 +1,9 @@
 'use client';
 
 import { useToast } from '@/hooks/use-toast';
-import { AuthService } from '@/services/authService';
-import { useAuthActions } from '@/stores/auth-store';
 import { GitBranch, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Suspense, useState } from 'react';
 
 export default function RegisterPage() {
@@ -19,8 +17,6 @@ export default function RegisterPage() {
 function RegisterPageInner() {
   const router = useRouter();
   const { toast } = useToast();
-  const { login, setLoading } = useAuthActions();
-  const searchParams = useSearchParams();
 
   const [formData, setFormData] = useState({
     username: '',
@@ -62,6 +58,7 @@ function RegisterPageInner() {
       return;
     }
 
+    // 密码长度验证
     if (formData.password.length < 6) {
       toast({
         title: '密码太短',
@@ -72,57 +69,43 @@ function RegisterPageInner() {
     }
 
     setIsLoading(true);
-    setLoading(true);
 
     try {
-      const registerData = {
-        username: formData.username,
-        password: formData.password,
-      };
+      // 调用后端注册接口
+      // 🔥 使用 /api/_auth/* 代理路由（见 next.config.js 第148行）
+      // /api/_auth/register → http://localhost:3001/auth/register
+      const API_URL = process.env['NEXT_PUBLIC_API_URL'] || '/api';
+      const response = await fetch(`${API_URL}/_auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+        }),
+      });
 
-      const response = await AuthService.register(registerData);
+      const data = await response.json();
 
-      // 更新认证状态
-      login(response.user, response.accessToken, response.refreshToken);
+      if (!response.ok) {
+        throw new Error(data.message || '注册失败');
+      }
 
       toast({
         title: '注册成功',
-        description: `欢迎加入 Relax-Git，${response.user.username}！`,
+        description: `欢迎加入，${formData.username}！请使用相同的用户名和密码登录。`,
       });
 
-      // 重定向到“主页面”
-      router.push('/');
+      // 注册成功后跳转到登录页，并带上用户名
+      router.push(`/auth/login?username=${encodeURIComponent(formData.username)}`);
     } catch (error: any) {
       console.error('Register error:', error);
-
-      const status = error?.status || error?.response?.status;
-      const message =
-        typeof error?.message === 'string'
-          ? error.message
-          : error?.response?.data?.message || '注册失败，请稍后重试';
-
-      if (status === 409) {
-        toast({
-          title: '该用户已注册',
-          description: message || '该用户已注册',
-          variant: 'destructive',
-        });
-      } else if (status === 429) {
-        toast({
-          title: '请求过于频繁',
-          description: '请稍后再试',
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: '注册失败',
-          description: message,
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: '注册失败',
+        description: error.message || '注册过程中出现错误',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
-      setLoading(false);
     }
   };
 

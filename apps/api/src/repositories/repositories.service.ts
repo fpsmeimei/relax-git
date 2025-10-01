@@ -134,7 +134,6 @@ export class RepositoriesService {
           select: {
             id: true,
             username: true,
-            email: true,
           },
         },
       },
@@ -225,7 +224,6 @@ export class RepositoriesService {
           select: {
             id: true,
             username: true,
-            email: true,
           },
         },
       },
@@ -306,7 +304,6 @@ export class RepositoriesService {
           select: {
             id: true,
             username: true,
-            email: true,
           },
         },
       },

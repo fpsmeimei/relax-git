@@ -1,13 +1,11 @@
 import { ConnectionStatus } from '@/components/connection-status';
-import { NavMessagesLink } from '@/components/nav-messages-link';
-import { NavPersonalLink } from '@/components/nav-personal-link';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Providers } from '@/components/providers';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { Toaster } from '@/components/ui/toaster';
+import { AppLayout } from '@/components/app-layout';
 import { cn } from '@/lib/utils';
 import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
-import Link from 'next/link';
 import 'prismjs/themes/prism.css';
 import './globals.css';
 
@@ -96,43 +94,15 @@ export default function RootLayout({
           jetbrainsMono.variable
         )}
       >
-        <Providers>
-          <div className="relative flex min-h-screen flex-col">
-            <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-              <div className="container-responsive flex h-14 items-center justify-between">
-                <Link href="/" className="text-sm font-semibold">
-                  Relax-Git
-                </Link>
-                <nav className="flex items-center gap-5">
-                  <Link
-                    href="/community"
-                    className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 py-1 transition-colors duration-200 hover:bg-accent"
-                  >
-                    社区
-                  </Link>
-                  <Link
-                    href="/repositories/import"
-                    className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 py-1 transition-colors duration-200 hover:bg-accent"
-                  >
-                    导入仓库
-                  </Link>
-                  <Link
-                    href="/repositories"
-                    className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 py-1 transition-colors duration-200 hover:bg-accent"
-                  >
-                    我的仓库
-                  </Link>
-                  <NavMessagesLink />
-                  <NavPersonalLink />
-                  <ThemeToggle />
-                </nav>
-              </div>
-            </header>
-            <div className="flex-1">{children}</div>
-          </div>
-          <ConnectionStatus />
-          <Toaster />
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <AppLayout>
+              {children}
+              <ConnectionStatus />
+              <Toaster />
+            </AppLayout>
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

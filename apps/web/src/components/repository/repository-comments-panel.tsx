@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
-import { useAuth } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
 import { Loader2, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

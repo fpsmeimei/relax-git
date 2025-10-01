@@ -1,19 +1,21 @@
 'use client';
 
-import { useAuth } from '@/stores/auth-store';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { AuthProvider } from './auth-provider';
+import { useState } from 'react';
 import { SocketProvider } from './socket-provider';
+import { AuthSync } from './auth-sync';
+import { usePathname } from 'next/navigation';
 
 interface ProvidersProps {
   children: React.ReactNode;
 }
 
 export function Providers({ children }: ProvidersProps) {
+  const pathname = usePathname();
+  const onAuthPage = typeof pathname === 'string' && pathname.startsWith('/auth');
   // 创建 QueryClient 实例
   const [queryClient] = useState(
     () =>
@@ -58,37 +60,26 @@ export function Providers({ children }: ProvidersProps) {
       })
   );
 
-  // 全局登录策略：
-  // - 允许公共页面无需登录（如首页 `/`）
-  // - 仅在访问受保护页面时，未登录则跳转到登录页
-  const router = useRouter();
-  const pathname = usePathname();
-  const { isAuthenticated } = useAuth();
-  // 暂停全局自动登录重定向；改由各受保护页面自行在 useEffect 中检查并跳转到 /auth/login。
-  // 这样可避免首页或其它公开页出现误判导致的刷新/跳转循环。
-  useEffect(() => {
-    // no-op
-  }, [pathname, isAuthenticated, router]);
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="quiet-light"
-        themes={['quiet-light', 'nord']}
-        enableSystem={false}
-        disableTransitionOnChange
-      >
-        <AuthProvider>
-          <SocketProvider>{children}</SocketProvider>
-        </AuthProvider>
-      </ThemeProvider>
-      {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools
-          initialIsOpen={false}
-          buttonPosition="bottom-right"
-        />
-      )}
-    </QueryClientProvider>
+    <SessionProvider>
+      <AuthSync />
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="quiet-light"
+          themes={['quiet-light', 'nord']}
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          {onAuthPage ? children : <SocketProvider>{children}</SocketProvider>}
+        </ThemeProvider>
+        {process.env.NODE_ENV === 'development' && (
+          <ReactQueryDevtools
+            initialIsOpen={false}
+            buttonPosition="bottom-right"
+          />
+        )}
+      </QueryClientProvider>
+    </SessionProvider>
   );
 }

@@ -5,7 +5,8 @@ import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useNotificationsStore } from '@/stores/notifications-store';
 import { apiClient } from '@/services/apiClient';
-import { useAuth, useAuthActions } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
+import { useAuthActions } from '@/stores/auth-store';
 import { useRouter } from 'next/navigation';
 
 interface NavPersonalLinkProps {
@@ -14,7 +15,7 @@ interface NavPersonalLinkProps {
 
 export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   const { unreadCount, setUnreadCount } = useNotificationsStore();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isInitialized } = useAuth();
   const { logout } = useAuthActions();
   const router = useRouter();
 
@@ -22,7 +23,8 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
     let stopped = false;
     const load = async () => {
       try {
-        if (!isAuthenticated) return;
+        // 必须已登录且已初始化
+        if (!isAuthenticated || !isInitialized) return;
         const res = await apiClient.get<{ count: number }>(
           `/notifications/unread-count`
         );
@@ -37,7 +39,7 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
       stopped = true;
       clearInterval(timer);
     };
-  }, [isAuthenticated, setUnreadCount]);
+  }, [isAuthenticated, isInitialized, setUnreadCount]);
 
   // 未登录：显示 登录 / 注册
   if (!isAuthenticated) {

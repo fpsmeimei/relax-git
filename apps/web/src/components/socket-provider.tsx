@@ -1,9 +1,10 @@
 'use client';
 
 import { useToast } from '@/hooks/use-toast';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
 import { useNotificationsStore } from '@/stores/notifications-store';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import {
   type ManagerOptions,
   type Socket as SocketIO,
@@ -18,6 +19,10 @@ interface SocketContextType {
   emit: (event: string, data?: unknown) => void;
   on: (event: string, callback: (...args: unknown[]) => void) => () => void;
   once: (event: string, callback: (...args: unknown[]) => void) => void;
+}
+
+interface SocketProviderProps {
+  children: React.ReactNode;
 }
 
 const SocketContext = createContext<SocketContextType>({
@@ -37,17 +42,14 @@ export function useSocket() {
   return context;
 }
 
-interface SocketProviderProps {
-  children: React.ReactNode;
-}
-
 export function SocketProvider({ children }: SocketProviderProps) {
   const [socket, setSocket] = useState<SocketIO | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const { token, user } = useAuthStore();
+  const { isAuthenticated, isInitialized } = useAuth();
   const { addNotification, incrementUnread } = useNotificationsStore();
   const { toast } = useToast();
+  const pathname = usePathname();
   // 记录需要在重连后自动恢复的订阅/房间
   const subscriptionsRef = useRef<
     Map<string, { event: string; payload?: any }>
@@ -78,8 +80,14 @@ export function SocketProvider({ children }: SocketProviderProps) {
   };
 
   useEffect(() => {
-    // 仅在用户已登录时连接
-    if (!token || !user) {
+    // 等待认证状态初始化完成
+    if (!isInitialized) {
+      return;
+    }
+
+    // 仅在用户已登录且不在 auth 页面时连接（避免登录页因重连导致的渲染抖动）
+    const onAuthPage = typeof pathname === 'string' && pathname.startsWith('/auth');
+    if (!isAuthenticated || onAuthPage) {
       if (socket) {
         socket.disconnect();
         setSocket(null);
@@ -91,22 +99,21 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     setIsConnecting(true);
 
-    // 创建 Socket.IO 连接（在 exactOptionalPropertyTypes 下，避免传入 auth: undefined）
+    // 创建 Socket.IO 连接（JWT 通过 HttpOnly Cookie 自动携带，无需明文 uid）
+    const socketUrl = process.env['NEXT_PUBLIC_SOCKET_URL'];
+
     const opts: Partial<ManagerOptions & SocketOptions> = {
-      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      transports: ['polling', 'websocket'],
       timeout: 20000,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      path: socketUrl ? '/socket.io' : '/api/socket.io',
     };
-    if (token) {
-      (opts as any).auth = { token } as any;
-    }
-    const socketInstance = io(
-      process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001',
-      opts
-    );
+
+    const socketInstance = socketUrl ? io(socketUrl, opts) : io('/', opts);
 
     // 连接事件监听
     const replaySubscriptions = () => {
@@ -265,7 +272,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       socketInstance.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user]);
+  }, [isAuthenticated, pathname]);
 
   // 提供的方法
   const emit = (event: string, data?: unknown) => {

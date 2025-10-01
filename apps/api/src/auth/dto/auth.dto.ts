@@ -26,6 +26,7 @@ export class RegisterDto {
   })
   @IsString({ message: '密码必须是字符串' })
   @MinLength(6, { message: '密码至少需要6个字符' })
+  @MaxLength(100, { message: '密码不能超过100个字符' })
   password: string;
 }
 
@@ -39,31 +40,22 @@ export class LoginDto {
   })
   @IsString({ message: '用户名必须是字符串' })
   @MinLength(1, { message: '用户名不能为空' })
+  @MaxLength(50, { message: '用户名不能超过50个字符' })
   username: string;
 
   @ApiProperty({
     description: '密码',
-    example: 'password123',
+    example: 'Password123',
   })
   @IsString({ message: '密码必须是字符串' })
   @MinLength(1, { message: '密码不能为空' })
+  @MaxLength(100, { message: '密码不能超过100个字符' })
   password: string;
 }
 
-/**
- * 刷新令牌 DTO
- */
-export class RefreshTokenDto {
-  @ApiProperty({
-    description: '刷新令牌',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  @IsString({ message: '刷新令牌必须是字符串' })
-  refreshToken: string;
-}
 
 /**
- * 认证响应 DTO
+ * 认证响应 DTO（仅返回用户信息）
  */
 export class AuthResponseDto {
   @ApiProperty({
@@ -71,35 +63,11 @@ export class AuthResponseDto {
   })
   user: {
     id: string;
-    email: string;
     username: string;
+    uid: string;
     role: string;
     avatar?: string;
     isActive: boolean;
     createdAt: Date;
   };
-
-  @ApiProperty({
-    description: '访问令牌',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  accessToken: string;
-
-  @ApiProperty({
-    description: '刷新令牌',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  refreshToken: string;
-
-  @ApiProperty({
-    description: '令牌类型',
-    example: 'Bearer',
-  })
-  tokenType: string;
-
-  @ApiProperty({
-    description: '令牌过期时间',
-    example: '24h',
-  })
-  expiresIn: string;
 }

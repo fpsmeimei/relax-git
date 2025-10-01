@@ -1,39 +1,27 @@
 import { toast } from '@/hooks/use-toast';
-import { useAuthStore } from '@/stores/auth-store';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
 /**
- * API 客户端配置
+ * API 客户端配置 - 使用 NextAuth Session
  */
 class ApiClient {
   private client: AxiosInstance;
-  private isRefreshing = false;
-  private refreshPromise: Promise<{
-    accessToken: string;
-    refreshToken: string;
-  } | null> | null = null;
 
   constructor() {
     this.client = axios.create({
-      baseURL: process.env['NEXT_PUBLIC_API_URL'] || '/api',
+      baseURL: '/api',
       timeout: 30000,
+      withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
     });
 
-    // 请求拦截器 - 添加认证token
+    // 请求拦截器（JWT 通过 HttpOnly Cookie 或 NextAuth session 自动携带）
     this.client.interceptors.request.use(
-      config => {
-        const { token } = useAuthStore.getState();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      error => {
-        return Promise.reject(error);
-      }
+      async config => config,
+      error => Promise.reject(error)
     );
 
     // 响应拦截器 - 统一错误格式 & 处理认证/权限
@@ -55,35 +43,17 @@ class ApiClient {
         normalized.path = data?.path;
         normalized.raw = error;
 
-        // 401：尝试使用 refreshToken 刷新一次后重试原请求（单航班）
+        // 401：清理认证信息并跳转登录
         if (
           (normalized.status === 401 || normalized.code === 'UNAUTHORIZED') &&
           originalConfig &&
-          !originalConfig.__isRefresh &&
           !originalConfig.__retried
         ) {
-          const { refreshToken, refreshAuth } = useAuthStore.getState();
-
-          if (refreshToken) {
-            try {
-              const newToken = await this.refreshAccessToken(refreshToken);
-              if (newToken) {
-                refreshAuth(newToken.accessToken, newToken.refreshToken);
-                originalConfig.__retried = true;
-                originalConfig.headers = originalConfig.headers || {};
-                originalConfig.headers.Authorization = `Bearer ${newToken.accessToken}`;
-                return this.client.request(originalConfig);
-              }
-            } catch (e) {
-              // fallthrough to logout below
-            }
-          }
-
-          // 刷新失败或无 refreshToken：登出并跳登录
-          const { logout: doLogout } = useAuthStore.getState();
-          doLogout();
-          if (typeof window !== 'undefined') {
-            window.location.href = '/auth/login';
+          console.warn('[ApiClient] Unauthorized, redirecting to login');
+          
+          // 只在非登录页面时跳转，避免循环重定向
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth/login')) {
+            window.location.href = '/auth/login?reason=session_expired';
           }
           return Promise.reject(normalized);
         }
@@ -124,11 +94,14 @@ class ApiClient {
           normalized.status < 500 &&
           normalized.message
         ) {
-          toast({
-            title: '请求错误',
-            description: normalized.message,
-            variant: 'destructive',
-          });
+          // 不显示 401 认证错误的 toast（已经在上面处理了）
+          if (normalized.status !== 401 && normalized.code !== 'UNAUTHORIZED') {
+            toast({
+              title: '请求错误',
+              description: normalized.message,
+              variant: 'destructive',
+            });
+          }
         } else if (normalized.status >= 500) {
           toast({
             title: '服务器错误',
@@ -142,32 +115,6 @@ class ApiClient {
     );
   }
 
-  private async refreshAccessToken(
-    refreshToken: string
-  ): Promise<{ accessToken: string; refreshToken: string } | null> {
-    if (this.isRefreshing && this.refreshPromise) {
-      return this.refreshPromise;
-    }
-    this.isRefreshing = true;
-    this.refreshPromise = (async () => {
-      try {
-        const resp = await this.client.post<{
-          accessToken: string;
-          refreshToken: string;
-        }>('/auth/refresh', { refreshToken }, {
-          headers: { Authorization: undefined },
-          __isRefresh: true,
-        } as any);
-        return resp.data ?? null;
-      } catch (e) {
-        return null;
-      } finally {
-        this.isRefreshing = false;
-        this.refreshPromise = null;
-      }
-    })();
-    return this.refreshPromise;
-  }
 
   // GET 请求
   async get<T = any>(

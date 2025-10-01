@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -20,7 +19,6 @@ import {
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { RepoAccess } from '../../auth/decorators/repo-access.decorator';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RepoAccessGuard } from '../../auth/guards/repo-access.guard';
 import { UnifiedSnapshotService } from '../services/unified-snapshot.service';
 
@@ -31,8 +29,6 @@ import { UnifiedSnapshotService } from '../services/unified-snapshot.service';
  */
 @ApiTags('Unified Snapshots')
 @Controller('snapshots')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class UnifiedSnapshotsController {
   constructor(
     private readonly unifiedSnapshotService: UnifiedSnapshotService
@@ -350,8 +346,6 @@ export class UnifiedSnapshotsController {
  */
 @ApiTags('Session Snapshots (Deprecated)')
 @Controller('session-snapshots')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class DeprecatedSessionSnapshotsController {
   constructor(
     private readonly unifiedSnapshotService: UnifiedSnapshotService

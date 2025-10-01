@@ -7,6 +7,7 @@ import {
   Eye,
   FileText,
   Maximize2,
+  MessageCircle,
   RotateCcw,
   ZoomIn,
   ZoomOut,
@@ -23,6 +24,8 @@ interface SnapshotCodeViewerProps {
   snapshotId: string;
   commitSha: string;
   className?: string;
+  onRecover?: () => void; // 当会话/工作树缺失时由父组件触发重建
+  onInvalid?: () => void; // 检测到失效（404等）时回调父组件清理本地会话
 }
 
 interface FileTreeNode {
@@ -85,9 +88,7 @@ export function SnapshotCodeViewer({
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [canRecover, setCanRecover] = useState(false);
   // 源模式：优先使用 snapshots 接口；失败时回退到 artifacts 接口
-  const [sourceMode, setSourceMode] = useState<'snapshot' | 'artifact'>(
-    'snapshot'
-  );
+  const [sourceMode, setSourceMode] = useState<'snapshot' | 'artifact'>('snapshot');
   const [artifactId, setArtifactId] = useState<string | null>(null);
 
   // 行级评论相关状态
@@ -279,7 +280,7 @@ export function SnapshotCodeViewer({
   const getApiPath = useCallback(
     (endpoint: 'tree' | 'file') => {
       if (sourceMode === 'artifact' && artifactId) {
-        return `/api/artifacts/${artifactId}/${endpoint}`;
+        return `/artifacts/${artifactId}/${endpoint}`;
       }
       return `/snapshots/${snapshotId}/${endpoint}`;
     },
@@ -373,7 +374,7 @@ export function SnapshotCodeViewer({
             return item;
           };
 
-          // 优先使用扁平 children，若无则回退到服务端嵌套 replies
+        	// 优先使用扁平 children，若无则回退到服务端嵌套 replies
           const directChildren = children[raw.id] || raw.replies || [];
 
           const likes = (raw.likesCount ?? raw._count?.likes ?? 0) as number;
@@ -536,19 +537,14 @@ export function SnapshotCodeViewer({
         const code = e?.code ?? e?.status ?? e?.response?.status;
         // 回退到基础快照（artifact）
         const shouldFallback =
-          code === 'NOT_FOUND' ||
-          code === 404 ||
-          /不存在|not\s*found/i.test(msg);
+          code === 'NOT_FOUND' || code === 404 || /不存在|not\s*found/i.test(msg);
         if (shouldFallback) {
           try {
-            const { data: snap } = await apiClient.get<any>(
-              `/snapshots/${snapshotId}`
-            );
-            const baseId =
-              (snap as any)?.baseSnapshotId || (snap as any)?.baseSnapshot?.id;
+            const { data: snap } = await apiClient.get<any>(`/snapshots/${snapshotId}`);
+            const baseId = (snap as any)?.baseSnapshotId || (snap as any)?.baseSnapshot?.id;
             if (baseId) {
               const { data: tree } = await apiClient.get<FileTreeNode[]>(
-                `/api/artifacts/${baseId}/tree`,
+                `/artifacts/${baseId}/tree`,
                 { params: path ? { path } : {} }
               );
               setSourceMode('artifact');
@@ -559,17 +555,12 @@ export function SnapshotCodeViewer({
               setTreeError(null);
               setCanRecover(false);
               // 自动选择默认文件
-              if (
-                path === '' &&
-                !selectedFileRef.current &&
-                Array.isArray(tree)
-              ) {
+              if (path === '' && !selectedFileRef.current && Array.isArray(tree)) {
                 const names = tree.map(n => n.name.toLowerCase());
                 const pick = (candidates: string[]): string | null => {
                   for (const c of candidates) {
                     const idx = names.indexOf(c.toLowerCase());
-                    if (idx !== -1 && tree[idx]?.type === 'file')
-                      return tree[idx].name;
+                    if (idx !== -1 && tree[idx]?.type === 'file') return tree[idx].name;
                   }
                   return null;
                 };
@@ -578,15 +569,7 @@ export function SnapshotCodeViewer({
                 )?.name;
                 const preferred =
                   readme ||
-                  pick([
-                    'readme.md',
-                    'readme',
-                    'index.md',
-                    'index.ts',
-                    'index.tsx',
-                    'index.js',
-                    'package.json',
-                  ]) ||
+                  pick(['readme.md', 'readme', 'index.md', 'index.ts', 'index.tsx', 'index.js', 'package.json']) ||
                   (tree.find(n => n.type === 'file')?.name ?? null);
                 if (preferred) void loadFileContent(preferred);
               }
@@ -981,12 +964,7 @@ export function SnapshotCodeViewer({
           )}
           {treeError && canRecover && onRecover && (
             <div className="mt-3">
-              <Button
-                size="sm"
-                variant="soft"
-                onClick={onRecover}
-                className="w-full"
-              >
+              <Button size="sm" variant="soft" onClick={onRecover} className="w-full">
                 重新创建会话
               </Button>
             </div>

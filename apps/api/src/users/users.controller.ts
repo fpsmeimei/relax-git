@@ -14,7 +14,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -24,7 +23,7 @@ import {
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+// UidAuthGuard 已废弃，统一采用全局 JwtAuthGuard
 import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   CreateUserDto,
@@ -46,8 +45,6 @@ import { pipeline } from 'stream/promises';
  */
 @ApiTags('users')
 @Controller('users')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

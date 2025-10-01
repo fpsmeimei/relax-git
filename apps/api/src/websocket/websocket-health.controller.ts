@@ -2,7 +2,6 @@ import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { WebSocketGateway } from './websocket.gateway';
 
@@ -12,7 +11,7 @@ import { WebSocketGateway } from './websocket.gateway';
  */
 @ApiTags('WebSocket Health')
 @Controller('websocket/health')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(RolesGuard)
 export class WebSocketHealthController {
   constructor(private readonly websocketGateway: WebSocketGateway) {}
 

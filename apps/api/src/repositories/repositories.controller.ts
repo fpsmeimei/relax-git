@@ -12,7 +12,6 @@ import {
   Req,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -22,7 +21,6 @@ import {
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepoAccess } from '../auth/decorators/repo-access.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RepoAccessGuard } from '../auth/guards/repo-access.guard';
 import {
   CreateRepositoryDto,
@@ -44,8 +42,6 @@ import { pipeline } from 'stream/promises';
  * 仓库管理控制器
  */
 @ApiTags('repositories')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('repositories')
 export class RepositoriesController {
   constructor(private readonly repositoriesService: RepositoriesService) {}

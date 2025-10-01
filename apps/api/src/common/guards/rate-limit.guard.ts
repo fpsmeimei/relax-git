@@ -47,11 +47,15 @@ export class RateLimitGuard implements CanActivate {
     const route = request.route?.path || request.url;
     const key = `rate_limit:${clientIp}:${route}`;
 
-    // 检查当前请求数
-    const current = await this.redis.get(key);
-    const requests = current ? parseInt(current, 10) : 0;
+    // 使用原子 INCR 计数，避免 GET+INCR 带来的竞态
+    const newCount = await this.redis.getClient().incr(key);
+    // 首次请求设置过期时间（ms）
+    if (newCount === 1) {
+      await this.redis.getClient().pexpire(key, rateLimitOptions.windowMs);
+    }
 
-    if (requests >= rateLimitOptions.max) {
+    // 超过阈值则拒绝（注意：newCount > max）
+    if (newCount > rateLimitOptions.max) {
       throw new HttpException(
         {
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
@@ -61,17 +65,6 @@ export class RateLimitGuard implements CanActivate {
         HttpStatus.TOO_MANY_REQUESTS
       );
     }
-
-    // 增加请求计数
-    const pipeline = this.redis.pipeline();
-    pipeline.incr(key);
-
-    // 如果是第一次请求，设置过期时间
-    if (requests === 0) {
-      pipeline.pexpire(key, rateLimitOptions.windowMs);
-    }
-
-    await pipeline.exec();
 
     return true;
   }

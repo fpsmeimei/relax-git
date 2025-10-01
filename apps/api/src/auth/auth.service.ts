@@ -3,8 +3,6 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import * as bcrypt from 'bcrypt';
 import {
@@ -13,42 +11,27 @@ import {
   AuditResult,
 } from '../common/services/audit-log.service';
 import { PrismaService } from '../database/prisma.service';
-import { RedisService } from '../redis/redis.service';
-import { LoginDto, RefreshTokenDto, RegisterDto } from './dto/auth.dto';
+import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { AccountSecurityService } from './services/account-security.service';
-import { TokenBlacklistService } from './services/token-blacklist.service';
 
 // Type definitions
 export interface UserPayload {
   id: string;
-  email: string;
   username: string;
+  uid: string;
   role: UserRole;
   avatar?: string;
   isActive: boolean;
 }
 
-interface JwtPayload {
-  sub: string;
-  email: string;
-  role: string;
-  jti?: string;
-  iat?: number;
-  exp?: number;
-}
-
 /**
  * Authentication Service
- * 应届生学习项目版本：简化认证服务，重点学习JWT和用户管理基础
+ * 基于 UID 的简化认证服务，无 token 生成与管理
  */
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-    private readonly tokenBlacklist: TokenBlacklistService,
     private readonly accountSecurity: AccountSecurityService,
     private readonly auditLog: AuditLogService
   ) {}
@@ -83,15 +66,13 @@ export class AuthService {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user with generated email
-    console.log('Generating email and uid for user:', username);
-    const generatedEmail = `${username}@relax-git.local`;
+    // Create user with unique uid
+    console.log('Generating uid for user:', username);
     const uid = await this.generateUid(username);
     console.log('Generated uid:', uid);
     console.log('Creating user in database...');
     const user = await this.prisma.user.create({
       data: {
-        email: generatedEmail,
         username,
         uid,
         password: hashedPassword,
@@ -109,15 +90,11 @@ export class AuthService {
       details: { username },
     });
 
-    // Generate tokens
-    const tokens = await this.generateTokens(user as UserPayload);
-
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
 
     return {
       user: userWithoutPassword,
-      ...tokens,
     };
   }
 
@@ -162,9 +139,6 @@ export class AuthService {
       console.warn('Failed to reset failed attempts:', error);
     });
 
-    // Generate tokens
-    const tokens = await this.generateTokens(user);
-
     // Log login
     await this.auditLog.log({
       action: AuditAction.LOGIN,
@@ -176,96 +150,9 @@ export class AuthService {
 
     return {
       user,
-      ...tokens,
     };
   }
 
-  /**
-   * Refresh token
-   */
-  async refreshToken(refreshTokenDto: RefreshTokenDto, ipAddress?: string) {
-    const { refreshToken } = refreshTokenDto;
-
-    try {
-      // Verify refresh token
-      const rawPayload = this.jwtService.verify(refreshToken, {
-        secret:
-          this.configService.get<string>('JWT_REFRESH_SECRET') ??
-          'refresh-secret',
-      });
-
-      if (
-        typeof rawPayload !== 'object' ||
-        !rawPayload ||
-        !('sub' in rawPayload)
-      ) {
-        throw new UnauthorizedException('Invalid refresh token payload');
-      }
-
-      const jwtPayload = rawPayload as JwtPayload;
-
-      // Check if token is blacklisted
-      const isBlacklisted =
-        await this.tokenBlacklist.isTokenBlacklisted(refreshToken);
-      if (isBlacklisted) {
-        throw new UnauthorizedException('Token has been revoked');
-      }
-
-      // Get user
-      const user = await this.prisma.user.findUnique({
-        where: { id: jwtPayload.sub },
-      });
-
-      if (!user?.isActive) {
-        throw new UnauthorizedException('User not found or inactive');
-      }
-
-      // Generate new tokens
-      const tokens = await this.generateTokens({
-        ...user,
-        avatar: user.avatar || '',
-      });
-
-      // Blacklist old refresh token
-      await this.tokenBlacklist.blacklistToken(refreshToken, 'Token refreshed');
-
-      // Log token refresh
-      await this.auditLog.log({
-        action: AuditAction.TOKEN_REFRESH,
-        result: AuditResult.SUCCESS,
-        userId: user.id,
-        ...(ipAddress && { ipAddress }),
-      });
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _, ...userWithoutPassword } = user;
-
-      return {
-        user: userWithoutPassword,
-        ...tokens,
-      };
-    } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-  }
-
-  /**
-   * User logout
-   */
-  async logout(userId: string, ipAddress?: string) {
-    // Revoke all user tokens
-    await this.tokenBlacklist.revokeAllUserTokens(userId, 'User logout');
-
-    // Log logout
-    await this.auditLog.log({
-      action: AuditAction.LOGOUT,
-      result: AuditResult.SUCCESS,
-      userId,
-      ...(ipAddress && { ipAddress }),
-    });
-
-    return { message: 'Logged out successfully' };
-  }
 
   /**
    * Validate user credentials
@@ -290,67 +177,6 @@ export class AuthService {
     return null;
   }
 
-  /**
-   * Generate access and refresh tokens
-   */
-  private async generateTokens(user: UserPayload) {
-    const now = Math.floor(Date.now() / 1000);
-    const jti = `${user.id}_${now}_${Math.random().toString(36).substr(2, 9)}`;
-
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      jti, // JWT ID for token tracking
-      iat: now,
-    };
-
-    const refreshPayload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-      jti: `refresh_${jti}`,
-      iat: now,
-    };
-
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') ?? '24h',
-      }),
-      this.jwtService.signAsync(refreshPayload, {
-        secret:
-          this.configService.get<string>('JWT_REFRESH_SECRET') ??
-          'refresh-secret',
-        expiresIn:
-          this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
-      }),
-    ]);
-
-    return {
-      accessToken,
-      refreshToken,
-      tokenType: 'Bearer',
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') ?? '24h',
-    };
-  }
-
-  /**
-   * Store user session
-   */
-  private async storeUserSession(userId: string, refreshToken: string) {
-    const sessionData = {
-      refreshToken,
-      createdAt: new Date().toISOString(),
-    };
-
-    // Set session expiration time (7 days)
-    const ttl = 7 * 24 * 60 * 60; // 7 days in seconds
-    await this.redis.set(
-      `user:session:${userId}`,
-      JSON.stringify(sessionData),
-      ttl
-    );
-  }
 
   /**
    * 根据ID查找用户
@@ -360,7 +186,6 @@ export class AuthService {
       where: { id: userId },
       select: {
         id: true,
-        email: true,
         username: true,
         role: true,
         isActive: true,

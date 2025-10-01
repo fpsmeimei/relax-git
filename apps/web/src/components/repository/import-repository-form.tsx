@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
-import { useAuth } from '@/stores/auth-store';
+import { useAuth } from '@/hooks/use-auth';
 import { AlertCircle, GitBranch, Loader2, Lock, Globe, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

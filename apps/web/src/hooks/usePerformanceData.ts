@@ -1,6 +1,9 @@
 import { apiClient } from '@/lib/api/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+// 环境开关：禁用性能接口，默认关闭
+const ENABLE_PERF = process.env['NEXT_PUBLIC_ENABLE_PERFORMANCE'] === 'true';
+
 /**
  * 性能报告接口
  */
@@ -41,8 +44,9 @@ interface PerformanceResponse {
  * 获取性能报告
  */
 const fetchPerformanceReport = async (): Promise<PerformanceReport> => {
+  if (!ENABLE_PERF) throw new Error('Performance API is disabled');
   const response = await apiClient.get<PerformanceResponse>(
-    '/api/performance/report'
+    '/performance/report'
   );
   if (!response.data.success || !response.data.report) {
     throw new Error('Failed to fetch performance report');
@@ -54,8 +58,9 @@ const fetchPerformanceReport = async (): Promise<PerformanceReport> => {
  * 获取缓存统计
  */
 const fetchCacheStats = async (): Promise<PerformanceReport['cache']> => {
+  if (!ENABLE_PERF) throw new Error('Performance API is disabled');
   const response = await apiClient.get<PerformanceResponse>(
-    '/api/performance/cache/stats'
+    '/performance/cache/stats'
   );
   if (!response.data.success || !response.data.cache) {
     throw new Error('Failed to fetch cache stats');
@@ -67,8 +72,9 @@ const fetchCacheStats = async (): Promise<PerformanceReport['cache']> => {
  * 获取存储统计
  */
 const fetchStorageStats = async (): Promise<PerformanceReport['storage']> => {
+  if (!ENABLE_PERF) throw new Error('Performance API is disabled');
   const response = await apiClient.get<PerformanceResponse>(
-    '/api/performance/storage/stats'
+    '/performance/storage/stats'
   );
   if (!response.data.success || !response.data.storage) {
     throw new Error('Failed to fetch storage stats');
@@ -80,8 +86,9 @@ const fetchStorageStats = async (): Promise<PerformanceReport['storage']> => {
  * 获取优化建议
  */
 const fetchRecommendations = async (): Promise<string[]> => {
+  if (!ENABLE_PERF) throw new Error('Performance API is disabled');
   const response = await apiClient.get<PerformanceResponse>(
-    '/api/performance/recommendations'
+    '/performance/recommendations'
   );
   if (!response.data.success) {
     throw new Error('Failed to fetch recommendations');
@@ -93,7 +100,8 @@ const fetchRecommendations = async (): Promise<string[]> => {
  * 执行缓存优化
  */
 const optimizeCache = async (): Promise<void> => {
-  const response = await apiClient.post('/api/performance/cache/optimize');
+  if (!ENABLE_PERF) throw new Error('Performance API is disabled');
+  const response = await apiClient.post('/performance/cache/optimize');
   if (!response.data.success) {
     throw new Error('Failed to optimize cache');
   }
@@ -103,8 +111,9 @@ const optimizeCache = async (): Promise<void> => {
  * 为仓库启用裸仓优化
  */
 const optimizeBareRepository = async (repoId: string): Promise<void> => {
+  if (!ENABLE_PERF) throw new Error('Performance API is disabled');
   const response = await apiClient.post(
-    `/api/performance/repositories/${repoId}/optimize-bare`
+    `/performance/repositories/${repoId}/optimize-bare`
   );
   if (!response.data.success) {
     throw new Error('Failed to optimize bare repository');
@@ -119,8 +128,9 @@ const performIncrementalUpdate = async (params: {
   fromCommit: string;
   toCommit: string;
 }): Promise<void> => {
+  if (!ENABLE_PERF) throw new Error('Performance API is disabled');
   const response = await apiClient.post(
-    `/api/performance/repositories/${params.repoId}/incremental-update`,
+    `/performance/repositories/${params.repoId}/incremental-update`,
     {
       fromCommit: params.fromCommit,
       toCommit: params.toCommit,
@@ -148,6 +158,7 @@ export const usePerformanceData = () => {
     queryFn: fetchPerformanceReport,
     refetchInterval: 60000, // 每分钟自动刷新
     staleTime: 30000, // 30秒后数据视为过期
+    enabled: ENABLE_PERF,
   });
 
   // 查询缓存统计
@@ -161,6 +172,7 @@ export const usePerformanceData = () => {
     queryFn: fetchCacheStats,
     refetchInterval: 30000, // 每30秒自动刷新
     staleTime: 15000, // 15秒后数据视为过期
+    enabled: ENABLE_PERF,
   });
 
   // 查询存储统计
@@ -174,6 +186,7 @@ export const usePerformanceData = () => {
     queryFn: fetchStorageStats,
     refetchInterval: 120000, // 每2分钟自动刷新
     staleTime: 60000, // 60秒后数据视为过期
+    enabled: ENABLE_PERF,
   });
 
   // 查询优化建议
@@ -187,6 +200,7 @@ export const usePerformanceData = () => {
     queryFn: fetchRecommendations,
     refetchInterval: 300000, // 每5分钟自动刷新
     staleTime: 240000, // 4分钟后数据视为过期
+    enabled: ENABLE_PERF,
   });
 
   // 缓存优化 mutation
@@ -275,8 +289,9 @@ export const useArtifactPerformance = (artifactId: string) => {
 
   // 获取语法高亮
   const getSyntaxHighlighting = async (filePath: string): Promise<string> => {
+    if (!ENABLE_PERF) throw new Error('Performance API is disabled');
     const response = await apiClient.get(
-      `/api/performance/artifacts/${artifactId}/highlight`,
+      `/performance/artifacts/${artifactId}/highlight`,
       {
         params: { filePath },
       }
@@ -296,8 +311,9 @@ export const useArtifactPerformance = (artifactId: string) => {
       useStreaming?: boolean;
     }
   ): Promise<string> => {
+    if (!ENABLE_PERF) throw new Error('Performance API is disabled');
     const response = await apiClient.get(
-      `/api/performance/artifacts/${artifactId}/files/optimized`,
+      `/performance/artifacts/${artifactId}/files/optimized`,
       {
         params: {
           filePath,
@@ -314,8 +330,9 @@ export const useArtifactPerformance = (artifactId: string) => {
 
   // 上传到 S3
   const uploadToS3 = async (localPath: string): Promise<string> => {
+    if (!ENABLE_PERF) throw new Error('Performance API is disabled');
     const response = await apiClient.post(
-      `/api/performance/artifacts/${artifactId}/upload-s3`,
+      `/performance/artifacts/${artifactId}/upload-s3`,
       { localPath }
     );
     if (!response.data.success) {
@@ -326,8 +343,9 @@ export const useArtifactPerformance = (artifactId: string) => {
 
   // 从 S3 下载
   const downloadFromS3 = async (targetPath: string): Promise<void> => {
+    if (!ENABLE_PERF) throw new Error('Performance API is disabled');
     const response = await apiClient.post(
-      `/api/performance/artifacts/${artifactId}/download-s3`,
+      `/performance/artifacts/${artifactId}/download-s3`,
       { targetPath }
     );
     if (!response.data.success) {

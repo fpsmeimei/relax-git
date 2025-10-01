@@ -7,19 +7,12 @@ import {
   Query,
   HttpCode,
   HttpStatus,
-  UseGuards,
   Logger,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PerformanceOptimizerService } from './performance-optimizer.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 /**
  * 性能优化控制器
@@ -27,8 +20,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
  */
 @ApiTags('Performance')
 @Controller('api/performance')
-@UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
 export class PerformanceOptimizerController {
   private readonly logger = new Logger(PerformanceOptimizerController.name);
 

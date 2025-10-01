@@ -30,7 +30,6 @@ type CommentWithRelations = Prisma.CommentGetPayload<{
       select: {
         id: true;
         username: true;
-        email: true;
         avatar: true;
       };
     };
@@ -154,7 +153,6 @@ export class CommentsService {
           select: {
             id: true,
             username: true,
-            email: true,
             avatar: true,
           },
         },
@@ -434,7 +432,6 @@ export class CommentsService {
             select: {
               id: true,
               username: true,
-              email: true,
               avatar: true,
             },
           },
@@ -516,7 +513,6 @@ export class CommentsService {
           select: {
             id: true,
             username: true,
-            email: true,
             avatar: true,
           },
         },
@@ -531,7 +527,6 @@ export class CommentsService {
               select: {
                 id: true,
                 username: true,
-                email: true,
                 avatar: true,
               },
             },
@@ -543,7 +538,6 @@ export class CommentsService {
               select: {
                 id: true,
                 username: true,
-                email: true,
                 avatar: true,
               },
             },
@@ -1116,7 +1110,6 @@ export class CommentsService {
             select: {
               id: true,
               username: true,
-              email: true,
               avatar: true,
             },
           },

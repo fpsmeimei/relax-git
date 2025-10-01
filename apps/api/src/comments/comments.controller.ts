@@ -12,7 +12,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -26,7 +25,6 @@ import {
 } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepoAccess } from '../auth/decorators/repo-access.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RepoAccessGuard } from '../auth/guards/repo-access.guard';
 import { CommentsService } from './comments.service';
 import {
@@ -40,7 +38,6 @@ import {
  * 评论管理控制器
  */
 @ApiTags('comments')
-@ApiBearerAuth()
 @Controller('comments')
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
@@ -214,7 +211,6 @@ export class CommentsController {
       },
     },
   })
-  @UseGuards(JwtAuthGuard)
   async getMyComments(
     @CurrentUser('id') userId: string,
     @Query('page') page?: number,
@@ -258,7 +254,7 @@ export class CommentsController {
     status: HttpStatus.FORBIDDEN,
     description: '无权访问此快照',
   })
-  @UseGuards(JwtAuthGuard, RepoAccessGuard)
+  @UseGuards(RepoAccessGuard)
   @RepoAccess('comment')
   async create(
     @CurrentUser('id') userId: string,
@@ -289,7 +285,7 @@ export class CommentsController {
       },
     },
   })
-  @UseGuards(JwtAuthGuard, RepoAccessGuard)
+  @UseGuards(RepoAccessGuard)
   @RepoAccess('read')
   async like(
     @CurrentUser('id') userId: string,
@@ -314,7 +310,7 @@ export class CommentsController {
       },
     },
   })
-  @UseGuards(JwtAuthGuard, RepoAccessGuard)
+  @UseGuards(RepoAccessGuard)
   @RepoAccess('read')
   async unlike(
     @CurrentUser('id') userId: string,
@@ -475,7 +471,7 @@ export class CommentsController {
     status: HttpStatus.FORBIDDEN,
     description: '无权修改此评论',
   })
-  @UseGuards(JwtAuthGuard, RepoAccessGuard)
+  @UseGuards(RepoAccessGuard)
   @RepoAccess('comment')
   async update(
     @CurrentUser('id') userId: string,
@@ -513,7 +509,7 @@ export class CommentsController {
     status: HttpStatus.BAD_REQUEST,
     description: '无法删除有回复的评论',
   })
-  @UseGuards(JwtAuthGuard, RepoAccessGuard)
+  @UseGuards(RepoAccessGuard)
   @RepoAccess('comment')
   async remove(
     @CurrentUser('id') userId: string,
@@ -540,7 +536,7 @@ export class CommentsController {
     status: HttpStatus.FORBIDDEN,
     description: '无权解决此评论',
   })
-  @UseGuards(JwtAuthGuard, RepoAccessGuard)
+  @UseGuards(RepoAccessGuard)
   @RepoAccess('comment')
   async resolveComment(
     @CurrentUser('id') userId: string,

@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -23,7 +22,6 @@ import {
 } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepoAccess } from '../auth/decorators/repo-access.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RepoAccessGuard } from '../auth/guards/repo-access.guard';
 import {
   AddMemberDto,
@@ -34,8 +32,6 @@ import {
 import { MembersService } from './members.service';
 
 @ApiTags('members')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('repositories/:repoId/members')
 export class MembersController {
   constructor(private readonly membersService: MembersService) {}
@@ -61,8 +57,8 @@ export class MembersController {
   async findAll(
     @Param('repoId') repoId: string,
     @Query() query: QueryMembersDto,
-    @CurrentUser('id') userId: string,
-    @CurrentUser('role') userRole: UserRole
+    @CurrentUser('id') _userId: string,
+    @CurrentUser('role') _userRole: UserRole
   ) {
     return this.membersService.list(repoId, query);
   }
@@ -75,7 +71,7 @@ export class MembersController {
     @Param('repoId') repoId: string,
     @Body() dto: AddMemberDto,
     @CurrentUser('id') operatorId: string,
-    @CurrentUser('role') userRole: UserRole
+    @CurrentUser('role') _userRole: UserRole
   ) {
     await this.membersService.add(repoId, dto, operatorId);
     return { success: true };
@@ -102,7 +98,7 @@ export class MembersController {
     @Param('repoId') repoId: string,
     @Param('userId') targetUserId: string,
     @CurrentUser('id') operatorId: string,
-    @CurrentUser('role') userRole: UserRole
+    @CurrentUser('role') _userRole: UserRole
   ) {
     await this.membersService.remove(repoId, targetUserId, operatorId);
     return { success: true };

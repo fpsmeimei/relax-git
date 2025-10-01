@@ -1,23 +1,5 @@
-import {
-  Controller,
-  Post,
-  Delete,
-  Get,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  HttpStatus,
-} from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Controller, Post, Get, Body, Param, Query, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepositoryInteractionService } from './repository-interaction.service';
 import {
@@ -43,8 +25,7 @@ export class RepositoryInteractionController {
    * 切换仓库点赞状态
    */
   @Post(':id/like')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  
   @ApiOperation({
     summary: '切换仓库点赞状态',
     description: '点赞或取消点赞仓库',
@@ -69,8 +50,7 @@ export class RepositoryInteractionController {
    * 切换仓库收藏状态
    */
   @Post(':id/collect')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  
   @ApiOperation({
     summary: '切换仓库收藏状态',
     description: '收藏或取消收藏仓库',
@@ -95,8 +75,7 @@ export class RepositoryInteractionController {
    * 创建仓库评论
    */
   @Post(':id/comments')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  
   @ApiOperation({
     summary: '创建仓库评论',
     description: '为仓库创建新评论或回复已有评论',
@@ -154,8 +133,7 @@ export class RepositoryInteractionController {
    * 切换评论点赞状态
    */
   @Post('comments/:commentId/like')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
+  
   @ApiOperation({
     summary: '切换评论点赞状态',
     description: '点赞或取消点赞评论',

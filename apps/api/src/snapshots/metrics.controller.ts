@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Query,
-  UseGuards,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Controller, Get, Post, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
@@ -18,7 +9,6 @@ import { SnapshotMetricsService } from './snapshot-metrics.service';
  * 提供系统健康状态、性能指标和报告
  */
 @Controller('api/snapshots/metrics')
-@UseGuards(JwtAuthGuard)
 export class MetricsController {
   constructor(private readonly metricsService: SnapshotMetricsService) {}
 
