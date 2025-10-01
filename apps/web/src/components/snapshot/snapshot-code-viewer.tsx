@@ -88,7 +88,9 @@ export function SnapshotCodeViewer({
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [canRecover, setCanRecover] = useState(false);
   // 源模式：优先使用 snapshots 接口；失败时回退到 artifacts 接口
-  const [sourceMode, setSourceMode] = useState<'snapshot' | 'artifact'>('snapshot');
+  const [sourceMode, setSourceMode] = useState<'snapshot' | 'artifact'>(
+    'snapshot'
+  );
   const [artifactId, setArtifactId] = useState<string | null>(null);
 
   // 行级评论相关状态
@@ -266,6 +268,14 @@ export function SnapshotCodeViewer({
   // URL 深链锚点处理避免重复触发
   const [handledAnchor, setHandledAnchor] = useState(false);
   const searchParams = useSearchParams();
+  // 若 URL 已指定 file，则跳过初始默认文件选择，防止覆盖定位
+  const initialFileFromUrl = useMemo(() => {
+    try {
+      return searchParams?.get('file') || null;
+    } catch {
+      return null;
+    }
+  }, [searchParams]);
 
   const handleScrollToTop = useCallback(() => {
     try {
@@ -374,7 +384,7 @@ export function SnapshotCodeViewer({
             return item;
           };
 
-        	// 优先使用扁平 children，若无则回退到服务端嵌套 replies
+          // 优先使用扁平 children，若无则回退到服务端嵌套 replies
           const directChildren = children[raw.id] || raw.replies || [];
 
           const likes = (raw.likesCount ?? raw._count?.likes ?? 0) as number;
@@ -499,7 +509,12 @@ export function SnapshotCodeViewer({
         setCurrentPath(path);
         setHasLoadedOnce(true);
 
-        if (path === '' && !selectedFileRef.current && Array.isArray(data)) {
+        if (
+          path === '' &&
+          !selectedFileRef.current &&
+          !initialFileFromUrl &&
+          Array.isArray(data)
+        ) {
           const names = data.map(n => n.name.toLowerCase());
           const pick = (candidates: string[]): string | null => {
             for (const c of candidates) {
@@ -537,11 +552,16 @@ export function SnapshotCodeViewer({
         const code = e?.code ?? e?.status ?? e?.response?.status;
         // 回退到基础快照（artifact）
         const shouldFallback =
-          code === 'NOT_FOUND' || code === 404 || /不存在|not\s*found/i.test(msg);
+          code === 'NOT_FOUND' ||
+          code === 404 ||
+          /不存在|not\s*found/i.test(msg);
         if (shouldFallback) {
           try {
-            const { data: snap } = await apiClient.get<any>(`/snapshots/${snapshotId}`);
-            const baseId = (snap as any)?.baseSnapshotId || (snap as any)?.baseSnapshot?.id;
+            const { data: snap } = await apiClient.get<any>(
+              `/snapshots/${snapshotId}`
+            );
+            const baseId =
+              (snap as any)?.baseSnapshotId || (snap as any)?.baseSnapshot?.id;
             if (baseId) {
               const { data: tree } = await apiClient.get<FileTreeNode[]>(
                 `/artifacts/${baseId}/tree`,
@@ -555,12 +575,18 @@ export function SnapshotCodeViewer({
               setTreeError(null);
               setCanRecover(false);
               // 自动选择默认文件
-              if (path === '' && !selectedFileRef.current && Array.isArray(tree)) {
+              if (
+                path === '' &&
+                !selectedFileRef.current &&
+                !initialFileFromUrl &&
+                Array.isArray(tree)
+              ) {
                 const names = tree.map(n => n.name.toLowerCase());
                 const pick = (candidates: string[]): string | null => {
                   for (const c of candidates) {
                     const idx = names.indexOf(c.toLowerCase());
-                    if (idx !== -1 && tree[idx]?.type === 'file') return tree[idx].name;
+                    if (idx !== -1 && tree[idx]?.type === 'file')
+                      return tree[idx].name;
                   }
                   return null;
                 };
@@ -569,7 +595,15 @@ export function SnapshotCodeViewer({
                 )?.name;
                 const preferred =
                   readme ||
-                  pick(['readme.md', 'readme', 'index.md', 'index.ts', 'index.tsx', 'index.js', 'package.json']) ||
+                  pick([
+                    'readme.md',
+                    'readme',
+                    'index.md',
+                    'index.ts',
+                    'index.tsx',
+                    'index.js',
+                    'package.json',
+                  ]) ||
                   (tree.find(n => n.type === 'file')?.name ?? null);
                 if (preferred) void loadFileContent(preferred);
               }
@@ -590,7 +624,7 @@ export function SnapshotCodeViewer({
         setLoading(false);
       }
     },
-    [getApiPath, loadFileContent, onInvalid, snapshotId]
+    [getApiPath, loadFileContent, onInvalid, snapshotId, initialFileFromUrl]
   );
 
   useEffect(() => {
@@ -964,7 +998,12 @@ export function SnapshotCodeViewer({
           )}
           {treeError && canRecover && onRecover && (
             <div className="mt-3">
-              <Button size="sm" variant="soft" onClick={onRecover} className="w-full">
+              <Button
+                size="sm"
+                variant="soft"
+                onClick={onRecover}
+                className="w-full"
+              >
                 重新创建会话
               </Button>
             </div>
