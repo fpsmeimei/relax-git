@@ -6,8 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
-import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Heart, Loader2, MessageCircle, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyHint } from './empty-hint';
 
 // Time constants in milliseconds
@@ -55,6 +55,47 @@ type PendingEntry = {
   createdAt: string;
   authorId?: string;
   authorAvatar?: string;
+  parentId?: string;
+  replyTo?: string;
+};
+
+type ReplyTarget = null | {
+  commentId: string;
+  targetAuthor: string;
+  targetId?: string | null;
+};
+
+const resolveAuthorName = (author: unknown, fallback = '匿名用户') => {
+  if (typeof author === 'string' && author.trim()) return author;
+  if (author && typeof author === 'object') {
+    const obj = author as {
+      username?: string;
+      name?: string;
+      nickname?: string;
+    };
+    return obj.username || obj.name || obj.nickname || fallback;
+  }
+  return fallback;
+};
+
+const resolveAuthorId = (author: unknown): string | undefined => {
+  if (author && typeof author === 'object') {
+    const obj = author as { id?: string };
+    return obj.id;
+  }
+  return undefined;
+};
+
+const resolveAuthorAvatar = (
+  payload: { authorAvatar?: string } & { author?: unknown }
+) => {
+  if (payload.authorAvatar) return payload.authorAvatar;
+  const author = payload.author;
+  if (author && typeof author === 'object') {
+    const obj = author as { avatar?: string; image?: string };
+    return obj.avatar || obj.image;
+  }
+  return undefined;
 };
 
 const createReplyItem = (payload: {
@@ -66,6 +107,7 @@ const createReplyItem = (payload: {
   isLiked?: boolean;
   authorId?: string;
   authorAvatar?: string;
+  replyTo?: string;
 }): ReplyItem => {
   const result: ReplyItem = {
     id: payload.id,
@@ -80,6 +122,9 @@ const createReplyItem = (payload: {
   }
   if (payload.authorAvatar !== undefined) {
     (result as any).authorAvatar = payload.authorAvatar;
+  }
+  if (payload.replyTo !== undefined) {
+    (result as any).replyTo = payload.replyTo;
   }
   return result;
 };
@@ -128,8 +173,10 @@ export function LineCommentInlinePanel({
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [localData, setLocalData] = useState<LineCommentInlineData>(data);
+  const pendingUpdateRef = useRef<LineCommentInlineData | null>(null);
   const [newComment, setNewComment] = useState('');
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ReplyTarget>(null);
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submittingReply, setSubmittingReply] = useState<string | null>(null);
@@ -137,12 +184,66 @@ export function LineCommentInlinePanel({
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const [pendingComments, setPendingComments] = useState<PendingEntry[]>([]);
-  const [pendingReplies, setPendingReplies] = useState<Record<string, PendingEntry[]>>({});
+  const [pendingReplies, setPendingReplies] = useState<
+    Record<string, PendingEntry[]>
+  >({});
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const replyRef = useRef<HTMLTextAreaElement | null>(null);
 
   const isLoggedIn = !!user?.id;
+
+  const currentUserAvatar = useMemo(() => {
+    if (user?.avatar) return user.avatar;
+    if (!user?.id) return null;
+    for (const comment of localData.comments || []) {
+      const commentAvatar = (comment as any).authorAvatar as string | undefined;
+      if (comment.authorId === user.id && commentAvatar) {
+        return commentAvatar;
+      }
+
+      const replies = (comment as any).replies as
+        | Array<{ authorId?: string; authorAvatar?: string }>
+        | undefined;
+      if (Array.isArray(replies)) {
+        for (const reply of replies) {
+          const replyAvatar = reply.authorAvatar;
+          if (reply.authorId === user.id && replyAvatar) {
+            return replyAvatar;
+          }
+        }
+      }
+    }
+
+    return null;
+  }, [user?.avatar, user?.id, localData.comments]);
+
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
+
+  useEffect(() => {
+    if (pendingUpdateRef.current) {
+      onUpdate(pendingUpdateRef.current);
+      pendingUpdateRef.current = null;
+    }
+  }, [localData, onUpdate]);
+
+  const updateLocalData = useCallback(
+    (updater: (prev: LineCommentInlineData) => LineCommentInlineData) => {
+      setLocalData(prev => {
+        const next = updater(prev);
+        pendingUpdateRef.current = next;
+        return next;
+      });
+    },
+    []
+  );
+
+  const restoreLocalData = useCallback((snapshot: LineCommentInlineData) => {
+    pendingUpdateRef.current = snapshot;
+    setLocalData(snapshot);
+  }, []);
 
   const formatTime = useCallback((dateString: string) => {
     const date = new Date(dateString);
@@ -158,33 +259,79 @@ export function LineCommentInlinePanel({
   const formatCount = useCallback((value?: number) => {
     const num = Number(value ?? 0);
     if (Number.isNaN(num)) return '0';
-    if (num >= NUM_TEN_THOUSAND) return `${(num / NUM_TEN_THOUSAND).toFixed(1).replace(/\.0$/, '')}万`;
-    if (num >= NUM_THOUSAND) return `${(num / NUM_THOUSAND).toFixed(1).replace(/\.0$/, '')}k`;
+    if (num >= NUM_TEN_THOUSAND)
+      return `${(num / NUM_TEN_THOUSAND).toFixed(1).replace(/\.0$/, '')}万`;
+    if (num >= NUM_THOUSAND)
+      return `${(num / NUM_THOUSAND).toFixed(1).replace(/\.0$/, '')}k`;
     return `${num}`;
   }, []);
 
   const sorted = useMemo(() => {
-    return [...(data.comments || [])]
-      .map(comment => ({
-        ...comment,
-        replies: Array.isArray(comment.replies)
-          ? [...comment.replies].sort((ra, rb) => {
-              const diff = Number(rb.likes ?? 0) - Number(ra.likes ?? 0);
-              if (diff !== 0) return diff;
-              return (
-                new Date(ra.createdAt).getTime() - new Date(rb.createdAt).getTime()
-              );
-            })
-          : [],
-      }))
-      .sort((a, b) => {
-        const diff = Number(b.likes ?? 0) - Number(a.likes ?? 0);
-        if (diff !== 0) return diff;
-        return (
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
+    const normalized = (localData.comments || []).map(comment => {
+      const commentAuthor = resolveAuthorName((comment as any).author);
+      const commentAuthorId =
+        comment.authorId ?? resolveAuthorId((comment as any).author);
+
+      const mappedReplies = Array.isArray(comment.replies)
+        ? comment.replies.map(reply => {
+            const replyAuthor = resolveAuthorName(
+              (reply as any).author,
+              commentAuthor
+            );
+            const replyAuthorId =
+              reply.authorId ?? resolveAuthorId((reply as any).author);
+            const replyAvatar = resolveAuthorAvatar(reply as any);
+            const replyTo =
+              typeof (reply as any).replyTo === 'string'
+                ? (reply as any).replyTo
+                : undefined;
+
+            return createReplyItem({
+              id: reply.id,
+              content: reply.content,
+              author: replyAuthor,
+              createdAt: reply.createdAt,
+              likes: Number(reply.likes ?? 0),
+              isLiked: !!reply.isLiked,
+              ...(replyAuthorId ? { authorId: replyAuthorId } : {}),
+              ...(replyAvatar ? { authorAvatar: replyAvatar } : {}),
+              ...(replyTo ? { replyTo } : {}),
+            });
+          })
+        : [];
+
+      const sortedReplies = mappedReplies.sort(
+        (ra, rb) =>
+          new Date(ra.createdAt).getTime() - new Date(rb.createdAt).getTime()
+      );
+
+      const commentPayload: Parameters<typeof createCommentItem>[0] = {
+        id: comment.id,
+        content: comment.content,
+        author: commentAuthor,
+        createdAt: comment.createdAt,
+        likes: Number(comment.likes ?? 0),
+        isLiked: !!comment.isLiked,
+        replies: sortedReplies,
+        ...(commentAuthorId ? { authorId: commentAuthorId } : {}),
+      };
+
+      const commentAvatarResolved = resolveAuthorAvatar(comment as any);
+      if (commentAvatarResolved) {
+        Object.assign(commentPayload, { authorAvatar: commentAvatarResolved });
+      }
+
+      return createCommentItem({
+        ...commentPayload,
       });
-  }, [data.comments]);
+    });
+
+    return normalized.sort((a, b) => {
+      const diff = Number(b.likes ?? 0) - Number(a.likes ?? 0);
+      if (diff !== 0) return diff;
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
+  }, [localData.comments]);
 
   const handleSubmit = useCallback(async () => {
     if (!newComment.trim() || submitting) return;
@@ -206,40 +353,56 @@ export function LineCommentInlinePanel({
     setNewComment('');
     setTimeout(() => textareaRef.current?.focus(), 0);
 
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       const { data: res } = await apiClient.post('/comments', {
         snapshotId,
         content: optimistic.content,
         anchorType: 'LINE',
         commitSha,
-        filePath: data.filePath,
-        lineStart: data.lineNumber,
-        lineEnd: data.lineNumber,
+        filePath: localData.filePath,
+        lineStart: localData.lineNumber,
+        lineEnd: localData.lineNumber,
       });
+      const responseAuthor =
+        (res as any)?.author?.username ||
+        (res as any)?.author?.name ||
+        (res as any)?.authorName ||
+        user?.username ||
+        '匿名用户';
+      const responseAuthorId =
+        (res as any)?.author?.id || (res as any)?.authorId || user?.id;
+      const responseAvatar =
+        (res as any)?.authorAvatar ||
+        (res as any)?.author?.avatar ||
+        (res as any)?.author?.image ||
+        user?.avatar ||
+        null;
+
       const createdComment = createCommentItem({
         id: res.id,
         content: res.content,
-        author: user?.username || '匿名用户',
+        author: responseAuthor,
         createdAt: res.createdAt,
-        authorId: user?.id,
+        ...(responseAuthorId ? { authorId: responseAuthorId } : {}),
         replies: [],
-        ...(user?.avatar ? { authorAvatar: user.avatar } : {}),
+        ...(responseAvatar ? { authorAvatar: responseAvatar } : {}),
       });
-      onUpdate({
-        ...data,
-        comments: [...data.comments, createdComment],
-      });
+      updateLocalData(prev => ({
+        ...prev,
+        comments: [...prev.comments, createdComment],
+      }));
+      setPendingComments(prev => prev.filter(c => c.id !== tempId));
     } catch (e: any) {
+      setPendingComments(prev => prev.filter(c => c.id !== tempId));
       toast({
         title: '发布失败',
         description: e?.message,
         variant: 'destructive',
       });
-    } finally {
-      setSubmitting(false);
-      setPendingComments(prev => prev.filter(c => c.id !== tempId));
     }
+
+    setSubmitting(false);
   }, [
     newComment,
     submitting,
@@ -247,111 +410,139 @@ export function LineCommentInlinePanel({
     toast,
     snapshotId,
     commitSha,
-    data,
-    onUpdate,
+    localData.filePath,
+    localData.lineNumber,
+    updateLocalData,
     user?.username,
     user?.id,
     user?.avatar,
   ]);
 
-  const handleReply = useCallback(
-    async (parentId: string) => {
-      if (!replyText.trim() || submittingReply) return;
-      if (!isLoggedIn) {
-        toast({ title: '请先登录', variant: 'destructive' });
+  const handleReplyTarget = useCallback(
+    (commentId: string, targetAuthor: string, targetId?: string | null) => {
+      const isSame =
+        replyingTo?.commentId === commentId &&
+        replyingTo?.targetAuthor === targetAuthor &&
+        replyingTo?.targetId === targetId;
+
+      if (isSame) {
+        setReplyingTo(null);
+        setReplyText('');
         return;
       }
 
-      const tempId = `temp:${Date.now()}`;
-      const optimistic: PendingEntry = {
-        id: tempId,
-        content: replyText.trim(),
-        author: user?.username || '匿名用户',
-        createdAt: new Date().toISOString(),
-      };
-      if (user?.id) {
-        optimistic.authorId = user.id;
-      }
-      if (user?.avatar) {
-        optimistic.authorAvatar = user.avatar;
-      }
-      setPendingReplies(prev => ({
-        ...prev,
-        [parentId]: [...(prev[parentId] || []), optimistic],
-      }));
+      setReplyingTo({ commentId, targetAuthor, targetId: targetId ?? null });
       setReplyText('');
-      setReplyingTo(null);
-
-      try {
-        setSubmittingReply(parentId);
-        const { data: res } = await apiClient.post('/comments', {
-          snapshotId,
-          content: optimistic.content,
-          anchorType: 'LINE',
-          commitSha,
-          filePath: data.filePath,
-          lineStart: data.lineNumber,
-          lineEnd: data.lineNumber,
-          parentId,
-        });
-        const newReply = createReplyItem({
-          id: res.id,
-          content: res.content,
-          author: user?.username || '匿名用户',
-          createdAt: res.createdAt,
-          authorId: user?.id,
-          ...(user?.avatar ? { authorAvatar: user.avatar } : {}),
-        });
-        onUpdate({
-          ...data,
-          comments: data.comments.map(c =>
-            c.id === parentId
-              ? createCommentItem({
-                  ...c,
-                  replies: [...(c.replies || []), newReply],
-                })
-              : c
-          ),
-        });
-      } catch (e: any) {
-        toast({
-          title: '回复失败',
-          description: e?.message,
-          variant: 'destructive',
-        });
-      } finally {
-        setSubmittingReply(null);
-        setPendingReplies(prev => {
-          const next = { ...prev };
-          const list = next[parentId];
-          if (!list) return next;
-          const filtered = list.filter(r => r.id !== tempId);
-          if (filtered.length > 0) {
-            next[parentId] = filtered;
-          } else {
-            delete next[parentId];
-          }
-          return next;
-        });
-      }
+      setTimeout(() => replyRef.current?.focus(), 0);
     },
-    [
-      replyText,
-      submittingReply,
-      isLoggedIn,
-      toast,
-      snapshotId,
-      commitSha,
-      data,
-      onUpdate,
-      user?.username,
-      user?.id,
-      user?.avatar,
-    ]
+    [replyingTo]
   );
+
+  const handleReplySubmit = useCallback(async () => {
+    const content = replyText.trim();
+    if (!replyingTo || !content || submittingReply) return;
+    if (!isLoggedIn) {
+      toast({ title: '请先登录', variant: 'destructive' });
+      return;
+    }
+
+    const { commentId: parentId, targetAuthor } = replyingTo;
+    const tempId = `temp:${Date.now()}`;
+    const optimistic: PendingEntry = {
+      id: tempId,
+      content,
+      author: user?.username || '匿名用户',
+      createdAt: new Date().toISOString(),
+      parentId,
+      replyTo: targetAuthor,
+      ...(user?.id ? { authorId: user.id } : {}),
+      ...(user?.avatar ? { authorAvatar: user.avatar } : {}),
+    };
+    setPendingReplies(prev => ({
+      ...prev,
+      [parentId]: [...(prev[parentId] || []), optimistic],
+    }));
+    setReplyText('');
+    setSubmittingReply(parentId);
+
+    try {
+      const { data: res } = await apiClient.post('/comments', {
+        snapshotId,
+        content,
+        anchorType: 'LINE',
+        commitSha,
+        filePath: localData.filePath,
+        lineStart: localData.lineNumber,
+        lineEnd: localData.lineNumber,
+        parentId,
+      });
+      const responseAuthor =
+        res.author || res.authorName || user?.username || '匿名用户';
+      const responseAvatar =
+        (res as any)?.authorAvatar ||
+        (res as any)?.author?.avatar ||
+        user?.avatar;
+      const newReply = createReplyItem({
+        id: res.id,
+        content: res.content,
+        author: responseAuthor,
+        createdAt: res.createdAt,
+        authorId: res.authorId ?? user?.id,
+        ...(responseAvatar ? { authorAvatar: responseAvatar } : {}),
+        replyTo: targetAuthor,
+      });
+      updateLocalData(prev => ({
+        ...prev,
+        comments: prev.comments.map(c =>
+          c.id === parentId
+            ? createCommentItem({
+                ...c,
+                replies: [...(c.replies || []), newReply],
+              })
+            : c
+        ),
+      }));
+    } catch (e: any) {
+      toast({
+        title: '回复失败',
+        description: e?.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmittingReply(null);
+      setReplyingTo(null);
+      setPendingReplies(prev => {
+        const next = { ...prev };
+        const list = next[parentId];
+        if (!list) return next;
+        const filtered = list.filter(r => r.id !== tempId);
+        if (filtered.length > 0) {
+          next[parentId] = filtered;
+        } else {
+          delete next[parentId];
+        }
+        return next;
+      });
+    }
+  }, [
+    replyText,
+    replyingTo,
+    submittingReply,
+    isLoggedIn,
+    toast,
+    snapshotId,
+    commitSha,
+    localData.filePath,
+    localData.lineNumber,
+    updateLocalData,
+    user?.username,
+    user?.id,
+    user?.avatar,
+  ]);
 
   const handleLike = useCallback(
     async (commentId: string, isReply = false) => {
+      const snapshot = localData;
       try {
         if (!isLoggedIn) {
           toast({ title: '请先登录', variant: 'destructive' });
@@ -363,7 +554,7 @@ export function LineCommentInlinePanel({
         let parentId: string | null = null;
         let liked = false;
         let likes = 0;
-        for (const c of data.comments) {
+        for (const c of localData.comments) {
           if (c.id === commentId && !isReply) {
             liked = !!c.isLiked;
             likes = Number(c.likes || 0);
@@ -382,8 +573,8 @@ export function LineCommentInlinePanel({
 
         const optimisticLikes = Math.max(0, likes + (liked ? -1 : 1));
         const optimistic = {
-          ...data,
-          comments: data.comments.map(c => {
+          ...localData,
+          comments: localData.comments.map(c => {
             if (!isReply && c.id === commentId) {
               return { ...c, likes: optimisticLikes, isLiked: !liked };
             }
@@ -400,7 +591,7 @@ export function LineCommentInlinePanel({
             return c;
           }),
         };
-        onUpdate(optimistic);
+        updateLocalData(() => optimistic);
 
         const res = liked
           ? await apiClient.delete(`/comments/${commentId}/like`)
@@ -426,9 +617,9 @@ export function LineCommentInlinePanel({
             return c;
           }),
         };
-        onUpdate(corrected as any);
+        updateLocalData(() => corrected as LineCommentInlineData);
       } catch (e: any) {
-        onUpdate({ ...data });
+        restoreLocalData(snapshot);
         toast({
           title: '点赞失败',
           description: e?.message,
@@ -442,11 +633,12 @@ export function LineCommentInlinePanel({
         });
       }
     },
-    [isLoggedIn, toast, likingIds, data, onUpdate]
+    [isLoggedIn, toast, likingIds, localData, updateLocalData, restoreLocalData]
   );
 
   const handleDelete = useCallback(
     async (commentId: string, isReply = false) => {
+      const snapshot = localData;
       try {
         if (!isLoggedIn) {
           toast({ title: '请先登录', variant: 'destructive' });
@@ -457,8 +649,8 @@ export function LineCommentInlinePanel({
         setDeletingIds(prev => new Set(prev).add(commentId));
 
         const optimistic: LineCommentInlineData = {
-          ...data,
-          comments: data.comments
+          ...localData,
+          comments: localData.comments
             .filter(c => (!isReply && c.id === commentId ? false : true))
             .map(c =>
               isReply
@@ -469,12 +661,12 @@ export function LineCommentInlinePanel({
                 : c
             ),
         };
-        onUpdate(optimistic);
+        updateLocalData(() => optimistic);
 
         await apiClient.delete(`/comments/${commentId}`);
         toast({ title: '已删除' });
       } catch (e: any) {
-        onUpdate({ ...data });
+        restoreLocalData(snapshot);
         toast({
           title: '删除失败',
           description: e?.message,
@@ -488,7 +680,14 @@ export function LineCommentInlinePanel({
         });
       }
     },
-    [isLoggedIn, toast, deletingIds, data, onUpdate]
+    [
+      isLoggedIn,
+      toast,
+      deletingIds,
+      localData,
+      updateLocalData,
+      restoreLocalData,
+    ]
   );
 
   const reactionButtonClass =
@@ -504,7 +703,6 @@ export function LineCommentInlinePanel({
     [user?.id, user?.username]
   );
 
-
   return (
     <div className="my-5 rounded-[26px] border border-border bg-card text-card-foreground shadow-lg backdrop-blur">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -512,7 +710,9 @@ export function LineCommentInlinePanel({
           <span className="text-[15px] font-semibold tracking-wide text-foreground">
             {data.filePath}
           </span>
-          <span className="text-muted-foreground/70">第 {data.lineNumber} 行</span>
+          <span className="text-muted-foreground/70">
+            第 {data.lineNumber} 行
+          </span>
         </div>
       </div>
 
@@ -523,7 +723,10 @@ export function LineCommentInlinePanel({
               <div key={comment.id} className="flex gap-4">
                 <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
                   {comment.authorAvatar && (
-                    <AvatarImage src={comment.authorAvatar} alt={comment.author} />
+                    <AvatarImage
+                      src={comment.authorAvatar}
+                      alt={comment.author}
+                    />
                   )}
                   <AvatarFallback className="text-[13px] font-semibold text-foreground/85">
                     {comment.author.charAt(0).toUpperCase()}
@@ -534,7 +737,9 @@ export function LineCommentInlinePanel({
                     <span className="text-[15px] font-semibold text-foreground">
                       {comment.author}
                     </span>
-                    <span className="text-muted-foreground/70">{formatTime(comment.createdAt)}</span>
+                    <span className="text-muted-foreground/70">
+                      {formatTime(comment.createdAt)}
+                    </span>
                   </div>
                   <div className="mt-2 text-[16px] leading-relaxed tracking-wide text-foreground/90 font-rounded-cn">
                     {comment.content}
@@ -554,7 +759,10 @@ export function LineCommentInlinePanel({
               <div key={comment.id} className="flex gap-4">
                 <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
                   {(comment as any).authorAvatar && (
-                    <AvatarImage src={(comment as any).authorAvatar} alt={comment.author} />
+                    <AvatarImage
+                      src={(comment as any).authorAvatar}
+                      alt={comment.author}
+                    />
                   )}
                   <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
                     {comment.author.charAt(0).toUpperCase()}
@@ -565,7 +773,9 @@ export function LineCommentInlinePanel({
                     <span className="text-[16px] font-semibold text-foreground">
                       {comment.author}
                     </span>
-                    <span className="text-muted-foreground/70">{formatTime(comment.createdAt)}</span>
+                    <span className="text-muted-foreground/70">
+                      {formatTime(comment.createdAt)}
+                    </span>
                   </div>
                   <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
                     {comment.content}
@@ -590,9 +800,17 @@ export function LineCommentInlinePanel({
                       type="button"
                       className={reactionButtonClass}
                       onClick={() =>
-                        setReplyingTo(prev => (prev === comment.id ? null : comment.id))
+                        handleReplyTarget(
+                          comment.id,
+                          comment.author,
+                          comment.id
+                        )
                       }
-                      aria-label={replyingTo === comment.id ? '收起回复框' : `回复 ${comment.author}`}
+                      aria-label={
+                        replyingTo?.commentId === comment.id
+                          ? '收起回复框'
+                          : `回复 ${comment.author}`
+                      }
                     >
                       <MessageCircle className="h-4 w-4" />
                       <span>回复</span>
@@ -618,98 +836,121 @@ export function LineCommentInlinePanel({
                             <span className="font-semibold text-foreground">
                               {reply.author}
                             </span>
-                            <span className="text-muted-foreground/70">刚刚</span>
+                            <span className="text-muted-foreground/70">
+                              刚刚
+                            </span>
                           </div>
                           <div className="mt-1 text-[15px] leading-relaxed text-foreground/85 font-rounded-cn">
                             {reply.content}
                           </div>
                           <div className="mt-2 flex items-center gap-3 text-[12px] text-muted-foreground/70">
-                            <Loader2 className="h-3 w-3 animate-spin" /> 正在发布...
+                            <Loader2 className="h-3 w-3 animate-spin" />{' '}
+                            正在发布...
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {Array.isArray(comment.replies) && comment.replies.length > 0 && (
-                    <div className="mt-6 space-y-6">
-                      {comment.replies.map(reply => (
-                        <div key={reply.id} className="flex gap-4">
-                          <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
-                            {(reply as any).authorAvatar && (
-                              <AvatarImage src={(reply as any).authorAvatar} alt={reply.author} />
-                            )}
-                            <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
-                              {reply.author.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                              <span className="text-[16px] font-semibold text-foreground">
-                                {reply.author}
-                              </span>
-                              <span className="text-muted-foreground">▶</span>
-                              <span className="text-[16px] font-semibold text-foreground">
-                                {comment.author}
-                              </span>
-                              <span className="text-muted-foreground/70">{formatTime(reply.createdAt)}</span>
-                            </div>
-                            <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
-                              {reply.content}
-                            </div>
-                            <div className="mt-3 flex items-center gap-6">
-                              <button
-                                type="button"
-                                className={reactionButtonClass}
-                                onClick={() => void handleLike(reply.id, true)}
-                                disabled={likingIds.has(reply.id)}
-                              >
-                                <Heart
-                                  className={`h-4 w-4 ${
-                                    reply.isLiked ? 'fill-current text-destructive' : 'text-muted-foreground'
-                                  }`}
+                  {Array.isArray(comment.replies) &&
+                    comment.replies.length > 0 && (
+                      <div className="mt-6 space-y-6">
+                        {comment.replies.map(reply => (
+                          <div key={reply.id} className="flex gap-4">
+                            <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
+                              {(reply as any).authorAvatar && (
+                                <AvatarImage
+                                  src={(reply as any).authorAvatar}
+                                  alt={reply.author}
                                 />
-                                <span>{formatCount(reply.likes)}</span>
-                              </button>
-                              <button
-                                type="button"
-                                className={reactionButtonClass}
-                                onClick={() => setReplyingTo(prev => (prev === `${comment.id}:${reply.id}` ? null : `${comment.id}:${reply.id}`))}
-                                aria-label={`回复 ${reply.author}`}
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                                <span>回复</span>
-                              </button>
-                              {canDelete(reply.authorId, reply.author) && (
+                              )}
+                              <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+                                {reply.author.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                                <span className="text-[16px] font-semibold text-foreground">
+                                  {reply.author}
+                                </span>
+                                <span className="text-muted-foreground">
+                                  ▶
+                                </span>
+                                <span className="text-[16px] font-semibold text-foreground">
+                                  {comment.author}
+                                </span>
+                                <span className="text-muted-foreground/70">
+                                  {formatTime(reply.createdAt)}
+                                </span>
+                              </div>
+                              <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
+                                {reply.content}
+                              </div>
+                              <div className="mt-3 flex items-center gap-6">
                                 <button
                                   type="button"
                                   className={reactionButtonClass}
-                                  onClick={() => void handleDelete(reply.id, true)}
-                                  disabled={deletingIds.has(reply.id)}
-                                  aria-label="删除回复"
+                                  onClick={() =>
+                                    void handleLike(reply.id, true)
+                                  }
+                                  disabled={likingIds.has(reply.id)}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Heart
+                                    className={`h-4 w-4 ${
+                                      reply.isLiked
+                                        ? 'fill-current text-destructive'
+                                        : 'text-muted-foreground'
+                                    }`}
+                                  />
+                                  <span>{formatCount(reply.likes)}</span>
                                 </button>
-                              )}
+                                <button
+                                  type="button"
+                                  className={reactionButtonClass}
+                                  onClick={() =>
+                                    handleReplyTarget(
+                                      comment.id,
+                                      reply.author,
+                                      reply.id
+                                    )
+                                  }
+                                  aria-label={`回复 ${reply.author}`}
+                                >
+                                  <MessageCircle className="h-4 w-4" />
+                                  <span>回复</span>
+                                </button>
+                                {canDelete(reply.authorId, reply.author) && (
+                                  <button
+                                    type="button"
+                                    className={reactionButtonClass}
+                                    onClick={() =>
+                                      void handleDelete(reply.id, true)
+                                    }
+                                    disabled={deletingIds.has(reply.id)}
+                                    aria-label="删除回复"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
 
-                  {replyingTo === comment.id && (
+                  {replyingTo?.commentId === comment.id && (
                     <div className="mt-4 ml-2 rounded-[20px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
                       <Textarea
                         ref={replyRef}
                         value={replyText}
                         onChange={e => setReplyText(e.target.value)}
-                        placeholder={`回复 @${comment.author}:`}
+                        placeholder={`回复 @${replyingTo?.targetAuthor || comment.author}:`}
                         className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 font-rounded-cn"
                         onKeyDown={e => {
                           if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                             e.preventDefault();
-                            void handleReply(comment.id);
+                            void handleReplySubmit();
                           }
                         }}
                       />
@@ -726,8 +967,10 @@ export function LineCommentInlinePanel({
                         </button>
                         <Button
                           size="sm"
-                          onClick={() => void handleReply(comment.id)}
-                          disabled={!replyText.trim() || submittingReply === comment.id}
+                          onClick={() => void handleReplySubmit()}
+                          disabled={
+                            !replyText.trim() || submittingReply === comment.id
+                          }
                           className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                         >
                           {submittingReply === comment.id && (
@@ -750,8 +993,11 @@ export function LineCommentInlinePanel({
       <div className="border-t border-border px-6 py-5">
         <div className="flex gap-4">
           <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
-            {user?.avatar && (
-              <AvatarImage src={user.avatar} alt={user?.username || 'avatar'} />
+            {currentUserAvatar && (
+              <AvatarImage
+                src={currentUserAvatar}
+                alt={user?.username || 'avatar'}
+              />
             )}
             <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
               {user?.username?.charAt(0).toUpperCase() || 'U'}
@@ -778,7 +1024,9 @@ export function LineCommentInlinePanel({
                 disabled={!newComment.trim() || submitting}
                 className="h-9 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
               >
-                {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {submitting && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
                 发布
               </Button>
             </div>
@@ -788,4 +1036,3 @@ export function LineCommentInlinePanel({
     </div>
   );
 }
-

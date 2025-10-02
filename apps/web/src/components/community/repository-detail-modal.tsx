@@ -9,11 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/use-auth';
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
-
 import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -110,7 +107,7 @@ export function RepositoryDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[90vw] max-w-[1400px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <span className="truncate">{repository.name}</span>
@@ -132,19 +129,10 @@ export function RepositoryDetailModal({
             <span className="ml-3">加载中...</span>
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden">
-            <Tabs defaultValue="overview" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-2 flex-shrink-0 px-6">
-                <TabsTrigger value="overview">概览</TabsTrigger>
-                <TabsTrigger value="discussions">
-                  <MessageCircle className="h-4 w-4 mr-2" /> 讨论
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent
-                value="overview"
-                className="flex-1 overflow-y-auto space-y-8 p-6"
-              >
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-6">
+              {/* 概览区域 */}
+              <div className="p-6 space-y-6">
                 {/* 仓库信息 */}
                 <div className="space-y-4">
                   <div className="flex items-start space-x-4">
@@ -169,37 +157,6 @@ export function RepositoryDetailModal({
                           {repository.description}
                         </p>
                       )}
-
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            创建于{' '}
-                            {formatDistanceToNow(
-                              new Date(repository.createdAt),
-                              {
-                                addSuffix: true,
-                                locale: zhCN,
-                              }
-                            )}
-                          </span>
-                        </div>
-
-                        {repository.publishedAt && (
-                          <div className="flex items-center space-x-1">
-                            <span>
-                              发布于{' '}
-                              {formatDistanceToNow(
-                                new Date(repository.publishedAt),
-                                {
-                                  addSuffix: true,
-                                  locale: zhCN,
-                                }
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
 
@@ -220,12 +177,15 @@ export function RepositoryDetailModal({
                     <div className="flex items-center space-x-1">
                       <Heart className="h-4 w-4" />
                       <span>
-                        {repositoryDetail?.stars || repository.stars} 点赞
+                        {(
+                          repositoryDetail?.stars ?? repository.stars
+                        ).toLocaleString()}{' '}
+                        点赞
                       </span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Eye className="h-4 w-4" />
-                      <span>{repository.viewCount} 浏览</span>
+                      <span>{repository.viewCount.toLocaleString()} 浏览</span>
                     </div>
                     <div className="flex items-center space-x-1">
                       <MessageCircle className="h-4 w-4" />
@@ -243,53 +203,16 @@ export function RepositoryDetailModal({
                       <span>多分支</span>
                     </div>
                   </div>
-
-                  {/* 操作按钮 */}
-                  <div className="flex space-x-3">
-                    <Button
-                      variant={
-                        repositoryDetail?.isLiked ? 'default' : 'outline'
-                      }
-                      onClick={handleLike}
-                      disabled={isLiking}
-                      className={`flex-1 ${repositoryDetail?.isLiked ? 'text-destructive' : ''}`}
-                      aria-label={
-                        repositoryDetail?.isLiked ? '取消点赞' : '点赞'
-                      }
-                    >
-                      {isLiking ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Heart
-                          className={`h-4 w-4 mr-2 ${repositoryDetail?.isLiked ? 'fill-current' : ''}`}
-                        />
-                      )}
-                      {repositoryDetail?.isLiked ? '已点赞' : '点赞'}
-                    </Button>
-                  </div>
                 </div>
+              </div>
 
-                {/* 封面图片 */}
-                {repository.coverImage && (
-                  <div className="relative h-64 rounded-lg overflow-hidden">
-                    <Image
-                      src={repository.coverImage}
-                      alt={`${repository.name} 封面`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 100vw, 768px"
-                    />
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent
-                value="discussions"
-                className="flex-1 overflow-y-auto p-6"
-              >
-                <RepositoryComments repositoryId={repository.id} />
-              </TabsContent>
-            </Tabs>
+              {/* 评论区域 */}
+              <div className="p-6 pt-0">
+                <div className="border-t pt-6">
+                  <RepositoryComments repositoryId={repository.id} />
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </DialogContent>

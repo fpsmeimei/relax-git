@@ -9,6 +9,7 @@ import { SecurityAdminController } from './controllers/security-admin.controller
 import { getJwtConfig } from '../config/jwt.config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { AccountSecurityService } from './services/account-security.service';
 import { TokenService } from './services/token.service';
@@ -27,6 +28,7 @@ import { TokenService } from './services/token.service';
     AuthService,
     JwtStrategy,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     RolesGuard,
     AccountSecurityService,
     AuditLogService,
@@ -36,6 +38,7 @@ import { TokenService } from './services/token.service';
   exports: [
     AuthService,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     RolesGuard,
     AccountSecurityService,
     AuditLogService,

@@ -127,60 +127,18 @@ export class CommunityAPI {
     }
     if (query.search) params.append('search', query.search);
 
-    try {
-      const response = await apiClient.get(
-        `/community/feed?${params.toString()}`
-      );
-      return response.data;
-    } catch (error: any) {
-      // 如果是401且有Authorization头，尝试匿名重试一次
-      if (
-        error?.response?.status === 401 &&
-        error?.config?.headers?.Authorization
-      ) {
-        try {
-          const retryResponse = await apiClient.get(
-            `/community/feed?${params.toString()}`,
-            {
-              headers: {} as any, // 移除认证头进行匿名访问
-            }
-          );
-          return retryResponse.data;
-        } catch (retryError) {
-          // 匿名重试也失败，抛出原错误
-          throw error;
-        }
-      }
-      throw error;
-    }
+    const response = await apiClient.get(
+      `/community/feed?${params.toString()}`
+    );
+    return response.data;
   }
 
   /**
    * 获取仓库详情
    */
   static async getRepositoryDetail(repoId: string): Promise<any> {
-    try {
-      const response = await apiClient.get(`/community/repositories/${repoId}`);
-      return response.data;
-    } catch (error: any) {
-      if (
-        error?.response?.status === 401 &&
-        error?.config?.headers?.Authorization
-      ) {
-        try {
-          const retryResponse = await apiClient.get(
-            `/community/repositories/${repoId}`,
-            {
-              headers: {} as any,
-            }
-          );
-          return retryResponse.data;
-        } catch (retryError) {
-          throw error;
-        }
-      }
-      throw error;
-    }
+    const response = await apiClient.get(`/community/repositories/${repoId}`);
+    return response.data;
   }
 
   /**
@@ -217,28 +175,10 @@ export class CommunityAPI {
     if (cursor) params.append('cursor', cursor);
     params.append('limit', limit.toString());
 
-    try {
-      const response = await apiClient.get(
-        `/community/repositories/${repoId}/comments?${params.toString()}`
-      );
-      return response.data;
-    } catch (error: any) {
-      if (
-        error?.response?.status === 401 &&
-        error?.config?.headers?.Authorization
-      ) {
-        try {
-          const retry = await apiClient.get(
-            `/community/repositories/${repoId}/comments?${params.toString()}`,
-            { headers: {} as any }
-          );
-          return retry.data;
-        } catch (retryErr) {
-          throw error;
-        }
-      }
-      throw error;
-    }
+    const response = await apiClient.get(
+      `/community/repositories/${repoId}/comments?${params.toString()}`
+    );
+    return response.data;
   }
 
   /**
@@ -273,24 +213,7 @@ export class CommunityAPI {
    */
   static async recordRepositoryView(repoId: string): Promise<void> {
     try {
-      try {
-        await apiClient.post(`/community/repositories/${repoId}/view`);
-      } catch (error: any) {
-        if (
-          error?.response?.status === 401 &&
-          error?.config?.headers?.Authorization
-        ) {
-          await apiClient.post(
-            `/community/repositories/${repoId}/view`,
-            {},
-            {
-              headers: {} as any,
-            }
-          );
-        } else {
-          throw error;
-        }
-      }
+      await apiClient.post(`/community/repositories/${repoId}/view`);
     } catch (error) {
       // 静默失败，不影响用户体验
       console.warn('Failed to record repository view:', error);
@@ -301,28 +224,10 @@ export class CommunityAPI {
    * 获取热门标签
    */
   static async getPopularTags(limit: number = 20): Promise<PopularTag[]> {
-    try {
-      const response = await apiClient.get(
-        `/community/tags/popular?limit=${limit}`
-      );
-      return response.data;
-    } catch (error: any) {
-      if (
-        error?.response?.status === 401 &&
-        error?.config?.headers?.Authorization
-      ) {
-        try {
-          const retryResponse = await apiClient.get(
-            `/community/tags/popular?limit=${limit}`,
-            { headers: {} as any }
-          );
-          return retryResponse.data;
-        } catch (retryError) {
-          throw error;
-        }
-      }
-      throw error;
-    }
+    const response = await apiClient.get(
+      `/community/tags/popular?limit=${limit}`
+    );
+    return response.data;
   }
 
   /**
@@ -331,27 +236,9 @@ export class CommunityAPI {
   static async getPopularLanguages(
     limit: number = 10
   ): Promise<PopularLanguage[]> {
-    try {
-      const response = await apiClient.get(
-        `/community/languages/popular?limit=${limit}`
-      );
-      return response.data;
-    } catch (error: any) {
-      if (
-        error?.response?.status === 401 &&
-        error?.config?.headers?.Authorization
-      ) {
-        try {
-          const retryResponse = await apiClient.get(
-            `/community/languages/popular?limit=${limit}`,
-            { headers: {} as any }
-          );
-          return retryResponse.data;
-        } catch (retryError) {
-          throw error;
-        }
-      }
-      throw error;
-    }
+    const response = await apiClient.get(
+      `/community/languages/popular?limit=${limit}`
+    );
+    return response.data;
   }
 }

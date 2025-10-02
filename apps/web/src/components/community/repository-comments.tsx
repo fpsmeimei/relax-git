@@ -2,13 +2,11 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { CommunityAPI, RepositoryCommentDto } from '@/lib/api/community';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
 import { Heart, Loader2, MessageCircle, Send } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 
 interface RepositoryCommentsProps {
@@ -44,113 +42,189 @@ function CommentItem({ comment, onLike, onReply, isLiking }: CommentItemProps) {
     }
   };
 
+  const formatTime = (dateInput: string | Date) => {
+    const date = new Date(dateInput);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const TIME_MINUTE = 60000;
+    const TIME_HOUR = 3600000;
+    const TIME_DAY = 86400000;
+    const TIME_WEEK = 604800000;
+
+    if (diff < TIME_MINUTE) return '刚刚';
+    if (diff < TIME_HOUR) return `${Math.floor(diff / TIME_MINUTE)}分钟前`;
+    if (diff < TIME_DAY) return `${Math.floor(diff / TIME_HOUR)}小时前`;
+    if (diff < TIME_WEEK) return `${Math.floor(diff / TIME_DAY)}天前`;
+    return date.toLocaleDateString('zh-CN');
+  };
+
+  const formatCount = (value?: number) => {
+    const num = Number(value ?? 0);
+    if (Number.isNaN(num)) return '0';
+    if (num >= 10000)
+      return `${(num / 10000).toFixed(1).replace(/\.0$/, '')}万`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+    return `${num}`;
+  };
+
+  const reactionButtonClass =
+    'flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40';
+
   return (
-    <div className="space-y-3">
-      <div className="flex space-x-3">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={comment.author.avatar || undefined} />
-          <AvatarFallback>
-            {comment.author.username.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+    <div className="flex gap-4">
+      <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
+        <AvatarImage
+          src={comment.author.avatar || undefined}
+          alt={comment.author.username}
+        />
+        <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+          {comment.author.username.charAt(0).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
 
-        <div className="flex-1 space-y-2">
-          <div className="comment-bubble space-y-2">
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="font-medium text-sm">
-                {comment.author.username}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(comment.createdAt), {
-                  addSuffix: true,
-                  locale: zhCN,
-                })}
-              </span>
-            </div>
-            <p className="text-sm text-foreground whitespace-pre-wrap">
-              {comment.content}
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-            <button
-              onClick={() => onLike(comment.id)}
-              disabled={isLiking}
-              aria-label={comment.isLiked ? '取消点赞' : '点赞'}
-              className={`flex items-center space-x-1 hover:text-destructive transition-colors ${
-                comment.isLiked ? 'text-destructive' : ''
+      <div className="flex-1">
+        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          <span className="text-[16px] font-semibold text-foreground">
+            {comment.author.username}
+          </span>
+          <span className="text-muted-foreground/70">
+            {formatTime(comment.createdAt)}
+          </span>
+        </div>
+        <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
+          {comment.content}
+        </div>
+        <div className="mt-3 flex items-center gap-6">
+          <button
+            type="button"
+            className={reactionButtonClass}
+            onClick={() => onLike(comment.id)}
+            disabled={isLiking}
+          >
+            <Heart
+              className={`h-4 w-4 ${
+                comment.isLiked
+                  ? 'fill-current text-destructive'
+                  : 'text-muted-foreground'
               }`}
-            >
-              <Heart
-                className={`h-4 w-4 ${comment.isLiked ? 'fill-current' : ''}`}
-              />
-              <span>{comment.likesCount}</span>
-            </button>
+            />
+            <span>{formatCount(comment.likesCount)}</span>
+          </button>
+          <button
+            type="button"
+            className={reactionButtonClass}
+            onClick={() => setShowReplyForm(!showReplyForm)}
+            aria-label={
+              showReplyForm ? '收起回复框' : `回复 ${comment.author.username}`
+            }
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span>回复</span>
+          </button>
+        </div>
 
-            <button
-              onClick={() => setShowReplyForm(!showReplyForm)}
-              aria-label="回复评论"
-              className="flex items-center space-x-1 hover:text-primary transition-colors"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span>回复</span>
-            </button>
+        {showReplyForm && (
+          <div className="mt-4 ml-2 rounded-[20px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+            <Textarea
+              value={replyContent}
+              onChange={e => setReplyContent(e.target.value)}
+              placeholder={`回复 @${comment.author.username}:`}
+              className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+              maxLength={2000}
+              onKeyDown={e => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  handleReplySubmit();
+                }
+              }}
+            />
+            <div className="mt-3 flex items-center justify-end gap-4">
+              <button
+                type="button"
+                className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  setReplyContent('');
+                  setShowReplyForm(false);
+                }}
+              >
+                取消
+              </button>
+              <Button
+                size="sm"
+                onClick={handleReplySubmit}
+                disabled={!replyContent.trim() || isSubmittingReply}
+                className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+              >
+                {isSubmittingReply && (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                )}
+                发布
+              </Button>
+            </div>
           </div>
+        )}
 
-          {showReplyForm && (
-            <div className="mt-2 comment-bubble space-y-3">
-              <Textarea
-                value={replyContent}
-                onChange={e => setReplyContent(e.target.value)}
-                placeholder="写下你的回复..."
-                className="min-h-[80px] resize-none"
-                maxLength={2000}
-              />
-              <div className="flex justify-between items-center text-xs text-muted-foreground">
-                <span>{replyContent.length}/2000</span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline-subtle"
-                    size="sm"
-                    onClick={() => {
-                      setShowReplyForm(false);
-                      setReplyContent('');
-                    }}
-                  >
-                    取消
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleReplySubmit}
-                    disabled={!replyContent.trim() || isSubmittingReply}
-                  >
-                    {isSubmittingReply ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    回复
-                  </Button>
+        {/* 显示回复 */}
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="mt-6 space-y-6">
+            {comment.replies.map(reply => (
+              <div key={reply.id} className="flex gap-4">
+                <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
+                  <AvatarImage
+                    src={reply.author.avatar || undefined}
+                    alt={reply.author.username}
+                  />
+                  <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+                    {reply.author.username.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <span className="text-[16px] font-semibold text-foreground">
+                      {reply.author.username}
+                    </span>
+                    <span className="text-muted-foreground">▶</span>
+                    <span className="text-[16px] font-semibold text-foreground">
+                      {comment.author.username}
+                    </span>
+                    <span className="text-muted-foreground/70">
+                      {formatTime(reply.createdAt)}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
+                    {reply.content}
+                  </div>
+                  <div className="mt-3 flex items-center gap-6">
+                    <button
+                      type="button"
+                      className={reactionButtonClass}
+                      onClick={() => onLike(reply.id)}
+                      disabled={isLiking}
+                    >
+                      <Heart
+                        className={`h-4 w-4 ${
+                          reply.isLiked
+                            ? 'fill-current text-destructive'
+                            : 'text-muted-foreground'
+                        }`}
+                      />
+                      <span>{formatCount(reply.likesCount)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={reactionButtonClass}
+                      onClick={() => setShowReplyForm(!showReplyForm)}
+                      aria-label={`回复 ${reply.author.username}`}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      <span>回复</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* 显示回复 */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="ml-4 space-y-3 border-l-2 border-border pl-4">
-              {comment.replies.map(reply => (
-                <CommentItem
-                  key={reply.id}
-                  comment={reply}
-                  onLike={onLike}
-                  onReply={onReply}
-                  isLiking={isLiking || false}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -160,6 +234,7 @@ export function RepositoryComments({
   repositoryId,
   className,
 }: RepositoryCommentsProps) {
+  const { user } = useAuth();
   const [comments, setComments] = useState<RepositoryCommentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -304,48 +379,19 @@ export function RepositoryComments({
 
   if (loading) {
     return (
-      <Card className={className}>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin" />
-            <span className="ml-2">加载评论中...</span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className={className}>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span className="ml-2">加载评论中...</span>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={className}>
-      <CardContent className="p-6">
-        <h3 className="text-lg font-semibold mb-4">讨论 ({comments.length})</h3>
-
-        {/* 发表评论 */}
-        <div className="space-y-3 mb-6">
-          <Textarea
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            placeholder="分享你的想法..."
-            className="min-h-[100px] resize-none"
-            maxLength={2000}
-          />
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">
-              {newComment.length}/2000
-            </span>
-            <Button
-              onClick={handleSubmitComment}
-              disabled={!newComment.trim() || isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              发表评论
-            </Button>
-          </div>
-        </div>
+    <div className={className}>
+      <div className="space-y-6">
+        <h3 className="text-lg font-semibold">讨论 ({comments.length})</h3>
 
         {/* 评论列表 */}
         <div className="space-y-6">
@@ -383,7 +429,52 @@ export function RepositoryComments({
             </>
           )}
         </div>
-      </CardContent>
-    </Card>
+
+        {/* 发表评论 */}
+        <div className="border-t pt-6">
+          <div className="flex gap-4">
+            <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
+              {user?.avatar && (
+                <AvatarImage
+                  src={user.avatar}
+                  alt={user?.username || 'avatar'}
+                />
+              )}
+              <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+                {user?.username?.charAt(0).toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 rounded-[22px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+              <Textarea
+                value={newComment}
+                onChange={e => setNewComment(e.target.value)}
+                placeholder="说点什么吧... 支持 Ctrl/⌘ + Enter 快速发布"
+                className="min-h-[90px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                maxLength={2000}
+                onKeyDown={e => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSubmitComment();
+                  }
+                }}
+              />
+              <div className="mt-3 flex items-center justify-end text-[12px] text-muted-foreground">
+                <Button
+                  size="sm"
+                  onClick={handleSubmitComment}
+                  disabled={!newComment.trim() || isSubmitting}
+                  className="h-9 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                >
+                  {isSubmitting && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
+                  发布
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
