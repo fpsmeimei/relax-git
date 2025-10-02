@@ -16,7 +16,7 @@ const getApiUrl = () => {
 
 const API_BASE = getApiUrl();
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+const nextAuth = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
@@ -85,10 +85,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // 首次登录时，将用户信息和tokens存入 token
       if (user) {
         const u = user as any;
-        token.uid = u.uid;
-        token.id = u.id;
-        token.accessToken = u.accessToken;
-        token.refreshToken = u.refreshToken;
+        token['uid'] = u.uid;
+        token['id'] = u.id;
+        token['accessToken'] = u.accessToken;
+        token['refreshToken'] = u.refreshToken;
       }
       return token;
     },
@@ -108,5 +108,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 天
   },
-  secret: process.env.AUTH_SECRET || 'relax-git-secret-change-in-production',
+  secret: process.env['AUTH_SECRET'] || 'relax-git-secret-change-in-production',
 });
+
+// 显式导出，避免推断类型包含不可命名类型导致 TS4111
+export const handlers = nextAuth.handlers;
+export const signIn: any = nextAuth.signIn;
+export const signOut: any = nextAuth.signOut;
+export const auth: any = nextAuth.auth;

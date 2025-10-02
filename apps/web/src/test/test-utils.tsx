@@ -26,9 +26,7 @@ function AllTheProviders({ children }: AllTheProvidersProps) {
   const queryClient = createTestQueryClient();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }
 
@@ -36,7 +34,7 @@ function AllTheProviders({ children }: AllTheProvidersProps) {
 function customRender(
   ui: ReactElement,
   options?: Omit<RenderOptions, 'wrapper'>
-) {
+): ReturnType<typeof render> {
   return render(ui, { wrapper: AllTheProviders, ...options });
 }
 

@@ -9,15 +9,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import Image from 'next/image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/hooks/use-auth';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import {
-  Bookmark,
   Calendar,
   ExternalLink,
   Eye,
@@ -34,11 +34,6 @@ interface RepositoryDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLikeChange?: (repoId: string, likesCount: number, isLiked: boolean) => void;
-  onCollectChange?: (
-    repoId: string,
-    collectionsCount: number,
-    isCollected: boolean
-  ) => void;
 }
 
 export function RepositoryDetailModal({
@@ -46,12 +41,11 @@ export function RepositoryDetailModal({
   open,
   onOpenChange,
   onLikeChange,
-  onCollectChange,
 }: RepositoryDetailModalProps) {
+  const { user } = useAuth();
   const [repositoryDetail, setRepositoryDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
-  const [isCollecting, setIsCollecting] = useState(false);
 
   // 加载仓库详情
   useEffect(() => {
@@ -78,6 +72,10 @@ export function RepositoryDetailModal({
   // 处理点赞
   const handleLike = async () => {
     if (!repository || isLiking) return;
+    if (!user) {
+      toast.error('请先登录');
+      return;
+    }
 
     setIsLiking(true);
     try {
@@ -101,37 +99,6 @@ export function RepositoryDetailModal({
     }
   };
 
-  // 处理收藏
-  const handleCollect = async () => {
-    if (!repository || isCollecting) return;
-
-    setIsCollecting(true);
-    try {
-      const response = await CommunityAPI.toggleRepositoryCollection(
-        repository.id
-      );
-
-      // 更新本地状态
-      if (repositoryDetail) {
-        setRepositoryDetail({
-          ...repositoryDetail,
-          isCollected: response.isCollected,
-        });
-      }
-
-      toast.success(response.isCollected ? '收藏成功' : '已取消收藏');
-      onCollectChange?.(
-        repository.id,
-        response.collectionsCount,
-        response.isCollected
-      );
-    } catch (error) {
-      toast.error('操作失败，请重试');
-    } finally {
-      setIsCollecting(false);
-    }
-  };
-
   // 跳转到仓库页面
   const handleViewRepository = () => {
     if (repository) {
@@ -143,7 +110,7 @@ export function RepositoryDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <span className="truncate">{repository.name}</span>
@@ -167,7 +134,7 @@ export function RepositoryDetailModal({
         ) : (
           <div className="flex-1 overflow-hidden">
             <Tabs defaultValue="overview" className="h-full flex flex-col">
-              <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+              <TabsList className="grid w-full grid-cols-2 flex-shrink-0 px-6">
                 <TabsTrigger value="overview">概览</TabsTrigger>
                 <TabsTrigger value="discussions">
                   <MessageCircle className="h-4 w-4 mr-2" /> 讨论
@@ -176,7 +143,7 @@ export function RepositoryDetailModal({
 
               <TabsContent
                 value="overview"
-                className="flex-1 overflow-y-auto space-y-6"
+                className="flex-1 overflow-y-auto space-y-8 p-6"
               >
                 {/* 仓库信息 */}
                 <div className="space-y-4">
@@ -261,6 +228,17 @@ export function RepositoryDetailModal({
                       <span>{repository.viewCount} 浏览</span>
                     </div>
                     <div className="flex items-center space-x-1">
+                      <MessageCircle className="h-4 w-4" />
+                      <span>
+                        {(
+                          repositoryDetail?.commentsCount ??
+                          repository.commentsCount ??
+                          0
+                        ).toLocaleString()}{' '}
+                        评论
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
                       <GitBranch className="h-4 w-4" />
                       <span>多分支</span>
                     </div>
@@ -274,7 +252,7 @@ export function RepositoryDetailModal({
                       }
                       onClick={handleLike}
                       disabled={isLiking}
-                      className="flex-1"
+                      className={`flex-1 ${repositoryDetail?.isLiked ? 'text-destructive' : ''}`}
                       aria-label={
                         repositoryDetail?.isLiked ? '取消点赞' : '点赞'
                       }
@@ -288,33 +266,12 @@ export function RepositoryDetailModal({
                       )}
                       {repositoryDetail?.isLiked ? '已点赞' : '点赞'}
                     </Button>
-
-                    <Button
-                      variant={
-                        repositoryDetail?.isCollected ? 'default' : 'outline'
-                      }
-                      onClick={handleCollect}
-                      disabled={isCollecting}
-                      className="flex-1"
-                      aria-label={
-                        repositoryDetail?.isCollected ? '取消收藏' : '收藏'
-                      }
-                    >
-                      {isCollecting ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Bookmark
-                          className={`h-4 w-4 mr-2 ${repositoryDetail?.isCollected ? 'fill-current' : ''}`}
-                        />
-                      )}
-                      {repositoryDetail?.isCollected ? '已收藏' : '收藏'}
-                    </Button>
                   </div>
                 </div>
 
                 {/* 封面图片 */}
                 {repository.coverImage && (
-                  <div className="relative h-48 rounded-lg overflow-hidden">
+                  <div className="relative h-64 rounded-lg overflow-hidden">
                     <Image
                       src={repository.coverImage}
                       alt={`${repository.name} 封面`}
@@ -328,7 +285,7 @@ export function RepositoryDetailModal({
 
               <TabsContent
                 value="discussions"
-                className="flex-1 overflow-y-auto"
+                className="flex-1 overflow-y-auto p-6"
               >
                 <RepositoryComments repositoryId={repository.id} />
               </TabsContent>

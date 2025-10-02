@@ -48,6 +48,12 @@ export function RepositoryCard({
   const cardRef = useRef<HTMLDivElement | null>(null);
   const [hasTrackedView, setHasTrackedView] = useState(false);
 
+  // 当外部列表中的仓库数据发生变化（例如在详情弹窗中点赞）时，同步本地显示状态
+  useEffect(() => {
+    setLocalStars(repository.stars);
+    setLocalIsLiked(repository.isLiked || false);
+  }, [repository.id, repository.stars, repository.isLiked]);
+
   const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -211,7 +217,7 @@ export function RepositoryCard({
               </div>
               <div className="flex items-center gap-1">
                 <MessageCircle className="h-4 w-4" />
-                <span>0</span> {/* 评论数暂时显示0，后续可以从API获取 */}
+                <span>{(repository.commentsCount ?? 0).toLocaleString()}</span>
               </div>
             </div>
 
@@ -219,7 +225,6 @@ export function RepositoryCard({
               variant="ghost"
               size="sm"
               onClick={handleLike}
-              disabled={isLiking}
               className={`transition-colors ${
                 localIsLiked
                   ? 'text-destructive hover:text-destructive'

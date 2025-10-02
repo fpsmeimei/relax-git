@@ -38,7 +38,7 @@ export class ErrorBoundary extends Component<Props, State> {
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // 记录错误到日志服务（如 Sentry）
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     // 调用自定义错误处理
     this.props.onError?.(error, errorInfo);
   }
@@ -50,7 +50,6 @@ export class ErrorBoundary extends Component<Props, State> {
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   override render() {
     if (this.state.hasError) {
       // 自定义 fallback UI
@@ -65,12 +64,10 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
               <AlertCircle className="h-8 w-8 text-destructive" />
             </div>
-            
+
             <div className="space-y-2">
               <h2 className="text-2xl font-bold">出错了</h2>
-              <p className="text-muted-foreground">
-                应用遇到了一个意外错误
-              </p>
+              <p className="text-muted-foreground">应用遇到了一个意外错误</p>
             </div>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
@@ -96,7 +93,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 重试
               </Button>
               <Button
-                onClick={() => window.location.href = '/'}
+                onClick={() => (window.location.href = '/')}
                 className="flex-1"
               >
                 返回首页
@@ -114,10 +111,10 @@ export class ErrorBoundary extends Component<Props, State> {
 /**
  * 功能级错误边界（用于局部功能）
  */
-export function FeatureErrorBoundary({ 
-  children, 
-  featureName 
-}: { 
+export function FeatureErrorBoundary({
+  children,
+  featureName,
+}: {
   children: ReactNode;
   featureName: string;
 }) {
@@ -147,19 +144,19 @@ export function FeatureErrorBoundary({
 
 /**
  * 使用示例：
- * 
+ *
  * // 1. 包裹整个应用（layout.tsx）
  * <ErrorBoundary>
  *   <App />
  * </ErrorBoundary>
- * 
+ *
  * // 2. 包裹特定功能
  * <FeatureErrorBoundary featureName="代码查看器">
  *   <CodeViewer />
  * </FeatureErrorBoundary>
- * 
+ *
  * // 3. 自定义错误处理
- * <ErrorBoundary 
+ * <ErrorBoundary
  *   onError={(error) => {
  *     // 发送到 Sentry
  *     Sentry.captureException(error);

@@ -166,15 +166,7 @@ function CommunityPageContent() {
   };
 
   // 处理收藏状态变化
-  const handleCollectChange = (
-    repoId: string,
-    collectionsCount: number,
-    isCollected: boolean
-  ) => {
-    setRepositories(prev =>
-      prev.map(repo => (repo.id === repoId ? { ...repo, isCollected } : repo))
-    );
-  };
+  // 已移除收藏功能的入口（保留注释以便未来恢复时参考）
 
   // 加载更多
   const handleLoadMore = () => {
@@ -299,7 +291,6 @@ function CommunityPageContent() {
         open={showDetailModal}
         onOpenChange={setShowDetailModal}
         onLikeChange={handleLikeChange}
-        onCollectChange={handleCollectChange}
       />
     </div>
   );

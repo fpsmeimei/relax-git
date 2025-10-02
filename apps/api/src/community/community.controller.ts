@@ -17,7 +17,6 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import {
@@ -66,6 +65,11 @@ export class CommunityController {
     required: false,
     description: '标签过滤，多个标签用逗号分隔',
   })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: '搜索关键词（name/description：不区分大小写；tags：等值匹配）',
+  })
   @ApiOkResponse({
     description: '社区feed流数据',
     schema: {
@@ -84,6 +88,7 @@ export class CommunityController {
               language: { type: 'string', nullable: true },
               stars: { type: 'number' },
               viewCount: { type: 'number' },
+              commentsCount: { type: 'number' },
               publishedAt: {
                 type: 'string',
                 format: 'date-time',
@@ -115,6 +120,7 @@ export class CommunityController {
     @Query('sort') sort?: 'latest' | 'trending' | 'popular',
     @Query('language') language?: string,
     @Query('tags') tags?: string,
+    @Query('search') search?: string,
     @CurrentUser('id') userId?: string
   ): Promise<{
     items: CommunityFeedItem[];
@@ -132,6 +138,7 @@ export class CommunityController {
             .map(tag => tag.trim())
             .filter(Boolean)
         : [],
+      search,
     };
 
     return this.communityService.getCommunityFeed(query, userId);
@@ -141,6 +148,7 @@ export class CommunityController {
    * 获取仓库详情
    */
   @Get('repositories/:id')
+  @Public()
   @ApiOperation({
     summary: '获取仓库详情',
     description: '获取仓库详细信息，包含用户互动状态',
@@ -174,10 +182,17 @@ export class CommunityController {
   async recordRepositoryView(
     @Param('id') repoId: string,
     @CurrentUser('id') userId?: string,
-    @Req() req?: Request
+    @Req() req?: any
   ): Promise<{ success: boolean }> {
-    const ipAddress = req?.ip || req?.connection?.remoteAddress;
-    const userAgent = req?.get('User-Agent');
+    const fwd = (req?.headers?.['x-forwarded-for'] as string | undefined) || '';
+    const ipFromFwd = fwd
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)[0];
+    const ipAddress =
+      ipFromFwd || (req as any)?.ip || (req as any)?.connection?.remoteAddress;
+    const userAgent =
+      (req?.headers?.['user-agent'] as string | undefined) || undefined;
 
     await this.communityService.recordRepositoryView(
       repoId,
@@ -289,6 +304,33 @@ export class CommunityController {
     };
 
     return this.communityService.getRepositoryComments(repoId, query, userId);
+  }
+
+  /**
+   * 切换评论点赞状态（社区端点）
+   */
+  @Post('repositories/comments/:commentId/like')
+  @ApiOperation({
+    summary: '切换评论点赞状态',
+    description: '点赞或取消点赞评论（社区端点）',
+  })
+  @ApiParam({ name: 'commentId', description: '评论ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '操作成功',
+    schema: {
+      type: 'object',
+      properties: {
+        isLiked: { type: 'boolean' },
+        likesCount: { type: 'number' },
+      },
+    },
+  })
+  async toggleCommentLike(
+    @CurrentUser('id') userId: string,
+    @Param('commentId') commentId: string
+  ): Promise<{ isLiked: boolean; likesCount: number }> {
+    return this.communityService.toggleCommentLike(commentId, userId);
   }
 
   /**

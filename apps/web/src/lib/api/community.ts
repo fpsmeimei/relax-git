@@ -9,6 +9,7 @@ export interface CommunityFeedItem {
   language: string | null;
   stars: number;
   viewCount: number;
+  commentsCount: number;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -216,10 +217,28 @@ export class CommunityAPI {
     if (cursor) params.append('cursor', cursor);
     params.append('limit', limit.toString());
 
-    const response = await apiClient.get(
-      `/repositories/${repoId}/comments?${params.toString()}`
-    );
-    return response.data;
+    try {
+      const response = await apiClient.get(
+        `/community/repositories/${repoId}/comments?${params.toString()}`
+      );
+      return response.data;
+    } catch (error: any) {
+      if (
+        error?.response?.status === 401 &&
+        error?.config?.headers?.Authorization
+      ) {
+        try {
+          const retry = await apiClient.get(
+            `/community/repositories/${repoId}/comments?${params.toString()}`,
+            { headers: {} as any }
+          );
+          return retry.data;
+        } catch (retryErr) {
+          throw error;
+        }
+      }
+      throw error;
+    }
   }
 
   /**
@@ -230,7 +249,7 @@ export class CommunityAPI {
     data: CreateRepositoryCommentDto
   ): Promise<RepositoryCommentDto> {
     const response = await apiClient.post(
-      `/repositories/${repoId}/comments`,
+      `/community/repositories/${repoId}/comments`,
       data
     );
     return response.data;
@@ -244,7 +263,7 @@ export class CommunityAPI {
     likesCount: number;
   }> {
     const response = await apiClient.post(
-      `/repositories/comments/${commentId}/like`
+      `/community/repositories/comments/${commentId}/like`
     );
     return response.data;
   }

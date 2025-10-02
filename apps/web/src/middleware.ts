@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const HOME_ROUTE = process.env['NEXT_PUBLIC_HOME_ROUTE'] || '/';
 
 // 🔥 NextAuth middleware 包装（内联导出，避免类型推断报错）
-const _mw = auth(req => {
+const _mw = auth((req: any) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
 

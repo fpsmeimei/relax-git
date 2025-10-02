@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RepositoryInteractionService } from './repository-interaction.service';
+import { CommunityService } from './community.service';
 import {
   RepositoryLikeResponseDto,
   RepositoryCollectionResponseDto,
@@ -31,8 +33,11 @@ import {
 @ApiTags('仓库互动')
 @Controller('api/repositories')
 export class RepositoryInteractionController {
+  private readonly logger = new Logger(RepositoryInteractionController.name);
+
   constructor(
-    private readonly repositoryInteractionService: RepositoryInteractionService
+    private readonly repositoryInteractionService: RepositoryInteractionService,
+    private readonly communityService: CommunityService
   ) {}
 
   /**
@@ -102,11 +107,16 @@ export class RepositoryInteractionController {
     @Param('id') repoId: string,
     @Body() dto: CreateRepositoryCommentDto
   ): Promise<RepositoryCommentDto> {
-    return this.repositoryInteractionService.createRepositoryComment(
+    this.logger.warn(
+      '[DEPRECATED] 使用了旧端点 /api/repositories/:id/comments，已转发至 /api/community/repositories/:id/comments'
+    );
+    // 转发到社区服务，保持响应结构
+    const result = (await this.communityService.createRepositoryComment(
       repoId,
       userId,
-      dto
-    );
+      dto as any
+    )) as any;
+    return result as RepositoryCommentDto;
   }
 
   /**
@@ -131,13 +141,22 @@ export class RepositoryInteractionController {
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string
   ): Promise<RepositoryCommentsResponseDto> {
-    const limitNum = limit ? parseInt(limit, 10) : 20;
-    return this.repositoryInteractionService.getRepositoryComments(
-      repoId,
-      userId,
-      cursor,
-      limitNum
+    this.logger.warn(
+      '[DEPRECATED] 使用了旧端点 GET /api/repositories/:id/comments，已转发至 /api/community/repositories/:id/comments'
     );
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    const { comments, nextCursor, hasMore, total } =
+      await this.communityService.getRepositoryComments(
+        repoId,
+        { cursor, limit: limitNum, sort: 'latest' },
+        userId
+      );
+    return {
+      comments: comments as any,
+      nextCursor: nextCursor ?? null,
+      hasMore,
+      total,
+    };
   }
 
   /**
@@ -164,9 +183,9 @@ export class RepositoryInteractionController {
     @CurrentUser('id') userId: string,
     @Param('commentId') commentId: string
   ): Promise<{ isLiked: boolean; likesCount: number }> {
-    return this.repositoryInteractionService.toggleCommentLike(
-      commentId,
-      userId
+    this.logger.warn(
+      '[DEPRECATED] 使用了旧端点 POST /api/repositories/comments/:commentId/like，已转发至 /api/community/repositories/comments/:commentId/like'
     );
+    return this.communityService.toggleCommentLike(commentId, userId);
   }
 }

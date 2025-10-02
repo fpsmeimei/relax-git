@@ -22,6 +22,9 @@ async function bootstrap() {
       logger: {
         level: process.env['LOG_LEVEL'] ?? 'info',
       },
+      // 信任代理：用于获取真实客户端 IP（X-Forwarded-For）
+      // 对应 Express 的 app.set('trust proxy', 1)
+      trustProxy: true,
     })
   );
 
@@ -45,9 +48,12 @@ async function bootstrap() {
   );
 
   // Cookie 解析（用于 JWT HttpOnly Cookie）
-  await app.register(fastifyCookie as any, {
-    hook: 'onRequest',
-  } as any);
+  await app.register(
+    fastifyCookie as any,
+    {
+      hook: 'onRequest',
+    } as any
+  );
 
   // 全局验证管道
   app.useGlobalPipes(

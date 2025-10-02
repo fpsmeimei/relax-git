@@ -6,17 +6,18 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  Comment,
   CommentAnchorType,
   CommentStatus,
   RepositoryVisibility,
   UserRole,
+  Prisma,
 } from '@relax-git/shared/generated/prisma-client';
 import { PrismaService } from '../database/prisma.service';
 import {
   CreateRepositoryCommentDto,
   RepositoryCommentQueryDto,
 } from './dto/create-repository-comment.dto';
+import { RepositoryCommentDto } from './dto/repository-interaction.dto';
 
 export interface CommunityFeedItem {
   id: string;
@@ -27,6 +28,7 @@ export interface CommunityFeedItem {
   language: string | null;
   stars: number;
   viewCount: number;
+  commentsCount: number;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +47,7 @@ export interface CommunityFeedQuery {
   sort?: 'latest' | 'trending' | 'popular';
   language?: string;
   tags?: string[];
+  search?: string;
 }
 
 /**
@@ -71,7 +74,14 @@ export class CommunityService {
     nextCursor: string | null;
     hasMore: boolean;
   }> {
-    const { cursor, limit = 20, sort = 'latest', language, tags = [] } = query;
+    const {
+      cursor,
+      limit = 20,
+      sort = 'latest',
+      language,
+      tags = [],
+      search,
+    } = query;
 
     // 构建查询条件
     const where: any = {
@@ -95,21 +105,82 @@ export class CommunityService {
       };
     }
 
-    // 游标分页
-    if (cursor) {
-      where.id = {
-        lt: cursor,
-      };
+    // 搜索过滤（大小写不敏感）：name / description；tags 做等值匹配（has）
+    if (search && search.trim()) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            { tags: { has: search } },
+          ],
+        },
+      ];
     }
 
-    // 排序逻辑
-    let orderBy: any = { createdAt: 'desc' }; // 默认最新
+    // 排序逻辑 + 复合游标
+    let orderBy: any[] = [{ createdAt: 'desc' }, { id: 'desc' }]; // 默认 latest
+    const decodeCursor = (c?: string): any | null => {
+      if (!c) return null;
+      try {
+        const json = Buffer.from(c, 'base64').toString('utf8');
+        return JSON.parse(json);
+      } catch {
+        return null;
+      }
+    };
+    const cur = decodeCursor(cursor);
     if (sort === 'trending') {
-      // 趋势排序：使用热度分数
-      orderBy = [{ trendingScore: 'desc' }, { createdAt: 'desc' }];
+      // 趋势：trendingScore desc, id desc
+      orderBy = [{ trendingScore: 'desc' }, { id: 'desc' }];
+      if (cur && typeof cur.trendingScore === 'number' && cur.id) {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { trendingScore: { lt: cur.trendingScore } },
+              {
+                AND: [
+                  { trendingScore: cur.trendingScore },
+                  { id: { lt: cur.id } },
+                ],
+              },
+            ],
+          },
+        ];
+      }
     } else if (sort === 'popular') {
-      // 热门排序：总点赞数和浏览量
-      orderBy = [{ stars: 'desc' }, { viewCount: 'desc' }];
+      // 热门：stars desc, id desc（短期可接受，浏览量不参与稳定键）
+      orderBy = [{ stars: 'desc' }, { id: 'desc' }];
+      if (cur && typeof cur.stars === 'number' && cur.id) {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { stars: { lt: cur.stars } },
+              { AND: [{ stars: cur.stars }, { id: { lt: cur.id } }] },
+            ],
+          },
+        ];
+      }
+    } else {
+      // latest：createdAt desc, id desc
+      orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
+      if (cur && cur.createdAt && cur.id) {
+        const created = new Date(cur.createdAt);
+        if (!isNaN(created.getTime())) {
+          where.AND = [
+            ...(where.AND || []),
+            {
+              OR: [
+                { createdAt: { lt: created } },
+                { AND: [{ createdAt: created }, { id: { lt: cur.id } }] },
+              ],
+            },
+          ];
+        }
+      }
     }
 
     const repositories = await this.prisma.repository.findMany({
@@ -142,7 +213,50 @@ export class CommunityService {
 
     const hasMore = repositories.length > limit;
     const items = repositories.slice(0, limit);
-    const nextCursor = hasMore ? items[items.length - 1]?.id || null : null;
+    // 计算各仓库评论数（仅统计顶级、项目级、ACTIVE）
+    const commentsCountMap = new Map<string, number>();
+    try {
+      const repoIds = items.map((r: any) => r.id);
+      if (repoIds.length > 0) {
+        const rows = (await this.prisma.$queryRaw(
+          Prisma.sql`
+            SELECT s."repoId" AS "repoId", COUNT(*)::bigint AS count
+            FROM "Comment" c
+            JOIN "BaseSnapshot" s ON c."snapshotId" = s."id"
+            WHERE c."anchorType" = ${CommentAnchorType.PROJECT}
+              AND c."status" = ${CommentStatus.ACTIVE}
+              AND c."parentId" IS NULL
+              AND s."repoId" IN (${Prisma.join(repoIds)})
+            GROUP BY s."repoId"
+          `
+        )) as Array<{ repoId: string; count: bigint }>;
+        rows.forEach((r: { repoId: string; count: bigint }) =>
+          commentsCountMap.set(r.repoId, Number(r.count))
+        );
+      }
+    } catch (e) {
+      this.logger.warn(`Failed to aggregate comments count: ${e}`);
+    }
+    let nextCursor: string | null = null;
+    if (hasMore) {
+      const last: any = items[items.length - 1];
+      if (sort === 'trending') {
+        nextCursor = Buffer.from(
+          JSON.stringify({
+            trendingScore: last.trendingScore ?? 0,
+            id: last.id,
+          })
+        ).toString('base64');
+      } else if (sort === 'popular') {
+        nextCursor = Buffer.from(
+          JSON.stringify({ stars: last.stars ?? 0, id: last.id })
+        ).toString('base64');
+      } else {
+        nextCursor = Buffer.from(
+          JSON.stringify({ createdAt: last.createdAt, id: last.id })
+        ).toString('base64');
+      }
+    }
 
     const feedItems: CommunityFeedItem[] = items.map((repo: any) => ({
       id: repo.id,
@@ -153,6 +267,7 @@ export class CommunityService {
       language: repo.language,
       stars: repo.stars,
       viewCount: repo.viewCount,
+      commentsCount: commentsCountMap.get(repo.id) ?? 0,
       publishedAt: repo.publishedAt,
       createdAt: repo.createdAt,
       updatedAt: repo.updatedAt,
@@ -249,7 +364,10 @@ export class CommunityService {
       where: {
         id: repoId,
         isActive: true,
-        OR: [{ visibility: 'PUBLIC' }, { visibility: 'INTERNAL' }],
+        OR: [
+          { visibility: RepositoryVisibility.PUBLIC },
+          { visibility: RepositoryVisibility.INTERNAL },
+        ],
       },
       include: {
         owner: {
@@ -294,10 +412,21 @@ export class CommunityService {
       isCollected = !!collection;
     }
 
+    // 统计顶级项目级评论总数（ACTIVE）
+    const commentsCount = await this.prisma.comment.count({
+      where: {
+        snapshot: { repoId },
+        anchorType: CommentAnchorType.PROJECT,
+        status: CommentStatus.ACTIVE,
+        parentId: null,
+      },
+    });
+
     return {
       ...repository,
       isLiked,
       isCollected,
+      commentsCount,
     };
   }
 
@@ -308,37 +437,27 @@ export class CommunityService {
     limit = 20
   ): Promise<Array<{ tag: string; count: number }>> {
     try {
-      // 获取所有公开且已发布的仓库
-      const repositories = await this.prisma.repository.findMany({
-        where: {
-          isPublished: true,
-          isActive: true,
-          OR: [
-            { visibility: RepositoryVisibility.PUBLIC },
-            { visibility: RepositoryVisibility.INTERNAL },
-          ],
-          tags: {
-            isEmpty: false,
-          },
-        },
-        select: {
-          tags: true,
-        },
-      });
+      const rows = (await this.prisma.$queryRaw(
+        Prisma.sql`
+          SELECT tag, COUNT(*)::bigint AS count
+          FROM (
+            SELECT unnest("tags") AS tag
+            FROM "Repository"
+            WHERE "isPublished" = true
+              AND "isActive" = true
+              AND "visibility" IN (${Prisma.join([
+                RepositoryVisibility.PUBLIC,
+                RepositoryVisibility.INTERNAL,
+              ])})
+              AND array_length("tags", 1) > 0
+          ) t
+          GROUP BY tag
+          ORDER BY count DESC
+          LIMIT ${limit}
+        `
+      )) as Array<{ tag: string; count: bigint }>;
 
-      // 统计标签出现次数
-      const tagCounts = new Map<string, number>();
-      repositories.forEach((repo: { tags: string[] }) => {
-        repo.tags.forEach((tag: string) => {
-          tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-        });
-      });
-
-      // 排序并返回前N个
-      return Array.from(tagCounts.entries())
-        .map(([tag, count]) => ({ tag, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, limit);
+      return rows.map(r => ({ tag: r.tag, count: Number(r.count) }));
     } catch (error) {
       this.logger.error('获取热门标签失败:', error);
       return [];
@@ -388,7 +507,7 @@ export class CommunityService {
     repoId: string,
     userId: string,
     dto: CreateRepositoryCommentDto
-  ): Promise<Comment> {
+  ): Promise<any> {
     // 检查仓库是否存在且可访问
     const repository = await this.prisma.repository.findFirst({
       where: {
@@ -411,7 +530,7 @@ export class CommunityService {
         where: {
           id: dto.parentId,
           snapshot: {
-            repositoryId: repoId,
+            repoId,
           },
           anchorType: CommentAnchorType.PROJECT,
           status: CommentStatus.ACTIVE,
@@ -423,11 +542,11 @@ export class CommunityService {
       }
     }
 
-    // 获取仓库的任意一个快照用于关联评论
+    // 获取仓库的任意一个基础快照用于关联评论（最新一个即可）
     // 项目级评论需要关联到快照，但不依赖具体的快照内容
-    const snapshot = await this.prisma.snapshot.findFirst({
+    const snapshot = await this.prisma.baseSnapshot.findFirst({
       where: {
-        repositoryId: repoId,
+        repoId,
       },
       orderBy: {
         createdAt: 'desc',
@@ -456,21 +575,9 @@ export class CommunityService {
             avatar: true,
           },
         },
-        parent: {
-          select: {
-            id: true,
-            authorId: true,
-            content: true,
-            author: {
-              select: {
-                username: true,
-              },
-            },
-          },
-        },
         _count: {
           select: {
-            children: true,
+            replies: true,
             likes: true,
           },
         },
@@ -481,7 +588,18 @@ export class CommunityService {
       `User ${userId} created repository comment ${comment.id} for repository ${repoId}`
     );
 
-    return comment;
+    // 返回前端友好的 DTO
+    return {
+      id: comment.id,
+      content: comment.content,
+      likesCount: comment._count?.likes ?? 0,
+      isLiked: false,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      author: comment.author,
+      parentId: comment.parentId ?? null,
+      replies: [],
+    };
   }
 
   /**
@@ -492,8 +610,9 @@ export class CommunityService {
     query: RepositoryCommentQueryDto,
     userId?: string
   ): Promise<{
-    comments: Comment[];
+    comments: RepositoryCommentDto[];
     nextCursor: string | null;
+    total: number;
     hasMore: boolean;
   }> {
     // 检查仓库是否存在且可访问
@@ -514,29 +633,60 @@ export class CommunityService {
 
     const { cursor, limit = 20, sort = 'latest' } = query;
 
+    // 游标解码（base64 JSON）
+    const decodeCursor = (c?: string): any | null => {
+      if (!c) return null;
+      try {
+        const json = Buffer.from(c, 'base64').toString('utf8');
+        return JSON.parse(json);
+      } catch {
+        return null;
+      }
+    };
+    const cur = decodeCursor(cursor);
+
     // 构建查询条件
     const where: any = {
       snapshot: {
-        repositoryId: repoId,
+        repoId,
       },
       anchorType: CommentAnchorType.PROJECT,
       status: CommentStatus.ACTIVE,
       parentId: null, // 只获取顶级评论
     };
 
-    // 游标分页
-    if (cursor) {
-      where.id = {
-        lt: cursor,
-      };
-    }
-
-    // 排序逻辑
-    let orderBy: any = { createdAt: 'desc' }; // 默认最新
+    // 排序逻辑（稳定排序）
+    let orderBy: any[] = [{ createdAt: 'desc' }, { id: 'desc' }]; // 默认最新
     if (sort === 'oldest') {
-      orderBy = { createdAt: 'asc' };
+      orderBy = [{ createdAt: 'asc' }, { id: 'asc' }];
+      if (cur && cur.createdAt && cur.id) {
+        const created = new Date(cur.createdAt);
+        if (!isNaN(created.getTime())) {
+          where.OR = [
+            { createdAt: { gt: created } },
+            { AND: [{ createdAt: created }, { id: { gt: cur.id } }] },
+          ];
+        }
+      }
     } else if (sort === 'popular') {
-      orderBy = [{ likesCount: 'desc' }, { createdAt: 'desc' }];
+      // 关系计数排序：按点赞数降序 + 稳定键
+      orderBy = [
+        { likes: { _count: 'desc' } },
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ];
+      // 短期不支持基于 _count 的复合游标条件，退化为无 where 游标（可能轻微重复/遗漏）
+    } else {
+      // latest
+      if (cur && cur.createdAt && cur.id) {
+        const created = new Date(cur.createdAt);
+        if (!isNaN(created.getTime())) {
+          where.OR = [
+            { createdAt: { lt: created } },
+            { AND: [{ createdAt: created }, { id: { lt: cur.id } }] },
+          ];
+        }
+      }
     }
 
     const comments = await this.prisma.comment.findMany({
@@ -551,7 +701,7 @@ export class CommunityService {
             avatar: true,
           },
         },
-        children: {
+        replies: {
           where: {
             status: CommentStatus.ACTIVE,
           },
@@ -576,7 +726,7 @@ export class CommunityService {
         },
         _count: {
           select: {
-            children: true,
+            replies: true,
             likes: true,
           },
         },
@@ -594,11 +744,79 @@ export class CommunityService {
 
     const hasMore = comments.length > limit;
     const items = comments.slice(0, limit);
-    const nextCursor = hasMore ? items[items.length - 1]?.id || null : null;
+    let nextCursor: string | null = null;
+    if (hasMore) {
+      const last: any = items[items.length - 1];
+      if (sort === 'popular') {
+        // 退化：仅返回最后一条的 id（无 where 复合条件）
+        nextCursor = Buffer.from(JSON.stringify({ id: last.id })).toString(
+          'base64'
+        );
+      } else if (sort === 'oldest') {
+        nextCursor = Buffer.from(
+          JSON.stringify({ createdAt: last.createdAt, id: last.id })
+        ).toString('base64');
+      } else {
+        nextCursor = Buffer.from(
+          JSON.stringify({ createdAt: last.createdAt, id: last.id })
+        ).toString('base64');
+      }
+    }
+
+    // 统计总数（用于前端展示/分页信息）
+    const total = await this.prisma.comment.count({
+      where: {
+        snapshot: { repoId },
+        anchorType: CommentAnchorType.PROJECT,
+        status: CommentStatus.ACTIVE,
+        parentId: null, // 仅统计顶级评论以匹配列表
+      },
+    });
+
+    // 计算当前用户点赞集合（含回复）
+    let likedSet: Set<string> = new Set();
+    if (userId) {
+      const ids = items.flatMap((c: any) => [
+        c.id,
+        ...(Array.isArray((c as any).replies)
+          ? (c as any).replies.map((r: any) => r.id)
+          : []),
+      ]);
+      if (ids.length) {
+        const likes = await this.prisma.commentLike.findMany({
+          where: { userId, commentId: { in: ids } },
+          select: { commentId: true },
+        });
+        likedSet = new Set(likes.map((x: any) => x.commentId));
+      }
+    }
+
+    // DTO 映射：补齐 likesCount/isLiked、replies 结构
+    const commentsDto = (items as any[]).map((c: any) => ({
+      id: c.id,
+      content: c.content,
+      likesCount: c._count?.likes ?? 0,
+      isLiked: likedSet.has(c.id),
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      author: c.author,
+      parentId: c.parentId ?? null,
+      replies: (Array.isArray(c.replies) ? c.replies : []).map((r: any) => ({
+        id: r.id,
+        content: r.content,
+        likesCount: r._count?.likes ?? 0,
+        isLiked: likedSet.has(r.id),
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        author: r.author,
+        parentId: r.parentId ?? null,
+      })),
+    }));
 
     return {
-      comments: items as Comment[],
+      comments: commentsDto as any,
       nextCursor,
+      total,
       hasMore,
     };
   }
@@ -641,15 +859,54 @@ export class CommunityService {
       throw new BadRequestException('没有权限删除此评论');
     }
 
-    // 软删除评论
+    // 软删除评论（Schema 无 deletedAt 字段）
     await this.prisma.comment.update({
       where: { id: commentId },
       data: {
         status: CommentStatus.DELETED,
-        deletedAt: new Date(),
       },
     });
 
     this.logger.log(`User ${userId} deleted repository comment ${commentId}`);
+  }
+
+  /**
+   * 切换评论点赞状态（返回基于 CommentLike 计数的点赞数）
+   */
+  async toggleCommentLike(
+    commentId: string,
+    userId: string
+  ): Promise<{ isLiked: boolean; likesCount: number }> {
+    // 确认评论存在且可见
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+    });
+    if (!comment || comment.status === CommentStatus.DELETED) {
+      throw new NotFoundException('评论不存在');
+    }
+
+    const result = await this.prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const existing = await tx.commentLike.findUnique({
+          where: { commentId_userId: { commentId, userId } },
+        });
+
+        let isLiked = false;
+        if (existing) {
+          await tx.commentLike.delete({
+            where: { commentId_userId: { commentId, userId } },
+          });
+          isLiked = false;
+        } else {
+          await tx.commentLike.create({ data: { commentId, userId } });
+          isLiked = true;
+        }
+
+        const likesCount = await tx.commentLike.count({ where: { commentId } });
+        return { isLiked, likesCount };
+      }
+    );
+
+    return result;
   }
 }
