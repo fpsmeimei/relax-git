@@ -716,7 +716,11 @@ export function LineCommentInlinePanel({
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div
+        className={`p-6 space-y-6 ${
+          sorted.length > 5 ? 'max-h-[600px] overflow-y-auto' : ''
+        }`}
+      >
         {pendingComments.length > 0 && (
           <div className="space-y-4 opacity-70">
             {pendingComments.map(comment => (
