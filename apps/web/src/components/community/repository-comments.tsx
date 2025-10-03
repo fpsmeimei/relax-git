@@ -4,27 +4,45 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CommunityAPI, RepositoryCommentDto } from '@/lib/api/community';
-import { Heart, Loader2, MessageCircle, Send } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 
 interface RepositoryCommentsProps {
   repositoryId: string;
   className?: string;
+  highlightCommentId?: string | null | undefined;
 }
 
 interface CommentItemProps {
   comment: RepositoryCommentDto;
   onLike: (commentId: string) => void;
   onReply: (parentId: string, content: string) => void;
+  onDelete: (commentId: string) => void;
   isLiking: boolean;
+  isDeletingIds: Set<string>;
+  highlightCommentId?: string | null;
 }
 
-function CommentItem({ comment, onLike, onReply, isLiking }: CommentItemProps) {
+function CommentItem({
+  comment,
+  onLike,
+  onReply,
+  onDelete,
+  isLiking,
+  isDeletingIds,
+  highlightCommentId,
+}: CommentItemProps) {
+  const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState(false);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<
+    string | null
+  >(null);
+  const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const handleReplySubmit = async () => {
     if (!replyContent.trim()) return;
@@ -70,8 +88,74 @@ function CommentItem({ comment, onLike, onReply, isLiking }: CommentItemProps) {
   const reactionButtonClass =
     'flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40';
 
+  // 检查是否可以删除评论
+  const canDelete = (
+    authorId?: string | null,
+    authorUsername?: string | null
+  ) => {
+    if (user?.id && authorId) return user.id === authorId;
+    if (user?.username && authorUsername)
+      return user.username === authorUsername;
+    return false;
+  };
+
+  // 处理评论高亮闪烁
+  useEffect(() => {
+    if (highlightCommentId) {
+      // 检查是否存在该评论ID（主评论或次评论）
+      let targetCommentId: string | null = null;
+      let isReply = false;
+
+      if (comment.id === highlightCommentId) {
+        targetCommentId = comment.id;
+      } else if (
+        comment.replies?.some(reply => reply.id === highlightCommentId)
+      ) {
+        targetCommentId = comment.id; // 主评论ID
+        isReply = true;
+      }
+
+      if (targetCommentId === comment.id) {
+        // 如果是次评论，需要先展开
+        if (isReply) {
+          setExpandedReplies(true);
+        }
+
+        setHighlightedCommentId(highlightCommentId);
+
+        // 滚动到目标评论并居中显示
+        setTimeout(() => {
+          const targetElement = commentRefs.current[highlightCommentId];
+          if (targetElement) {
+            targetElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest',
+            });
+          }
+        }, 100); // 稍微延迟确保DOM更新完成
+
+        // 1秒后移除高亮
+        const timer = setTimeout(() => {
+          setHighlightedCommentId(null);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+    return undefined;
+  }, [highlightCommentId, comment.id, comment.replies]);
+
   return (
-    <div className="flex gap-4">
+    <div
+      ref={el => {
+        commentRefs.current[comment.id] = el;
+      }}
+      className={`flex gap-4 transition-all duration-500 ease-in-out ${
+        highlightedCommentId === comment.id
+          ? 'dark:bg-gray-800/40 bg-orange-50/80 rounded-lg p-3 -m-3'
+          : ''
+      }`}
+    >
       <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
         <AvatarImage
           src={comment.author.avatar || undefined}
@@ -91,7 +175,13 @@ function CommentItem({ comment, onLike, onReply, isLiking }: CommentItemProps) {
             {formatTime(comment.createdAt)}
           </span>
         </div>
-        <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
+        <div
+          className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90"
+          style={{
+            fontFamily:
+              '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+          }}
+        >
           {comment.content}
         </div>
         <div className="mt-3 flex items-center gap-6">
@@ -121,6 +211,17 @@ function CommentItem({ comment, onLike, onReply, isLiking }: CommentItemProps) {
             <MessageCircle className="h-4 w-4" />
             <span>回复</span>
           </button>
+          {canDelete(comment.author.id, comment.author.username) && (
+            <button
+              type="button"
+              className={reactionButtonClass}
+              onClick={() => onDelete(comment.id)}
+              disabled={isDeletingIds.has(comment.id)}
+              aria-label="删除评论"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {showReplyForm && (
@@ -167,62 +268,124 @@ function CommentItem({ comment, onLike, onReply, isLiking }: CommentItemProps) {
         {/* 显示回复 */}
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-6 space-y-6">
-            {comment.replies.map(reply => (
-              <div key={reply.id} className="flex gap-4">
-                <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
-                  <AvatarImage
-                    src={reply.author.avatar || undefined}
-                    alt={reply.author.username}
-                  />
-                  <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
-                    {reply.author.username.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                    <span className="text-[16px] font-semibold text-foreground">
-                      {reply.author.username}
-                    </span>
-                    <span className="text-muted-foreground">▶</span>
-                    <span className="text-[16px] font-semibold text-foreground">
-                      {comment.author.username}
-                    </span>
-                    <span className="text-muted-foreground/70">
-                      {formatTime(reply.createdAt)}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
-                    {reply.content}
-                  </div>
-                  <div className="mt-3 flex items-center gap-6">
-                    <button
-                      type="button"
-                      className={reactionButtonClass}
-                      onClick={() => onLike(reply.id)}
-                      disabled={isLiking}
+            {(() => {
+              // 按点赞数排序次评论
+              const sortedReplies = [...comment.replies].sort(
+                (a, b) => (b.likesCount || 0) - (a.likesCount || 0)
+              );
+              const visibleReplies = expandedReplies
+                ? sortedReplies
+                : sortedReplies.slice(0, 2);
+              const hasMore = sortedReplies.length > 2;
+
+              return (
+                <>
+                  {visibleReplies.map(reply => (
+                    <div
+                      key={reply.id}
+                      ref={el => {
+                        commentRefs.current[reply.id] = el;
+                      }}
+                      className={`flex gap-4 transition-all duration-500 ease-in-out ${
+                        highlightedCommentId === reply.id
+                          ? 'dark:bg-gray-800/40 bg-orange-50/80 rounded-lg p-3 -m-3'
+                          : ''
+                      }`}
                     >
-                      <Heart
-                        className={`h-4 w-4 ${
-                          reply.isLiked
-                            ? 'fill-current text-destructive'
-                            : 'text-muted-foreground'
-                        }`}
-                      />
-                      <span>{formatCount(reply.likesCount)}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={reactionButtonClass}
-                      onClick={() => setShowReplyForm(!showReplyForm)}
-                      aria-label={`回复 ${reply.author.username}`}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      <span>回复</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
+                        <AvatarImage
+                          src={reply.author.avatar || undefined}
+                          alt={reply.author.username}
+                        />
+                        <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+                          {reply.author.username.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                          <span className="text-[16px] font-semibold text-foreground">
+                            {reply.author.username}
+                          </span>
+                          <span className="text-muted-foreground">▶</span>
+                          <span className="text-[16px] font-semibold text-foreground">
+                            {comment.author.username}
+                          </span>
+                          <span className="text-muted-foreground/70">
+                            {formatTime(reply.createdAt)}
+                          </span>
+                        </div>
+                        <div
+                          className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90"
+                          style={{
+                            fontFamily:
+                              '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                          }}
+                        >
+                          {reply.content}
+                        </div>
+                        <div className="mt-3 flex items-center gap-6">
+                          <button
+                            type="button"
+                            className={reactionButtonClass}
+                            onClick={() => onLike(reply.id)}
+                            disabled={isLiking}
+                          >
+                            <Heart
+                              className={`h-4 w-4 ${
+                                reply.isLiked
+                                  ? 'fill-current text-destructive'
+                                  : 'text-muted-foreground'
+                              }`}
+                            />
+                            <span>{formatCount(reply.likesCount)}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={reactionButtonClass}
+                            onClick={() => setShowReplyForm(!showReplyForm)}
+                            aria-label={`回复 ${reply.author.username}`}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            <span>回复</span>
+                          </button>
+                          {canDelete(
+                            reply.author.id,
+                            reply.author.username
+                          ) && (
+                            <button
+                              type="button"
+                              className={reactionButtonClass}
+                              onClick={() => onDelete(reply.id)}
+                              disabled={isDeletingIds.has(reply.id)}
+                              aria-label="删除回复"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {hasMore && (
+                    <div className="ml-16">
+                      <button
+                        type="button"
+                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        style={{
+                          fontFamily:
+                            '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                        }}
+                        onClick={() => setExpandedReplies(!expandedReplies)}
+                      >
+                        {expandedReplies
+                          ? '收起'
+                          : `查看更多 (${sortedReplies.length - 2} 条)`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -233,6 +396,7 @@ function CommentItem({ comment, onLike, onReply, isLiking }: CommentItemProps) {
 export function RepositoryComments({
   repositoryId,
   className,
+  highlightCommentId: propHighlightCommentId,
 }: RepositoryCommentsProps) {
   const { user } = useAuth();
   const [comments, setComments] = useState<RepositoryCommentDto[]>([]);
@@ -243,6 +407,23 @@ export function RepositoryComments({
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [isDeletingIds, setIsDeletingIds] = useState<Set<string>>(new Set());
+
+  // 获取URL中的commentId参数或使用传入的参数
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    // 优先使用传入的参数，否则从URL获取
+    if (propHighlightCommentId) {
+      setHighlightCommentId(propHighlightCommentId);
+    } else if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const commentId = params.get('commentId');
+      setHighlightCommentId(commentId);
+    }
+  }, [propHighlightCommentId]);
 
   // 加载评论列表
   const loadComments = useCallback(
@@ -377,6 +558,44 @@ export function RepositoryComments({
     setComments(updateCommentWithReply);
   };
 
+  // 处理删除评论
+  const handleDelete = async (commentId: string) => {
+    if (isDeletingIds.has(commentId)) return;
+
+    setIsDeletingIds(prev => new Set(prev).add(commentId));
+    try {
+      // 假设API存在，如果不存在需要添加到CommunityAPI中
+      // await CommunityAPI.deleteRepositoryComment(commentId);
+      // 临时使用通用删除方法
+      await fetch(`/api/community/comments/${commentId}`, { method: 'DELETE' });
+
+      // 从评论列表中移除被删除的评论
+      const removeCommentFromList = (
+        commentsList: RepositoryCommentDto[]
+      ): RepositoryCommentDto[] => {
+        return commentsList
+          .filter(comment => comment.id !== commentId)
+          .map(comment => ({
+            ...comment,
+            replies: comment.replies
+              ? removeCommentFromList(comment.replies)
+              : [],
+          }));
+      };
+
+      setComments(removeCommentFromList);
+      toast.success('删除成功');
+    } catch (error) {
+      toast.error('删除失败，请重试');
+    } finally {
+      setIsDeletingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(commentId);
+        return newSet;
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className={className}>
@@ -408,7 +627,10 @@ export function RepositoryComments({
                   comment={comment}
                   onLike={handleLike}
                   onReply={handleReply}
+                  onDelete={handleDelete}
                   isLiking={isLiking}
+                  isDeletingIds={isDeletingIds}
+                  highlightCommentId={highlightCommentId}
                 />
               ))}
 

@@ -31,6 +31,7 @@ interface RepositoryDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onLikeChange?: (repoId: string, likesCount: number, isLiked: boolean) => void;
+  highlightCommentId?: string | null;
 }
 
 export function RepositoryDetailModal({
@@ -38,6 +39,7 @@ export function RepositoryDetailModal({
   open,
   onOpenChange,
   onLikeChange,
+  highlightCommentId,
 }: RepositoryDetailModalProps) {
   const { user } = useAuth();
   const [repositoryDetail, setRepositoryDetail] = useState<any>(null);
@@ -209,7 +211,10 @@ export function RepositoryDetailModal({
               {/* 评论区域 */}
               <div className="p-6 pt-0">
                 <div className="border-t pt-6">
-                  <RepositoryComments repositoryId={repository.id} />
+                  <RepositoryComments
+                    repositoryId={repository.id}
+                    highlightCommentId={highlightCommentId}
+                  />
                 </div>
               </div>
             </div>

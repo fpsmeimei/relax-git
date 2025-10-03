@@ -23,20 +23,23 @@ function CommunityPageContent() {
   const searchParams = useSearchParams();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const didInitFromUrl = useRef(false);
+  const pendingRepoIdRef = useRef<string | null>(null);
 
   const [repositories, setRepositories] = useState<CommunityFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterType>({
     sort: 'latest',
     tags: [],
   });
   const [error, setError] = useState<string | null>(null);
-  const [selectedRepository, setSelectedRepository] =
-    useState<CommunityFeedItem | null>(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [selectedRepository, setSelectedRepository] = useState<
+    CommunityFeedItem | undefined
+  >(undefined);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
 
   // 加载社区feed
   const loadFeed = useCallback(
@@ -94,7 +97,32 @@ function CommunityPageContent() {
     const tags = tagsStr ? tagsStr.split(',').filter(Boolean) : [];
     setFilters({ sort, language, tags, search });
     setNextCursor(null);
-  }, [searchParams]);
+
+    // 处理仓库ID和评论ID参数
+    const repoId = searchParams.get('repoId');
+    const commentId = searchParams.get('commentId');
+    if (repoId) {
+      setTargetCommentId(commentId);
+      pendingRepoIdRef.current = repoId;
+      // 如果数据已经加载出来，则尝试立即打开
+      const targetRepo = repositories.find(repo => repo.id === repoId);
+      if (targetRepo) {
+        setSelectedRepository(targetRepo);
+        setModalOpen(true);
+        pendingRepoIdRef.current = null;
+      }
+    }
+  }, [searchParams, repositories]);
+
+  // 当仓库列表更新且存在待打开的仓库时自动打开详情
+  useEffect(() => {
+    if (!pendingRepoIdRef.current) return;
+    const repo = repositories.find(r => r.id === pendingRepoIdRef.current);
+    if (!repo) return;
+    setSelectedRepository(repo);
+    setModalOpen(true);
+    pendingRepoIdRef.current = null;
+  }, [repositories]);
 
   // 同步URL
   const syncUrl = useCallback(
@@ -162,7 +190,7 @@ function CommunityPageContent() {
   // 处理仓库卡片点击
   const handleRepositoryClick = (repository: CommunityFeedItem) => {
     setSelectedRepository(repository);
-    setShowDetailModal(true);
+    setModalOpen(true);
   };
 
   // 处理收藏状态变化
@@ -287,10 +315,11 @@ function CommunityPageContent() {
 
       {/* 仓库详情模态框 */}
       <RepositoryDetailModal
-        repository={selectedRepository}
-        open={showDetailModal}
-        onOpenChange={setShowDetailModal}
+        repository={selectedRepository || null}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
         onLikeChange={handleLikeChange}
+        highlightCommentId={targetCommentId}
       />
     </div>
   );

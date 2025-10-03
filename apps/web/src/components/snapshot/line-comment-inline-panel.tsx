@@ -3,9 +3,9 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
-import { useAuth } from '@/hooks/use-auth';
 import { Heart, Loader2, MessageCircle, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyHint } from './empty-hint';
@@ -164,11 +164,13 @@ export function LineCommentInlinePanel({
   data,
   snapshotId,
   commitSha,
+  highlightCommentId,
   onUpdate,
 }: {
   data: LineCommentInlineData;
   snapshotId: string;
   commitSha: string;
+  highlightCommentId?: string | null;
   onUpdate: (updated: LineCommentInlineData) => void;
 }) {
   const { user } = useAuth();
@@ -182,7 +184,13 @@ export function LineCommentInlinePanel({
   const [submittingReply, setSubmittingReply] = useState<string | null>(null);
   const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-
+  const [highlightedCommentId, setHighlightedCommentId] = useState<
+    string | null
+  >(null);
+  const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
+    new Set()
+  );
   const [pendingComments, setPendingComments] = useState<PendingEntry[]>([]);
   const [pendingReplies, setPendingReplies] = useState<
     Record<string, PendingEntry[]>
@@ -221,6 +229,54 @@ export function LineCommentInlinePanel({
   useEffect(() => {
     setLocalData(data);
   }, [data]);
+  // 处理评论高亮闪烁
+  useEffect(() => {
+    if (highlightCommentId && localData.comments.length > 0) {
+      // 检查是否存在该评论ID（主评论或次评论）
+      let targetCommentId: string | null = null;
+      let isReply = false;
+
+      for (const comment of localData.comments) {
+        if (comment.id === highlightCommentId) {
+          targetCommentId = comment.id;
+          break;
+        }
+        if (comment.replies?.some(reply => reply.id === highlightCommentId)) {
+          targetCommentId = comment.id; // 主评论ID
+          isReply = true;
+          break;
+        }
+      }
+
+      if (targetCommentId) {
+        // 如果是次评论，需要先展开对应的主评论
+        if (isReply) {
+          setExpandedReplies(prev => new Set(prev).add(targetCommentId!));
+        }
+
+        setHighlightedCommentId(highlightCommentId);
+
+        // 滚动到目标评论并居中显示
+        setTimeout(() => {
+          const targetElement = commentRefs.current[highlightCommentId];
+          if (targetElement) {
+            targetElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest',
+            });
+          }
+        }, 100); // 稍微延迟确保DOM更新完成
+
+        // 1秒后移除高亮
+        const timer = setTimeout(() => {
+          setHighlightedCommentId(null);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+    return undefined;
+  }, [highlightCommentId, localData.comments]);
 
   useEffect(() => {
     if (pendingUpdateRef.current) {
@@ -703,6 +759,18 @@ export function LineCommentInlinePanel({
     [user?.id, user?.username]
   );
 
+  const toggleRepliesExpansion = useCallback((commentId: string) => {
+    setExpandedReplies(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  }, []);
+
   return (
     <div className="my-5 rounded-[26px] border border-border bg-card text-card-foreground shadow-lg backdrop-blur">
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
@@ -718,7 +786,7 @@ export function LineCommentInlinePanel({
 
       <div
         className={`p-6 space-y-6 ${
-          sorted.length > 5 ? 'max-h-[600px] overflow-y-auto' : ''
+          sorted.length > 5 ? 'max-h-[700px] overflow-y-auto' : ''
         }`}
       >
         {pendingComments.length > 0 && (
@@ -745,7 +813,13 @@ export function LineCommentInlinePanel({
                       {formatTime(comment.createdAt)}
                     </span>
                   </div>
-                  <div className="mt-2 text-[16px] leading-relaxed tracking-wide text-foreground/90 font-rounded-cn">
+                  <div
+                    className="mt-2 text-[16px] leading-relaxed tracking-wide text-foreground/90"
+                    style={{
+                      fontFamily:
+                        '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                    }}
+                  >
                     {comment.content}
                   </div>
                   <div className="mt-2 flex items-center gap-3 text-[12px] text-muted-foreground/70">
@@ -760,9 +834,19 @@ export function LineCommentInlinePanel({
         {sorted.length > 0 ? (
           <div className="space-y-6">
             {sorted.map(comment => (
-              <div key={comment.id} className="flex gap-4">
+              <div
+                key={comment.id}
+                ref={el => {
+                  commentRefs.current[comment.id] = el;
+                }}
+                className={`flex gap-4 transition-all duration-500 ease-in-out ${
+                  highlightedCommentId === comment.id
+                    ? 'dark:bg-gray-800/40 bg-orange-50/80 rounded-lg p-3 -m-3'
+                    : ''
+                }`}
+              >
                 <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
-                  {(comment as any).authorAvatar && (
+                  {comment.authorAvatar && (
                     <AvatarImage
                       src={(comment as any).authorAvatar}
                       alt={comment.author}
@@ -781,7 +865,13 @@ export function LineCommentInlinePanel({
                       {formatTime(comment.createdAt)}
                     </span>
                   </div>
-                  <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
+                  <div
+                    className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90"
+                    style={{
+                      fontFamily:
+                        '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                    }}
+                  >
                     {comment.content}
                   </div>
                   <div className="mt-3 flex items-center gap-6">
@@ -844,7 +934,13 @@ export function LineCommentInlinePanel({
                               刚刚
                             </span>
                           </div>
-                          <div className="mt-1 text-[15px] leading-relaxed text-foreground/85 font-rounded-cn">
+                          <div
+                            className="mt-1 text-[15px] leading-relaxed text-foreground/85"
+                            style={{
+                              fontFamily:
+                                '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                            }}
+                          >
                             {reply.content}
                           </div>
                           <div className="mt-2 flex items-center gap-3 text-[12px] text-muted-foreground/70">
@@ -859,87 +955,141 @@ export function LineCommentInlinePanel({
                   {Array.isArray(comment.replies) &&
                     comment.replies.length > 0 && (
                       <div className="mt-6 space-y-6">
-                        {comment.replies.map(reply => (
-                          <div key={reply.id} className="flex gap-4">
-                            <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
-                              {(reply as any).authorAvatar && (
-                                <AvatarImage
-                                  src={(reply as any).authorAvatar}
-                                  alt={reply.author}
-                                />
-                              )}
-                              <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
-                                {reply.author.charAt(0).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                                <span className="text-[16px] font-semibold text-foreground">
-                                  {reply.author}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  ▶
-                                </span>
-                                <span className="text-[16px] font-semibold text-foreground">
-                                  {comment.author}
-                                </span>
-                                <span className="text-muted-foreground/70">
-                                  {formatTime(reply.createdAt)}
-                                </span>
-                              </div>
-                              <div className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90">
-                                {reply.content}
-                              </div>
-                              <div className="mt-3 flex items-center gap-6">
-                                <button
-                                  type="button"
-                                  className={reactionButtonClass}
-                                  onClick={() =>
-                                    void handleLike(reply.id, true)
-                                  }
-                                  disabled={likingIds.has(reply.id)}
+                        {(() => {
+                          // 按点赞数排序次评论
+                          const sortedReplies = [...comment.replies].sort(
+                            (a, b) => (b.likes || 0) - (a.likes || 0)
+                          );
+                          const isExpanded = expandedReplies.has(comment.id);
+                          const visibleReplies = isExpanded
+                            ? sortedReplies
+                            : sortedReplies.slice(0, 2);
+                          const hasMore = sortedReplies.length > 2;
+
+                          return (
+                            <>
+                              {visibleReplies.map(reply => (
+                                <div
+                                  key={reply.id}
+                                  ref={el => {
+                                    commentRefs.current[reply.id] = el;
+                                  }}
+                                  className={`flex gap-4 transition-all duration-500 ease-in-out ${
+                                    highlightedCommentId === reply.id
+                                      ? 'dark:bg-gray-800/40 bg-orange-50/80 rounded-lg p-3 -m-3'
+                                      : ''
+                                  }`}
                                 >
-                                  <Heart
-                                    className={`h-4 w-4 ${
-                                      reply.isLiked
-                                        ? 'fill-current text-destructive'
-                                        : 'text-muted-foreground'
-                                    }`}
-                                  />
-                                  <span>{formatCount(reply.likes)}</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className={reactionButtonClass}
-                                  onClick={() =>
-                                    handleReplyTarget(
-                                      comment.id,
-                                      reply.author,
-                                      reply.id
-                                    )
-                                  }
-                                  aria-label={`回复 ${reply.author}`}
-                                >
-                                  <MessageCircle className="h-4 w-4" />
-                                  <span>回复</span>
-                                </button>
-                                {canDelete(reply.authorId, reply.author) && (
+                                  <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
+                                    {(reply as any)?.authorAvatar && (
+                                      <AvatarImage
+                                        src={(reply as any).authorAvatar}
+                                        alt={reply.author}
+                                      />
+                                    )}
+                                    <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+                                      {reply.author.charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                                      <span className="text-[16px] font-semibold text-foreground">
+                                        {reply.author}
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        ▶
+                                      </span>
+                                      <span className="text-[16px] font-semibold text-foreground">
+                                        {comment.author}
+                                      </span>
+                                      <span className="text-muted-foreground/70">
+                                        {formatTime(reply.createdAt)}
+                                      </span>
+                                    </div>
+                                    <div
+                                      className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90"
+                                      style={{
+                                        fontFamily:
+                                          '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                                      }}
+                                    >
+                                      {reply.content}
+                                    </div>
+                                    <div className="mt-3 flex items-center gap-6">
+                                      <button
+                                        type="button"
+                                        className={reactionButtonClass}
+                                        onClick={() =>
+                                          void handleLike(reply.id, true)
+                                        }
+                                        disabled={likingIds.has(reply.id)}
+                                      >
+                                        <Heart
+                                          className={`h-4 w-4 ${
+                                            reply.isLiked
+                                              ? 'fill-current text-destructive'
+                                              : 'text-muted-foreground'
+                                          }`}
+                                        />
+                                        <span>{formatCount(reply.likes)}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className={reactionButtonClass}
+                                        onClick={() =>
+                                          handleReplyTarget(
+                                            comment.id,
+                                            reply.author,
+                                            reply.id
+                                          )
+                                        }
+                                        aria-label={`回复 ${reply.author}`}
+                                      >
+                                        <MessageCircle className="h-4 w-4" />
+                                        <span>回复</span>
+                                      </button>
+                                      {canDelete(
+                                        reply.authorId,
+                                        reply.author
+                                      ) && (
+                                        <button
+                                          type="button"
+                                          className={reactionButtonClass}
+                                          onClick={() =>
+                                            void handleDelete(reply.id, true)
+                                          }
+                                          disabled={deletingIds.has(reply.id)}
+                                          aria-label="删除回复"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              {hasMore && (
+                                <div className="ml-16">
                                   <button
                                     type="button"
-                                    className={reactionButtonClass}
+                                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                    style={{
+                                      fontFamily:
+                                        '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                                    }}
                                     onClick={() =>
-                                      void handleDelete(reply.id, true)
+                                      toggleRepliesExpansion(comment.id)
                                     }
-                                    disabled={deletingIds.has(reply.id)}
-                                    aria-label="删除回复"
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    {isExpanded
+                                      ? '收起'
+                                      : `查看更多 (${sortedReplies.length - 2} 条)`}
                                   </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -950,7 +1100,11 @@ export function LineCommentInlinePanel({
                         value={replyText}
                         onChange={e => setReplyText(e.target.value)}
                         placeholder={`回复 @${replyingTo?.targetAuthor || comment.author}:`}
-                        className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 font-rounded-cn"
+                        className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                        style={{
+                          fontFamily:
+                            '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                        }}
                         onKeyDown={e => {
                           if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                             e.preventDefault();
@@ -1013,7 +1167,11 @@ export function LineCommentInlinePanel({
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
               placeholder="说点什么吧... 支持 Ctrl/⌘ + Enter 快速发布"
-              className="min-h-[90px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 font-rounded-cn"
+              className="min-h-[90px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+              style={{
+                fontFamily:
+                  '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+              }}
               onKeyDown={e => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                   e.preventDefault();

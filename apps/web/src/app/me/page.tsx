@@ -210,13 +210,6 @@ export default function MePage() {
         >
           通知
         </Button>
-        <Button
-          variant={tab === 'my-comments' ? 'soft' : 'outline-subtle'}
-          size="sm"
-          onClick={() => setTab('my-comments')}
-        >
-          我的评论
-        </Button>
       </div>
 
       {tab === 'overview' ? (
@@ -245,7 +238,7 @@ export default function MePage() {
             </CardContent>
           </Card>
 
-          {/* 我的评论 */}
+          {/* 我的评论 - 注意：/me/comments 才是目前主要使用的页面 */}
           <Card className="hover:shadow-md transition-shadow h-[220px] flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">我的评论</CardTitle>
@@ -394,6 +387,7 @@ export default function MePage() {
           )}
         </div>
       ) : (
+        // 注意：这个标签页保留用于兼容，实际主要使用 /me/comments 页面
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
@@ -421,15 +415,42 @@ export default function MePage() {
                   c.lineStart,
                   c.lineEnd
                 );
-                const href = (c as any).repoId
-                  ? `/repositories/${(c as any).repoId}?tab=branches`
-                  : undefined;
+
+                // 根据评论类型生成不同的跳转链接
+                let href: string | undefined;
+                if (c.anchorType === 'LINE' || c.filePath || c.lineStart) {
+                  // 行级评论：跳转到快照页面
+                  href = c.snapshotId
+                    ? `/snapshots/${c.snapshotId}${hash}`
+                    : undefined;
+                } else {
+                  // 社区评论：跳转到社区页面并打开对应仓库
+                  const repoId = (c as any).repoId;
+                  href = repoId
+                    ? `/community?repoId=${repoId}&commentId=${c.id}`
+                    : undefined;
+                }
                 return (
                   <li
                     key={c.id}
                     className="border rounded p-3 flex items-start justify-between gap-3"
                   >
                     <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                            // 行评论使用蓝色（主色调）
+                            c.anchorType === 'LINE' || c.filePath || c.lineStart
+                              ? 'bg-primary/10 text-primary'
+                              : // 社区评论使用绿色（强调色）
+                                'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                          }`}
+                        >
+                          {c.anchorType === 'LINE' || c.filePath || c.lineStart
+                            ? '行评论'
+                            : '社区评论'}
+                        </span>
+                      </div>
                       <div className="text-sm text-foreground break-words">
                         {c.content}
                       </div>

@@ -150,7 +150,7 @@ export function RepositoryCard({
                 src={repository.coverImage}
                 alt={repository.name}
                 fill
-                className="object-cover"
+                className="object-contain"
                 sizes="(max-width: 768px) 100vw, 768px"
               />
             ) : (

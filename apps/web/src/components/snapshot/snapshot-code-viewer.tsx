@@ -277,6 +277,15 @@ export function SnapshotCodeViewer({
     }
   }, [searchParams]);
 
+  // 获取需要高亮的评论ID
+  const highlightCommentId = useMemo(() => {
+    try {
+      return searchParams?.get('commentId') || null;
+    } catch {
+      return null;
+    }
+  }, [searchParams]);
+
   const handleScrollToTop = useCallback(() => {
     try {
       codeContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -885,6 +894,7 @@ export function SnapshotCodeViewer({
                       }
                       snapshotId={snapshotId}
                       commitSha={commitSha}
+                      highlightCommentId={highlightCommentId}
                       onUpdate={updated => {
                         setLineComments(prev => ({
                           ...prev,
@@ -910,6 +920,7 @@ export function SnapshotCodeViewer({
     commitSha,
     highlightedLines,
     codeZoom,
+    highlightCommentId,
   ]);
 
   if (!hasLoadedOnce && loading) {

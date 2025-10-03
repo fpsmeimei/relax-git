@@ -110,29 +110,45 @@ export default function MyCommentsPage() {
     }
   };
 
-  const getAnchorTypeLabel = (anchorType: string) => {
-    switch (anchorType) {
-      case 'LINE':
-        return '行评论';
+  const getAnchorTypeLabel = (comment: Comment) => {
+    // 如果有文件路径或行号，说明是行级评论
+    if (
+      comment.anchorType === 'LINE' ||
+      comment.filePath ||
+      comment.lineNumber
+    ) {
+      return '行评论';
+    }
+
+    // 其他情况判断为社区评论
+    switch (comment.anchorType) {
       case 'FILE':
         return '文件评论';
       case 'GENERAL':
-        return '通用评论';
+        return '社区评论';
       default:
-        return '评论';
+        return '社区评论';
     }
   };
 
-  const getAnchorTypeBadgeVariant = (anchorType: string) => {
-    switch (anchorType) {
-      case 'LINE':
-        return 'default';
+  const getAnchorTypeBadgeVariant = (comment: Comment) => {
+    // 如果是行级评论，使用蓝色（默认主色调）
+    if (
+      comment.anchorType === 'LINE' ||
+      comment.filePath ||
+      comment.lineNumber
+    ) {
+      return 'default';
+    }
+
+    // 社区评论使用绿色
+    switch (comment.anchorType) {
       case 'FILE':
         return 'secondary';
       case 'GENERAL':
-        return 'outline';
+        return 'default'; // 临时使用default，稍后自定义样式
       default:
-        return 'outline';
+        return 'default'; // 临时使用default，稍后自定义样式
     }
   };
 
@@ -209,12 +225,19 @@ export default function MyCommentsPage() {
                       {/* 评论信息 */}
                       <div className="flex items-center gap-2 mb-2">
                         <Badge
-                          variant={
-                            getAnchorTypeBadgeVariant(comment.anchorType) as any
-                          }
-                          className="text-xs"
+                          variant={getAnchorTypeBadgeVariant(comment) as any}
+                          className={`text-xs ${
+                            // 社区评论使用绿色样式
+                            !(
+                              comment.anchorType === 'LINE' ||
+                              comment.filePath ||
+                              comment.lineNumber
+                            )
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30'
+                              : ''
+                          }`}
                         >
-                          {getAnchorTypeLabel(comment.anchorType)}
+                          {getAnchorTypeLabel(comment)}
                         </Badge>
                         <span className="text-sm text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
@@ -266,7 +289,18 @@ export default function MyCommentsPage() {
 
                         <Button variant="outline-subtle" size="sm" asChild>
                           <Link
-                            href={`/snapshots/${comment.snapshot.id}${comment.filePath ? `?file=${encodeURIComponent(comment.filePath)}${comment.lineNumber ? `&line=${comment.lineNumber}` : ''}` : ''}`}
+                            href={(() => {
+                              // 如果是行级评论，跳转到快照页面
+                              if (
+                                comment.anchorType === 'LINE' ||
+                                comment.filePath ||
+                                comment.lineNumber
+                              ) {
+                                return `/snapshots/${comment.snapshot.id}${comment.filePath ? `?file=${encodeURIComponent(comment.filePath)}${comment.lineNumber ? `&line=${comment.lineNumber}` : ''}&commentId=${comment.id}` : `?commentId=${comment.id}`}`;
+                              }
+                              // 社区评论跳转到社区页面
+                              return `/community?repoId=${comment.snapshot.repository.id}&commentId=${comment.id}`;
+                            })()}
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />
                             查看详情
