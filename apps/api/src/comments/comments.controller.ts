@@ -220,10 +220,9 @@ export class CommentsController {
       Number(page) || 1,
       Number(limit) || 20
     );
-    // 将 SNAPSHOT 规范化为 GENERAL 供前端徽章展示
+    // 保持原始 anchorType，让前端根据类型和文件路径判断
     const items = result.items.map((c: any) => ({
       ...c,
-      anchorType: c.anchorType === 'SNAPSHOT' ? 'GENERAL' : c.anchorType,
       lineNumber: c.lineStart ?? undefined,
     }));
     return {

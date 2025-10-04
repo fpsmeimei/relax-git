@@ -3,12 +3,12 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/use-auth';
+import { formatSmartTime } from '@/lib/utils/format-time';
 import { apiClient } from '@/services/apiClient';
 import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
-import { formatSmartTime } from '@/lib/utils/format-time';
 
 interface Comment {
   id: string;
@@ -368,55 +368,8 @@ export function RepositoryDiscussion({
         </div>
       </div>
 
-      {/* 评论列表区域 */}
-      <div
-        className={`p-6 space-y-6 ${comments.length > 5 ? 'max-h-[700px] overflow-y-auto' : ''}`}
-      >
-        {/* 新评论输入 */}
-        <div className="space-y-3">
-          <Textarea
-            ref={textareaRef}
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-            placeholder={user ? '分享你的想法...' : '请先登录后再评论'}
-            disabled={!user || submitting}
-            className="min-h-[100px] resize-none bg-background/50 border-border/50 focus:border-primary/50 rounded-[16px] text-[15px] leading-relaxed"
-            style={{
-              fontFamily:
-                '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] text-muted-foreground/70">
-              {user ? 'Ctrl/Cmd + Enter 发送' : '请先登录'}
-            </span>
-            <Button
-              onClick={handleSubmit}
-              disabled={!newComment.trim() || submitting || !user}
-              size="sm"
-              className="rounded-[12px]"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  发送中
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  发表评论
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
+      {/* 评论列表区域 - 可滚动 */}
+      <div className="p-6 space-y-6 h-[620px] overflow-y-auto">
         {/* 评论列表 */}
         {loading ? (
           <div className="text-center py-8">
@@ -697,6 +650,57 @@ export function RepositoryDiscussion({
             </div>
           ))
         )}
+      </div>
+
+      {/* 发表评论区域 - 固定在底部 */}
+      <div className="border-t border-border px-6 py-4">
+        <div className="flex gap-3">
+          <Avatar className="h-10 w-10 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
+            {user?.avatar && (
+              <AvatarImage src={user.avatar} alt={user?.username || 'avatar'} />
+            )}
+            <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
+              {user?.username?.charAt(0).toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 rounded-[20px] border border-border bg-accent/5 px-4 py-3 shadow-sm">
+            <Textarea
+              ref={textareaRef}
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              placeholder={
+                user
+                  ? '分享你的想法... 支持 Ctrl/⌘ + Enter 快速发布'
+                  : '请先登录后再评论'
+              }
+              disabled={!user || submitting}
+              className="min-h-[70px] resize-none border-none bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+              style={{
+                fontFamily:
+                  '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+            />
+            <div className="mt-2 flex items-center justify-end">
+              <Button
+                size="sm"
+                onClick={handleSubmit}
+                disabled={!newComment.trim() || submitting || !user}
+                className="h-8 rounded-full bg-primary px-5 text-[13px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+              >
+                {submitting && (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                )}
+                发布
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

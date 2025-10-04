@@ -1,13 +1,17 @@
 'use client';
 
+import { JoinRequestsPanel } from '@/components/repository/join-requests-panel';
+import { MembersList } from '@/components/repository/members-list';
+import { MembershipButton } from '@/components/repository/membership-button';
+import { RepositoryDiscussion } from '@/components/repository/repository-discussion';
 import { EmptyHint } from '@/components/snapshot/empty-hint';
 import { FeedbackBanner } from '@/components/snapshot/feedback-banner';
 import { LoadingHint } from '@/components/snapshot/loading-hint';
 import { SnapshotCodeViewer } from '@/components/snapshot/snapshot-code-viewer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useRepositoryPermission } from '@/hooks/use-repository-permission';
 import { toast } from '@/hooks/use-toast';
-import { isJoinNeeded } from '@/lib/repo-access';
 import { apiClient } from '@/services/apiClient';
 import { useAppStore } from '@/stores/app-store';
 import { useAuth } from '@/stores/auth-store';
@@ -33,11 +37,6 @@ import {
   useSearchParams,
 } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { MembershipButton } from '@/components/repository/membership-button';
-import { JoinRequestsPanel } from '@/components/repository/join-requests-panel';
-import { MembersList } from '@/components/repository/members-list';
-import { RepositoryDiscussion } from '@/components/repository/repository-discussion';
-import { useRepositoryPermission } from '@/hooks/use-repository-permission';
 
 interface BranchInfo {
   id: string;

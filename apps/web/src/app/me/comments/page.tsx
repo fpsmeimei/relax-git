@@ -314,6 +314,13 @@ export default function MyCommentsPage() {
                               ) {
                                 return `/snapshots/${comment.snapshot.id}${comment.filePath ? `?file=${encodeURIComponent(comment.filePath)}${comment.lineNumber ? `&line=${comment.lineNumber}` : ''}&commentId=${comment.id}` : `?commentId=${comment.id}`}`;
                               }
+                              // 如果是项目评论（SNAPSHOT类型且没有文件路径），跳转到仓库讨论标签页
+                              if (
+                                comment.anchorType === 'SNAPSHOT' &&
+                                !comment.filePath
+                              ) {
+                                return `/repositories/${comment.snapshot.repository.id}?tab=discussion&commentId=${comment.id}`;
+                              }
                               // 社区评论跳转到社区页面
                               return `/community?repoId=${comment.snapshot.repository.id}&commentId=${comment.id}`;
                             })()}

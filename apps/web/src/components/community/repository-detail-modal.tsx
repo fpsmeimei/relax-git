@@ -107,7 +107,7 @@ export function RepositoryDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-[1400px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[90vw] max-w-[1400px] h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center justify-between">
             <span className="truncate">{repository.name}</span>
@@ -129,92 +129,88 @@ export function RepositoryDetailModal({
             <span className="ml-3">加载中...</span>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto">
-            <div className="space-y-6">
-              {/* 概览区域 */}
-              <div className="p-6 space-y-6">
-                {/* 仓库信息 */}
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={repository.owner.avatar || undefined} />
-                      <AvatarFallback>
-                        {repository.owner.username.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* 概览区域 - 固定高度 */}
+            <div className="flex-shrink-0 p-6 space-y-6 overflow-y-auto max-h-[300px]">
+              {/* 仓库信息 */}
+              <div className="space-y-4">
+                <div className="flex items-start space-x-4">
+                  <Avatar className="h-12 w-12">
+                    <AvatarImage src={repository.owner.avatar || undefined} />
+                    <AvatarFallback>
+                      {repository.owner.username.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
 
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium">
-                          {repository.owner.username}
-                        </span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="font-semibold">{repository.name}</span>
-                      </div>
-
-                      {repository.description && (
-                        <p className="text-muted-foreground">
-                          {repository.description}
-                        </p>
-                      )}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium">
+                        {repository.owner.username}
+                      </span>
+                      <span className="text-muted-foreground">/</span>
+                      <span className="font-semibold">{repository.name}</span>
                     </div>
-                  </div>
 
-                  {/* 标签和语言 */}
-                  <div className="flex flex-wrap gap-2">
-                    {repository.language && (
-                      <Badge variant="secondary">{repository.language}</Badge>
+                    {repository.description && (
+                      <p className="text-muted-foreground">
+                        {repository.description}
+                      </p>
                     )}
-                    {repository.tags.map(tag => (
-                      <Badge key={tag} variant="outline">
-                        {tag}
-                      </Badge>
-                    ))}
                   </div>
+                </div>
 
-                  {/* 统计信息 */}
-                  <div className="flex items-center space-x-6 text-sm">
-                    <div className="flex items-center space-x-1">
-                      <Heart className="h-4 w-4" />
-                      <span>
-                        {(
-                          repositoryDetail?.stars ?? repository.stars
-                        ).toLocaleString()}{' '}
-                        点赞
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Eye className="h-4 w-4" />
-                      <span>{repository.viewCount.toLocaleString()} 浏览</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <MessageCircle className="h-4 w-4" />
-                      <span>
-                        {(
-                          repositoryDetail?.commentsCount ??
-                          repository.commentsCount ??
-                          0
-                        ).toLocaleString()}{' '}
-                        评论
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <GitBranch className="h-4 w-4" />
-                      <span>多分支</span>
-                    </div>
+                {/* 标签和语言 */}
+                <div className="flex flex-wrap gap-2">
+                  {repository.language && (
+                    <Badge variant="secondary">{repository.language}</Badge>
+                  )}
+                  {repository.tags.map(tag => (
+                    <Badge key={tag} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+
+                {/* 统计信息 */}
+                <div className="flex items-center space-x-6 text-sm">
+                  <div className="flex items-center space-x-1">
+                    <Heart className="h-4 w-4" />
+                    <span>
+                      {(
+                        repositoryDetail?.stars ?? repository.stars
+                      ).toLocaleString()}{' '}
+                      点赞
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Eye className="h-4 w-4" />
+                    <span>{repository.viewCount.toLocaleString()} 浏览</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <MessageCircle className="h-4 w-4" />
+                    <span>
+                      {(
+                        repositoryDetail?.commentsCount ??
+                        repository.commentsCount ??
+                        0
+                      ).toLocaleString()}{' '}
+                      评论
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <GitBranch className="h-4 w-4" />
+                    <span>多分支</span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* 评论区域 */}
-              <div className="p-6 pt-0">
-                <div className="border-t pt-6">
-                  <RepositoryComments
-                    repositoryId={repository.id}
-                    highlightCommentId={highlightCommentId}
-                  />
-                </div>
-              </div>
+            {/* 评论区域 - 占据剩余空间 */}
+            <div className="flex-1 flex flex-col min-h-0 px-6 border-t pt-6">
+              <RepositoryComments
+                repositoryId={repository.id}
+                highlightCommentId={highlightCommentId}
+              />
             </div>
           </div>
         )}

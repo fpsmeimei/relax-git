@@ -3,13 +3,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { CommunityAPI, RepositoryCommentDto } from '@/lib/api/community';
-import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { toast } from 'sonner';
+import { CommunityAPI, RepositoryCommentDto } from '@/lib/api/community';
 import { formatSmartTime } from '@/lib/utils/format-time';
 import { apiClient } from '@/services/apiClient';
+import { Heart, Loader2, MessageCircle, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 interface RepositoryCommentsProps {
   repositoryId: string;
@@ -613,15 +613,23 @@ export function RepositoryComments({
 
   return (
     <div className={className}>
-      <div className="space-y-6">
-        <h3 className="text-lg font-semibold">讨论 ({comments.length})</h3>
+      <div className="rounded-[26px] border border-border bg-card text-card-foreground shadow-lg backdrop-blur">
+        {/* 头部标题 */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <h3 className="text-[15px] font-semibold tracking-wide">
+            讨论 ({comments.length})
+          </h3>
+        </div>
 
-        {/* 评论列表 */}
-        <div className="space-y-6">
+        {/* 评论列表区域 - 可滚动 */}
+        <div className="p-6 space-y-6 max-h-[620px] overflow-y-auto">
           {sortedComments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>还没有评论，来发表第一条吧！</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-20" />
+              <p className="text-[15px]">还没有评论</p>
+              <p className="text-[13px] mt-2 text-muted-foreground/70">
+                来发表第一条评论吧
+              </p>
             </div>
           ) : (
             <>
@@ -656,10 +664,10 @@ export function RepositoryComments({
           )}
         </div>
 
-        {/* 发表评论 */}
-        <div className="border-t pt-6">
-          <div className="flex gap-4">
-            <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
+        {/* 发表评论区域 - 固定在底部 */}
+        <div className="border-t border-border px-6 py-4">
+          <div className="flex gap-3">
+            <Avatar className="h-10 w-10 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
               {user?.avatar && (
                 <AvatarImage
                   src={user.avatar}
@@ -670,12 +678,16 @@ export function RepositoryComments({
                 {user?.username?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1 rounded-[22px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+            <div className="flex-1 rounded-[20px] border border-border bg-accent/5 px-4 py-3 shadow-sm">
               <Textarea
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}
                 placeholder="说点什么吧... 支持 Ctrl/⌘ + Enter 快速发布"
-                className="min-h-[90px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-[70px] resize-none border-none bg-transparent text-[14px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                style={{
+                  fontFamily:
+                    '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                }}
                 maxLength={2000}
                 onKeyDown={e => {
                   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -684,15 +696,15 @@ export function RepositoryComments({
                   }
                 }}
               />
-              <div className="mt-3 flex items-center justify-end text-[12px] text-muted-foreground">
+              <div className="mt-2 flex items-center justify-end">
                 <Button
                   size="sm"
                   onClick={handleSubmitComment}
                   disabled={!newComment.trim() || isSubmitting}
-                  className="h-9 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                  className="h-8 rounded-full bg-primary px-5 text-[13px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                 >
                   {isSubmitting && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                   )}
                   发布
                 </Button>
