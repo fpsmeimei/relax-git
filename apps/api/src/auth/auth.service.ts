@@ -81,6 +81,14 @@ export class AuthService {
     });
     console.log('User created successfully:', user.id);
 
+    // 自动添加 relax-git-bot 为好友
+    try {
+      await this.addBotAsFriend(user.id);
+    } catch (error) {
+      console.error('Failed to add bot as friend:', error);
+      // 不影响注册流程
+    }
+
     // Log registration
     await this.auditLog.log({
       action: AuditAction.REGISTER,
@@ -96,6 +104,55 @@ export class AuthService {
     return {
       user: userWithoutPassword,
     };
+  }
+
+  /**
+   * 为新用户自动添加机器人好友
+   */
+  private async addBotAsFriend(userId: string) {
+    const bot = await this.prisma.user.findUnique({
+      where: { username: 'relax-git-bot' },
+    });
+    if (!bot) return;
+
+    // 创建双向好友关系
+    await this.prisma.friendship.createMany({
+      data: [
+        { userId, friendId: bot.id },
+        { userId: bot.id, friendId: userId },
+      ],
+      skipDuplicates: true,
+    });
+
+    // 创建 Chat
+    const [x, y] = [userId, bot.id].sort();
+    const directKey = `${x}:${y}`;
+    const chat = await this.prisma.chat.create({
+      data: {
+        type: 'DIRECT',
+        directKey,
+        members: {
+          createMany: {
+            data: [
+              { userId, role: 'MEMBER' },
+              { userId: bot.id, role: 'MEMBER' },
+            ],
+          },
+        },
+      },
+    });
+
+    // 发送欢迎消息
+    await this.prisma.message.create({
+      data: {
+        chatId: chat.id,
+        senderId: bot.id,
+        content:
+          '你好，我是 Relax-Git 助手机器人。\n可以点击下面的输入框和我打个招呼，体验一下聊天的流程吧！',
+        type: 'TEXT',
+        isRead: false,
+      },
+    });
   }
 
   /**
@@ -153,7 +210,6 @@ export class AuthService {
     };
   }
 
-
   /**
    * Validate user credentials
    */
@@ -176,7 +232,6 @@ export class AuthService {
     }
     return null;
   }
-
 
   /**
    * 根据ID查找用户

@@ -332,22 +332,24 @@ export default function ChatroomPage() {
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10 rounded-full overflow-hidden bg-muted">
-              {friendAvatar ? (
-                <Image
-                  src={friendAvatar}
-                  alt={selectedFriend.username}
-                  width={40}
-                  height={40}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-semibold">
-                  {selectedFriend.username.charAt(0).toUpperCase()}
-                </div>
-              )}
+            <div className="relative h-10 w-10">
+              <div className="h-full w-full rounded-full overflow-hidden bg-muted">
+                {friendAvatar ? (
+                  <Image
+                    src={friendAvatar}
+                    alt={selectedFriend.username}
+                    width={40}
+                    height={40}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-semibold">
+                    {selectedFriend.username.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
               {selectedFriend.isOnline && (
-                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
+                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
               )}
             </div>
             <div>
@@ -484,22 +486,24 @@ export default function ChatroomPage() {
                             : 'hover:bg-muted/60'
                         )}
                       >
-                        <div className="relative h-11 w-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
-                          {avatar ? (
-                            <Image
-                              src={avatar}
-                              alt={friend.username}
-                              width={44}
-                              height={44}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-base font-semibold">
-                              {friend.username.charAt(0).toUpperCase()}
-                            </span>
-                          )}
+                        <div className="relative h-11 w-11 flex-shrink-0">
+                          <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
+                            {avatar ? (
+                              <Image
+                                src={avatar}
+                                alt={friend.username}
+                                width={44}
+                                height={44}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-base font-semibold">
+                                {friend.username.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
                           {friend.isOnline && (
-                            <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
+                            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
