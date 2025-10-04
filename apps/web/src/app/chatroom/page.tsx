@@ -4,6 +4,14 @@ import { FriendRequestsDrawer } from '@/components/chat/friend-requests-drawer';
 import { SearchUsersDialog } from '@/components/chat/search-users-dialog';
 import { useSocket } from '@/components/socket-provider';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useAvatarSync } from '@/hooks/use-avatar-sync';
 import { useChatSocket } from '@/hooks/use-chat-socket';
@@ -17,14 +25,11 @@ import { useChatStore } from '@/stores/chat-store';
 import type { ChatMessage } from '@/types/chat';
 import {
   Github,
-  ImageIcon,
   MessageSquarePlus,
-  Mic,
-  Paperclip,
   Plus,
   Search,
   SendHorizonal,
-  Smile,
+  Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -43,8 +48,14 @@ export default function ChatroomPage() {
   useChatSocket();
 
   const { friends, friendsLoading, loadFriends } = useChatFriendsStore();
-  const { messages, loadMoreMessages, sendMessage, markRead, setCurrentChat } =
-    useChatStore();
+  const {
+    messages,
+    loadMoreMessages,
+    sendMessage,
+    markRead,
+    setCurrentChat,
+    clearMessages,
+  } = useChatStore();
 
   const [selectedFriend, setSelectedFriend] = useState<FriendEntry | null>(
     null
@@ -54,6 +65,8 @@ export default function ChatroomPage() {
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const chatInitialLoaded = useRef(new Set<string>());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -213,6 +226,29 @@ export default function ChatroomPage() {
     }
   };
 
+  const handleClearChat = useCallback(async () => {
+    if (!selectedChatId) return;
+    try {
+      setClearing(true);
+      // 调用 API 删除数据库中的消息
+      await clearMessages(selectedChatId);
+
+      toast({
+        title: '清屏成功',
+        description: '聊天记录已清除',
+      });
+    } catch (error: any) {
+      toast({
+        title: '清屏失败',
+        description: error?.message ?? '请稍后重试',
+        variant: 'destructive',
+      });
+    } finally {
+      setClearing(false);
+      setClearConfirmOpen(false);
+    }
+  }, [selectedChatId, clearMessages, toast]);
+
   const renderMessageBubble = (
     message: ChatMessage,
     isSelf: boolean,
@@ -323,12 +359,15 @@ export default function ChatroomPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Smile className="h-4 w-4" />
-            <Paperclip className="h-4 w-4" />
-            <ImageIcon className="h-4 w-4" />
-            <Mic className="h-4 w-4" />
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setClearConfirmOpen(true)}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            清屏
+          </Button>
         </div>
 
         <div
@@ -512,6 +551,34 @@ export default function ChatroomPage() {
           </main>
         </div>
       </div>
+
+      {/* 清屏确认对话框 */}
+      <Dialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>确认清屏</DialogTitle>
+            <DialogDescription>
+              此操作将清除当前聊天的所有消息记录，且无法恢复。确定要继续吗？
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setClearConfirmOpen(false)}
+              disabled={clearing}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleClearChat}
+              disabled={clearing}
+            >
+              {clearing ? '清除中...' : '确认清屏'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

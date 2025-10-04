@@ -372,4 +372,14 @@ export class ChatsService {
     });
     return { ok: true };
   }
+
+  async clearMessages(userId: string, chatId: string) {
+    await this.ensureMember(userId, chatId);
+
+    const result = await (this.prisma as any).message.deleteMany({
+      where: { chatId },
+    });
+
+    return { ok: true, deleted: result.count };
+  }
 }

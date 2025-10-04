@@ -19,6 +19,7 @@ interface ChatState {
   markRead: (chatId: string) => Promise<void>;
   setCurrentChat: (chatId: string | null) => void;
   updateOnNewMessage: (msg: ChatMessage, isSelf: boolean) => void;
+  clearMessages: (chatId: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -183,6 +184,22 @@ export const useChatStore = create<ChatState>()(
             messages: { ...state.messages, [chatId]: appended },
           };
         });
+      },
+
+      clearMessages: async (chatId: string) => {
+        console.log('[chat-store] 清空消息:', chatId);
+        try {
+          await apiClient.delete(`/chats/${chatId}/messages`);
+          console.log('[chat-store] 消息清空成功');
+          // 清空前端状态
+          set(state => ({
+            messages: { ...state.messages, [chatId]: [] },
+            nextCursor: { ...state.nextCursor, [chatId]: null },
+          }));
+        } catch (error) {
+          console.error('[chat-store] 清空消息失败:', error);
+          throw error;
+        }
       },
     }),
     { name: 'chat-store' }

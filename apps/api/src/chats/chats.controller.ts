@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { MessageType } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ChatsService } from './chats.service';
@@ -85,5 +93,13 @@ export class ChatsController {
     @Body() body: AddMembersDto
   ) {
     return this.chats.addMembers(userId, chatId, body.memberIds);
+  }
+
+  @Delete(':chatId/messages')
+  async clearMessages(
+    @CurrentUser('id') userId: string,
+    @Param('chatId') chatId: string
+  ) {
+    return this.chats.clearMessages(userId, chatId);
   }
 }
