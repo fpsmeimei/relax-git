@@ -86,16 +86,29 @@ export function useChatSocket() {
       // TODO: 更新聊天未读统计
     };
 
-    // 注册事件监听
-    on('chat:message:new', handleNewMessage as any);
-    on('chat:message:read', handleMessageRead as any);
-    on('chat:friend-request:new', handleFriendRequestNew as any);
-    on('chat:friend-request:result', handleFriendRequestResult as any);
-    on('chat:unread-counts', handleUnreadCounts as any);
+    // 注册事件监听，保存清理函数
+    const unsubscribeMessage = on('chat:message:new', handleNewMessage as any);
+    const unsubscribeRead = on('chat:message:read', handleMessageRead as any);
+    const unsubscribeFriendRequest = on(
+      'chat:friend-request:new',
+      handleFriendRequestNew as any
+    );
+    const unsubscribeFriendResult = on(
+      'chat:friend-request:result',
+      handleFriendRequestResult as any
+    );
+    const unsubscribeUnreadCounts = on(
+      'chat:unread-counts',
+      handleUnreadCounts as any
+    );
 
-    // TODO: 清理函数需要 socket provider 支持 off 方法
+    // 清理函数：移除所有监听器
     return () => {
-      // 暂时无法清理监听器
+      unsubscribeMessage();
+      unsubscribeRead();
+      unsubscribeFriendRequest();
+      unsubscribeFriendResult();
+      unsubscribeUnreadCounts();
     };
   }, [
     isConnected,
