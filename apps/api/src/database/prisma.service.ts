@@ -108,6 +108,18 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return (this.client as any).message;
   }
 
+  get friendship() {
+    return (this.client as any).friendship;
+  }
+
+  get friendRequest() {
+    return (this.client as any).friendRequest;
+  }
+
+  get chatMessage() {
+    return (this.client as any).chatMessage;
+  }
+
   // Notification 模型代理（用于通知）
   get notification() {
     return (this.client as any).notification;

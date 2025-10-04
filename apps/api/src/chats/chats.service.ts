@@ -4,6 +4,11 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import {
+  MessageType,
+  Chat,
+  FriendRequestStatus,
+} from '@relax-git/shared/generated/prisma-client';
 import { PrismaService } from '../database/prisma.service';
 import { WebSocketGateway } from '../websocket/websocket.gateway';
 
@@ -53,7 +58,12 @@ export class ChatsService {
       memberships.map(async (m: any) => {
         const lastRead = (m.lastReadAt as Date | null) ?? new Date(0);
         const unreadCount = await (this.prisma as any).message.count({
-          where: { chatId: m.chatId, createdAt: { gt: lastRead } },
+          where: {
+            chatId: m.chatId,
+            senderId: { not: userId },
+            isRead: false,
+            createdAt: { gt: lastRead },
+          },
         });
         const lastMessage = m.chat.messages[0] ?? null;
         // 过滤掉自己信息的联系人列表（取对方）
@@ -80,7 +90,10 @@ export class ChatsService {
     return results;
   }
 
-  async createDirectChat(currentUserId: string, targetUserId: string) {
+  async createDirectChat(
+    currentUserId: string,
+    targetUserId: string
+  ): Promise<Chat> {
     if (currentUserId === targetUserId) {
       throw new BadRequestException('不能与自己创建私聊');
     }
@@ -169,7 +182,15 @@ export class ChatsService {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      select: { id: true, content: true, createdAt: true, senderId: true },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        senderId: true,
+        type: true,
+        isRead: true,
+        readAt: true,
+      },
     });
     const nextCursor =
       items.length === take ? items[items.length - 1]?.id : null;
@@ -178,7 +199,52 @@ export class ChatsService {
     return { messages, nextCursor };
   }
 
-  async sendMessage(userId: string, chatId: string, content: string) {
+  async getUnreadCounts(userId: string) {
+    const memberships = await (this.prisma as any).chatMember.findMany({
+      where: { userId },
+      select: { chatId: true },
+    });
+
+    const chatIds = memberships.map((m: any) => m.chatId);
+
+    let chatCounts: Array<{ chatId: string; unread: number }> = [];
+    if (chatIds.length > 0) {
+      const grouped = await (this.prisma as any).message.groupBy({
+        by: ['chatId'],
+        where: {
+          chatId: { in: chatIds },
+          senderId: { not: userId },
+          isRead: false,
+        },
+        _count: { _all: true },
+      });
+      chatCounts = grouped.map((item: any) => ({
+        chatId: item.chatId,
+        unread: item._count?._all ?? 0,
+      }));
+    }
+
+    const pendingFriendRequests = await (
+      this.prisma as any
+    ).friendRequest.count({
+      where: {
+        toUserId: userId,
+        status: FriendRequestStatus.PENDING,
+      },
+    });
+
+    return {
+      chats: chatCounts,
+      friendRequests: pendingFriendRequests,
+    };
+  }
+
+  async sendMessage(
+    userId: string,
+    chatId: string,
+    content: string,
+    type: MessageType = MessageType.TEXT
+  ) {
     if (!content || !content.trim())
       throw new BadRequestException('消息内容不能为空');
     await this.ensureMember(userId, chatId);
@@ -188,6 +254,8 @@ export class ChatsService {
         chatId,
         senderId: userId,
         content: content.trim(),
+        type,
+        isRead: false,
       },
       select: {
         id: true,
@@ -195,6 +263,9 @@ export class ChatsService {
         senderId: true,
         content: true,
         createdAt: true,
+        type: true,
+        isRead: true,
+        readAt: true,
       },
     });
 
@@ -210,13 +281,45 @@ export class ChatsService {
     return message;
   }
 
-  async markRead(userId: string, chatId: string) {
+  async markRead(userId: string, chatId: string, messageIds?: string[]) {
     await this.ensureMember(userId, chatId);
+    const now = new Date();
     await (this.prisma as any).chatMember.update({
       where: { chatId_userId: { chatId, userId } } as any,
-      data: { lastReadAt: new Date() },
+      data: { lastReadAt: now },
     });
-    return { ok: true };
+
+    const baseWhere: Record<string, any> = {
+      chatId,
+      senderId: { not: userId },
+      isRead: false,
+    };
+    if (messageIds?.length) {
+      baseWhere.id = { in: messageIds };
+    }
+
+    const targets = await (this.prisma as any).message.findMany({
+      where: baseWhere,
+      select: { id: true },
+    });
+
+    if (!targets.length) {
+      return { ok: true, updated: 0 };
+    }
+
+    const targetIds = targets.map((item: any) => item.id as string);
+
+    await (this.prisma as any).message.updateMany({
+      where: {
+        id: { in: targetIds },
+        chatId,
+      },
+      data: { isRead: true, readAt: now },
+    });
+
+    this.ws.emitChatMessageRead(chatId, userId, targetIds, now);
+
+    return { ok: true, updated: targetIds.length };
   }
 
   async addMembers(adminUserId: string, chatId: string, memberIds: string[]) {

@@ -133,6 +133,74 @@ export class WebSocketGateway
     this.server.to(`chat:${chatId}`).emit('chat:message:new', message);
   }
 
+  /**
+   * 推送聊天消息已读回执
+   */
+  emitChatMessageRead(
+    chatId: string,
+    userId: string,
+    messageIds: string[],
+    readAt: Date
+  ) {
+    this.server.to(`chat:${chatId}`).emit('chat:message:read', {
+      chatId,
+      userId,
+      messageIds,
+      readAt: readAt.toISOString(),
+    });
+  }
+
+  /**
+   * 推送新的好友申请（聊天室通知）
+   */
+  emitChatFriendRequestNew(userId: string, payload: any) {
+    this.server.to(`user:${userId}`).emit('chat:friend-request:new', payload);
+  }
+
+  /**
+   * 推送好友申请处理结果
+   */
+  emitChatFriendRequestResult(userId: string, payload: any) {
+    this.server
+      .to(`user:${userId}`)
+      .emit('chat:friend-request:result', payload);
+  }
+
+  /**
+   * 推送聊天室未读统计
+   */
+  emitChatUnreadCounts(userId: string, counts: any) {
+    this.server.to(`user:${userId}`).emit('chat:unread-counts', counts);
+  }
+
+  /**
+   * 推送私聊消息
+   */
+  emitPrivateMessage(toUserId: string, message: any) {
+    this.server.to(`user:${toUserId}`).emit('private:message:new', message);
+  }
+
+  /**
+   * 推送私聊消息已读回执
+   */
+  emitPrivateMessageRead(
+    toUserId: string,
+    fromUserId: string,
+    messageIds: string[],
+    readAt: Date
+  ) {
+    this.server.to(`user:${toUserId}`).emit('private:message:read', {
+      fromUserId,
+      messageIds,
+      readAt: readAt.toISOString(),
+    });
+  }
+
+  // 移除好友状态变化推送，避免打扰用户
+  // emitFriendStatusChange(userId: string, statusPayload: any) {
+  //   this.server.to(`user:${userId}`).emit('friend:status:change', statusPayload);
+  // }
+
   async handleConnection(client: AuthenticatedSocket) {
     try {
       // 1) 从 Cookie 或 Authorization Bearer 提取 JWT（仅接受 JWT，不再接受明文 uid）

@@ -4,9 +4,10 @@ import { useSocket } from '@/components/socket-provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useChatSocket } from '@/hooks/use-chat-socket';
 import { apiClient } from '@/services/apiClient';
 import { useChatStore } from '@/stores/chat-store';
-import { ArrowLeft, SendHorizonal } from 'lucide-react';
+import { ArrowLeft, SendHorizonal, Check, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,7 +16,10 @@ export default function ChatDetailPage() {
   const params = useParams();
   const router = useRouter();
   const chatId = String(params?.['id'] ?? '');
-  const { isConnected, emit, on } = useSocket();
+  const { isConnected, emit } = useSocket();
+
+  // 启用聊天 WebSocket 监听
+  useChatSocket();
 
   const {
     messages,
@@ -157,12 +161,14 @@ export default function ChatDetailPage() {
       <main className="container-responsive flex-1 py-4">
         <div className="card h-[72vh] flex flex-col">
           <div className="flex items-center justify-between px-4 py-2 border-b">
-            <div className="text-sm text-muted-foreground">
-              会话ID：{chatId}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {isConnected ? '已连接' : '未连接'}
-            </div>
+            <div className="text-sm font-medium">聊天详情</div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void markRead(chatId)}
+            >
+              全部已读
+            </Button>
           </div>
 
           <div
@@ -181,32 +187,74 @@ export default function ChatDetailPage() {
               </div>
             )}
 
-            {list.map(m => (
-              <div key={m.id} className="flex flex-col">
-                <div className="text-xs text-muted-foreground">
-                  {new Date(m.createdAt).toLocaleString('zh-CN')}
+            {list.map(m => {
+              const isSystem = m.type === 'SYSTEM';
+              const showReadStatus = m.senderId && !isSystem;
+
+              return (
+                <div key={m.id} className="flex flex-col space-y-1">
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(m.createdAt).toLocaleString('zh-CN')}
+                  </div>
+                  <div
+                    className={`inline-block max-w-[80%] rounded-md px-3 py-2 text-sm ${
+                      isSystem
+                        ? 'bg-muted/50 text-muted-foreground italic text-center'
+                        : 'bg-accent'
+                    }`}
+                  >
+                    {m.content}
+                  </div>
+                  {showReadStatus && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
+                      {m.isRead ? (
+                        <>
+                          <CheckCheck className="h-3 w-3" />
+                          已读
+                          {m.readAt && (
+                            <span className="ml-1">
+                              {new Date(m.readAt).toLocaleString('zh-CN')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-3 w-3" />
+                          未读
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="inline-block max-w-[80%] rounded-md bg-accent px-3 py-2 text-sm">
-                  {m.content}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={bottomRef} />
           </div>
 
-          <div className="border-t p-3 flex items-center gap-2">
-            <Input
-              placeholder="输入消息，Ctrl/⌘+Enter 发送"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-            <Button
-              onClick={() => void handleSend()}
-              disabled={sending || !input.trim()}
-            >
-              <SendHorizonal className="h-4 w-4 mr-1" /> 发送
-            </Button>
+          <div className="border-t p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="输入消息，Ctrl/⌘+Enter 发送"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => void handleSend()}
+                disabled={sending || !input.trim()}
+                size="sm"
+              >
+                {sending ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <SendHorizonal className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              WebSocket: {isConnected ? '已连接' : '未连接'} • 会话ID: {chatId}
+            </div>
           </div>
         </div>
       </main>

@@ -12,6 +12,8 @@ import { ConfigModule as AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 
 import { ChatsModule } from './chats/chats.module';
+import { ChatFriendsModule } from './chats/friends/chat-friends.module';
+import { PrivateChatModule } from './chats/private/private-chat.module';
 import { CommunityModule } from './community/community.module';
 import { HealthModule } from './health/health.module';
 import { JoinRequestsModule } from './join-requests/join-requests.module';
@@ -63,6 +65,8 @@ import { WebSocketModule } from './websocket/websocket.module';
     NotificationsModule,
     AppConfigModule,
     ChatsModule,
+    ChatFriendsModule,
+    PrivateChatModule,
   ],
   controllers: [],
   providers: [

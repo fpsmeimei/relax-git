@@ -27,5 +27,8 @@ export interface ChatMessage {
   chatId: string;
   senderId: string;
   content: string;
+  type?: string;
+  isRead?: boolean;
+  readAt?: string | null;
   createdAt: string;
 }

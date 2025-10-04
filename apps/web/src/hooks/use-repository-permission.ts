@@ -11,7 +11,7 @@ interface RepositoryPermission {
   canApply: boolean; // 是否可以申请加入
   isMember: boolean; // 是否是成员
   isOwner: boolean; // 是否是所有者
-  memberRole?: MemberRole; // 成员角色
+  memberRole?: MemberRole | undefined; // 成员角色
   applicationStatus?: 'pending' | 'approved' | 'rejected' | 'none'; // 申请状态
 }
 

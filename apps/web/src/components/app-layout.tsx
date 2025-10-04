@@ -1,6 +1,6 @@
 'use client';
 
-import { NavMessagesLink } from '@/components/nav-messages-link';
+import { NavChatLink } from '@/components/layout/nav-chat-link';
 import { NavPersonalLink } from '@/components/nav-personal-link';
 import { ThemeToggle } from '@/components/theme-toggle';
 import Link from 'next/link';
@@ -64,10 +64,10 @@ export function AppLayout({ children }: AppLayoutProps) {
             >
               我的仓库
             </Link>
-            {isAuthenticated && <NavMessagesLink />}
+            {isAuthenticated && <NavChatLink />}
+            <ThemeToggle />
             {/* 个人/登录/退出登录 统一由 NavPersonalLink 处理 */}
             <NavPersonalLink />
-            <ThemeToggle />
           </nav>
         </div>
       </header>

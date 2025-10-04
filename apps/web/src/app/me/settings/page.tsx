@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
+import { triggerAvatarUpdate } from '@/hooks/use-avatar-sync';
 import Link from 'next/link';
 import Cropper from 'react-easy-crop';
 import { Plus } from 'lucide-react';
@@ -234,10 +235,17 @@ export default function SettingsPage() {
       });
       const fd = new FormData();
       fd.append('file', uploadFile);
-      const { data } = await apiClient.post('/users/me/avatar', fd, {
+      const { data } = await apiClient.post('/api/users/me/avatar', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      setAvatarOverride((data as any)?.avatar || null);
+      const newAvatarUrl = (data as any)?.avatar || null;
+      setAvatarOverride(newAvatarUrl);
+
+      // 触发全局头像更新事件
+      if (newAvatarUrl) {
+        triggerAvatarUpdate(newAvatarUrl);
+      }
+
       toast({ title: '头像已更新' });
       // 清理状态
       setFile(null);

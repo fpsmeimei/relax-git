@@ -1,6 +1,13 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { MessageType } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ChatsService } from './chats.service';
+import { MarkReadDto, SendMessageDto } from './dto/chat-message.dto';
+import {
+  AddMembersDto,
+  CreateDirectChatDto,
+  CreateGroupChatDto,
+} from './dto/chat-room.dto';
 
 @Controller('api/chats')
 export class ChatsController {
@@ -14,21 +21,22 @@ export class ChatsController {
   @Post('direct')
   async createDirect(
     @CurrentUser('id') userId: string,
-    @Body() body: { userId: string }
+    @Body() body: CreateDirectChatDto
   ) {
-    return this.chats.createDirectChat(userId, body?.userId);
+    return this.chats.createDirectChat(userId, body.userId);
+  }
+
+  @Get('unread-counts')
+  async getUnreadCounts(@CurrentUser('id') userId: string) {
+    return this.chats.getUnreadCounts(userId);
   }
 
   @Post('group')
   async createGroup(
     @CurrentUser('id') userId: string,
-    @Body() body: { name: string; memberIds?: string[] }
+    @Body() body: CreateGroupChatDto
   ) {
-    return this.chats.createGroupChat(
-      userId,
-      body?.name,
-      body?.memberIds ?? []
-    );
+    return this.chats.createGroupChat(userId, body.name, body.memberIds ?? []);
   }
 
   @Get(':chatId/messages')
@@ -51,25 +59,31 @@ export class ChatsController {
   async sendMessage(
     @CurrentUser('id') userId: string,
     @Param('chatId') chatId: string,
-    @Body() body: { content: string }
+    @Body() body: SendMessageDto
   ) {
-    return this.chats.sendMessage(userId, chatId, body?.content ?? '');
+    return this.chats.sendMessage(
+      userId,
+      chatId,
+      body.content,
+      body.type ?? MessageType.TEXT
+    );
   }
 
   @Post(':chatId/read')
   async markRead(
     @CurrentUser('id') userId: string,
-    @Param('chatId') chatId: string
+    @Param('chatId') chatId: string,
+    @Body() body: MarkReadDto
   ) {
-    return this.chats.markRead(userId, chatId);
+    return this.chats.markRead(userId, chatId, body?.messageIds);
   }
 
   @Post(':chatId/members')
   async addMembers(
     @CurrentUser('id') userId: string,
     @Param('chatId') chatId: string,
-    @Body() body: { memberIds: string[] }
+    @Body() body: AddMembersDto
   ) {
-    return this.chats.addMembers(userId, chatId, body?.memberIds ?? []);
+    return this.chats.addMembers(userId, chatId, body.memberIds);
   }
 }

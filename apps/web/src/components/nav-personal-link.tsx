@@ -1,24 +1,26 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { cn } from '@/lib/utils';
-import { useNotificationsStore } from '@/stores/notifications-store';
-import { apiClient } from '@/services/apiClient';
-import { useAuth } from '@/hooks/use-auth';
-import { useAuthActions } from '@/stores/auth-store';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
+import { useAuth } from '@/hooks/use-auth';
+import { useAvatarSync } from '@/hooks/use-avatar-sync';
+import { cn } from '@/lib/utils';
+import { apiClient } from '@/services/apiClient';
 import { AuthService } from '@/services/authService';
+import { useAuthActions } from '@/stores/auth-store';
+import { useNotificationsStore } from '@/stores/notifications-store';
 import { signOut } from 'next-auth/react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface NavPersonalLinkProps {
   className?: string;
@@ -26,11 +28,27 @@ interface NavPersonalLinkProps {
 
 export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   const { unreadCount, setUnreadCount } = useNotificationsStore();
-  const { isAuthenticated, isInitialized } = useAuth();
+  const { isAuthenticated, isInitialized, user } = useAuth();
   const { logout } = useAuthActions();
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+
+  // 使用头像同步 hook
+  const { currentAvatar, fetchLatestAvatar } = useAvatarSync(user?.avatar);
+
+  // 重置头像错误状态
+  useEffect(() => {
+    setAvatarError(false);
+  }, [currentAvatar, user?.avatar]);
+
+  // 初始加载最新头像
+  useEffect(() => {
+    if (isAuthenticated && isInitialized) {
+      fetchLatestAvatar();
+    }
+  }, [isAuthenticated, isInitialized, fetchLatestAvatar]);
 
   useEffect(() => {
     let stopped = false;
@@ -56,6 +74,12 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   if (!isAuthenticated) {
     return (
       <div className={cn('flex items-center gap-3', className)}>
+        {/* 未登录状态的占位头像 */}
+        <div className="h-8 w-8 rounded-full overflow-hidden border border-border/20 shadow-md">
+          <div className="h-full w-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-300 text-sm font-semibold">
+            <span className="select-none">用</span>
+          </div>
+        </div>
         <Link
           href="/auth/login"
           className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
@@ -98,32 +122,58 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   };
 
   return (
-    <div className={cn('relative flex items-center gap-3', className)}>
+    <div className={cn('relative flex items-center gap-4', className)}>
       <Link
         href="/me"
-        className="relative rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+        className="relative flex items-center justify-center transition-opacity duration-200 hover:opacity-80"
       >
-        个人
-        {unreadCount > 0 && (
-          <span className="absolute -top-2 -right-3 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-medium text-white">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
+        <div className="relative">
+          {/* 圆形头像 - 比其他按钮稍大 */}
+          <div className="h-8 w-8 rounded-full overflow-hidden border border-border/20 shadow-md">
+            {(currentAvatar || user?.avatar) && !avatarError ? (
+              <Image
+                src={currentAvatar || user?.avatar || ''}
+                alt={user?.username || '用户头像'}
+                width={32}
+                height={32}
+                className="h-full w-full object-cover bg-gray-100 dark:bg-gray-800"
+                onError={() => setAvatarError(true)}
+                unoptimized={true}
+              />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+                <span className="select-none">
+                  {(user?.username || user?.displayName || '用户')
+                    .charAt(0)
+                    .toUpperCase()}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* 未读通知角标 */}
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white ring-2 ring-background">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </div>
       </Link>
-      {/* 需求：在“退出登录”左侧增加“登录”按钮 */}
-      <Link
-        href="/auth/login"
-        className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
-      >
-        登录
-      </Link>
-      <button
-        type="button"
-        onClick={handleLogout}
-        className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
-      >
-        退出登录
-      </button>
+      {/* 登录和退出登录按钮 */}
+      <div className="flex items-center gap-2 ml-2">
+        <Link
+          href="/auth/login"
+          className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+        >
+          登录
+        </Link>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+        >
+          退出登录
+        </button>
+      </div>
 
       {/* 退出登录二次确认弹窗 */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
