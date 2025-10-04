@@ -48,6 +48,7 @@ export const useChatStore = create<ChatState>()(
         const { nextCursor, loadingMessages } = get();
         if (loadingMessages[chatId]) return;
         const cursor = nextCursor[chatId] ?? undefined;
+        console.log('[chat-store] 加载历史消息:', { chatId, cursor });
         set({ loadingMessages: { ...loadingMessages, [chatId]: true } });
         try {
           const res = await apiClient.get<{
@@ -55,6 +56,7 @@ export const useChatStore = create<ChatState>()(
             nextCursor: string | null;
           }>(`/chats/${chatId}/messages`, { params: { cursor, limit: 20 } });
           const list = res.data?.messages || [];
+          console.log('[chat-store] 加载到历史消息:', list.length, '条');
           set(state => {
             const existed = state.messages[chatId] || [];
             // 服务器返回升序，这里前置拼接
@@ -66,6 +68,8 @@ export const useChatStore = create<ChatState>()(
               },
             };
           });
+        } catch (error) {
+          console.error('[chat-store] 加载历史消息失败:', error);
         } finally {
           set(s => ({
             loadingMessages: { ...s.loadingMessages, [chatId]: false },
@@ -92,12 +96,19 @@ export const useChatStore = create<ChatState>()(
       },
 
       sendMessage: async (chatId, content) => {
-        const res = await apiClient.post<ChatMessage>(
-          `/chats/${chatId}/messages`,
-          { content }
-        );
-        // 不做本地追加，等待 WebSocket 的 chat:message:new 事件更新，避免重复
-        return res.data as ChatMessage;
+        console.log('[chat-store] 发送消息:', { chatId, content });
+        try {
+          const res = await apiClient.post<ChatMessage>(
+            `/chats/${chatId}/messages`,
+            { content }
+          );
+          console.log('[chat-store] 消息发送成功:', res.data);
+          // 不做本地追加，等待 WebSocket 的 chat:message:new 事件更新，避免重复
+          return res.data as ChatMessage;
+        } catch (error) {
+          console.error('[chat-store] 消息发送失败:', error);
+          throw error;
+        }
       },
 
       markRead: async (chatId: string) => {

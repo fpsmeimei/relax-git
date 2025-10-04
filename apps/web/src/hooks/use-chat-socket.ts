@@ -20,6 +20,7 @@ export function useChatSocket() {
 
     // 新消息推送
     const handleNewMessage = (message: any) => {
+      console.log('[use-chat-socket] 收到新消息推送:', message);
       // 判断是否是自己发送的消息
       const isSelf = false; // TODO: 获取当前用户ID并比较
       updateOnNewMessage(message, isSelf);
