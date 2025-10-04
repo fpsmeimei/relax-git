@@ -1,11 +1,11 @@
 'use client';
 
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { useNotificationsStore } from '@/stores/notifications-store';
+import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useNotificationsStore } from '@/stores/notifications-store';
 import { usePathname } from 'next/navigation';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   type ManagerOptions,
   type Socket as SocketIO,
