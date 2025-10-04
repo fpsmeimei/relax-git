@@ -8,6 +8,8 @@ import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
+import { formatSmartTime } from '@/lib/utils/format-time';
+import { apiClient } from '@/services/apiClient';
 
 interface RepositoryCommentsProps {
   repositoryId: string;
@@ -61,19 +63,8 @@ function CommentItem({
   };
 
   const formatTime = (dateInput: string | Date) => {
-    const date = new Date(dateInput);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const TIME_MINUTE = 60000;
-    const TIME_HOUR = 3600000;
-    const TIME_DAY = 86400000;
-    const TIME_WEEK = 604800000;
-
-    if (diff < TIME_MINUTE) return '刚刚';
-    if (diff < TIME_HOUR) return `${Math.floor(diff / TIME_MINUTE)}分钟前`;
-    if (diff < TIME_DAY) return `${Math.floor(diff / TIME_HOUR)}小时前`;
-    if (diff < TIME_WEEK) return `${Math.floor(diff / TIME_DAY)}天前`;
-    return date.toLocaleDateString('zh-CN');
+    // 使用统一的智能时间格式化
+    return formatSmartTime(dateInput);
   };
 
   const formatCount = (value?: number) => {
@@ -409,6 +400,13 @@ export function RepositoryComments({
   const [isLiking, setIsLiking] = useState(false);
   const [isDeletingIds, setIsDeletingIds] = useState<Set<string>>(new Set());
 
+  // 主评论排序：先按点赞数降序，如果点赞数相同则按创建时间升序
+  const sortedComments = [...comments].sort((a, b) => {
+    const likeDiff = (b.likesCount || 0) - (a.likesCount || 0);
+    if (likeDiff !== 0) return likeDiff;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
   // 获取URL中的commentId参数或使用传入的参数
   const [highlightCommentId, setHighlightCommentId] = useState<string | null>(
     null
@@ -560,16 +558,17 @@ export function RepositoryComments({
 
   // 处理删除评论
   const handleDelete = async (commentId: string) => {
+    // 二次确认
+    if (!confirm('确认删除该评论？')) return;
+
     if (isDeletingIds.has(commentId)) return;
+
+    // 保存快照用于错误回滚
+    const snapshot = [...comments];
 
     setIsDeletingIds(prev => new Set(prev).add(commentId));
     try {
-      // 假设API存在，如果不存在需要添加到CommunityAPI中
-      // await CommunityAPI.deleteRepositoryComment(commentId);
-      // 临时使用通用删除方法
-      await fetch(`/api/community/comments/${commentId}`, { method: 'DELETE' });
-
-      // 从评论列表中移除被删除的评论
+      // 乐观更新：立即从评论列表中移除
       const removeCommentFromList = (
         commentsList: RepositoryCommentDto[]
       ): RepositoryCommentDto[] => {
@@ -584,8 +583,13 @@ export function RepositoryComments({
       };
 
       setComments(removeCommentFromList);
-      toast.success('删除成功');
+
+      // 调用删除API
+      await apiClient.delete(`/comments/${commentId}`);
+      toast.success('已删除');
     } catch (error) {
+      // 回滚到之前的状态
+      setComments(snapshot);
       toast.error('删除失败，请重试');
     } finally {
       setIsDeletingIds(prev => {
@@ -614,14 +618,14 @@ export function RepositoryComments({
 
         {/* 评论列表 */}
         <div className="space-y-6">
-          {comments.length === 0 ? (
+          {sortedComments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>还没有评论，来发表第一条吧！</p>
             </div>
           ) : (
             <>
-              {comments.map(comment => (
+              {sortedComments.map(comment => (
                 <CommentItem
                   key={comment.id}
                   comment={comment}

@@ -12,8 +12,6 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState } from 'react';
 import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
 import {
   Calendar,
   ExternalLink,

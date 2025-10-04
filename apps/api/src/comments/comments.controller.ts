@@ -490,11 +490,11 @@ export class CommentsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: '删除评论' })
+  @ApiOperation({ summary: '删除评论（级联删除所有回复）' })
   @ApiParam({ name: 'id', description: '评论ID' })
   @ApiResponse({
     status: HttpStatus.NO_CONTENT,
-    description: '评论删除成功',
+    description: '评论删除成功（包括所有回复）',
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
@@ -503,10 +503,6 @@ export class CommentsController {
   @ApiResponse({
     status: HttpStatus.FORBIDDEN,
     description: '无权删除此评论',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: '无法删除有回复的评论',
   })
   @UseGuards(RepoAccessGuard)
   @RepoAccess('comment')

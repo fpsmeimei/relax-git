@@ -701,7 +701,7 @@ export class CommentsService {
   }
 
   /**
-   * 删除评论
+   * 删除评论（级联删除所有回复）
    */
   async remove(
     id: string,
@@ -714,14 +714,24 @@ export class CommentsService {
     // 检查删除权限
     this.checkCommentOwnership(comment, userId, userRole);
 
-    // 检查是否有回复评论
-    const repliesCount = await this.prisma.comment.count({
-      where: { parentId: id },
-    });
+    // 递归获取所有需要删除的评论ID（包括子评论和孙评论）
+    const getAllCommentIds = async (parentId: string): Promise<string[]> => {
+      const replies = await this.prisma.comment.findMany({
+        where: { parentId },
+        select: { id: true },
+      });
 
-    if (repliesCount > 0) {
-      throw new BadRequestException('无法删除有回复的评论');
-    }
+      const ids: string[] = [parentId];
+      for (const reply of replies) {
+        // 递归获取子评论的所有子评论
+        const childIds = await getAllCommentIds(reply.id);
+        ids.push(...childIds);
+      }
+      return ids;
+    };
+
+    // 获取所有要删除的评论ID（包括主评论和所有层级的回复）
+    const commentIdsToDelete = await getAllCommentIds(id);
 
     if (ifMatch) {
       const raw = ifMatch.replace(/^W\//, '').replace(/^"|"$/g, '');
@@ -729,27 +739,45 @@ export class CommentsService {
       if (isNaN(expected.getTime())) {
         throw new BadRequestException('If-Match 格式无效');
       }
+      // 使用事务批量删除
       const res = await this.prisma.comment.deleteMany({
-        where: { id, updatedAt: expected },
+        where: {
+          id: { in: commentIdsToDelete },
+          // 只验证主评论的 updatedAt
+          ...(commentIdsToDelete[0] === id ? { updatedAt: expected } : {}),
+        },
       });
       if (res.count === 0) {
         throw new ConflictException('资源已被他人修改');
       }
     } else {
-      await this.prisma.comment.delete({ where: { id } });
+      // 级联删除所有评论（包括回复）
+      // 先删除相关的点赞记录
+      await this.prisma.commentLike.deleteMany({
+        where: { commentId: { in: commentIdsToDelete } },
+      });
+
+      // 批量删除所有评论
+      await this.prisma.comment.deleteMany({
+        where: { id: { in: commentIdsToDelete } },
+      });
     }
 
-    // WebSocket 实时推送：通知快照房间该评论已删除
+    // WebSocket 实时推送：通知快照房间该评论及其回复已删除
     try {
-      this.websocketGateway.emitCommentDeleted(comment.snapshotId, {
-        id,
-        snapshotId: comment.snapshotId,
-      });
+      for (const commentId of commentIdsToDelete) {
+        this.websocketGateway.emitCommentDeleted(comment.snapshotId, {
+          id: commentId,
+          snapshotId: comment.snapshotId,
+        });
+      }
     } catch (e) {
       this.logger.warn('Failed to emit comment deleted event:', e);
     }
 
-    this.logger.log(`Comment deleted: ${id} by user ${userId}`);
+    this.logger.log(
+      `Comment deleted: ${id} (with ${commentIdsToDelete.length - 1} replies) by user ${userId}`
+    );
   }
 
   /**

@@ -2,15 +2,14 @@
 
 import { cn } from '@/lib/utils';
 import * as Dialog from '@radix-ui/react-dialog';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { formatSmartTime } from '@/lib/utils/format-time';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 
 function formatTimeDistance(d: Date): string {
   try {
-    return formatDistanceToNow(d, { addSuffix: true, locale: zhCN });
+    return formatSmartTime(d);
   } catch {
     return '';
   }

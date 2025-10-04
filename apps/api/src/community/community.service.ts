@@ -32,6 +32,7 @@ export interface CommunityFeedItem {
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  visibility: RepositoryVisibility; // 仓库可见性
   owner: {
     id: string;
     username: string;
@@ -83,14 +84,11 @@ export class CommunityService {
       search,
     } = query;
 
-    // 构建查询条件
+    // 构建查询条件 - 社区显示所有可见性的仓库（包括私有）
     const where: any = {
       isPublished: true,
       isActive: true,
-      OR: [
-        { visibility: RepositoryVisibility.PUBLIC },
-        { visibility: RepositoryVisibility.INTERNAL },
-      ],
+      // 移除 visibility 过滤，允许所有类型仓库在社区显示
     };
 
     // 语言过滤
@@ -271,6 +269,7 @@ export class CommunityService {
       publishedAt: repo.publishedAt,
       createdAt: repo.createdAt,
       updatedAt: repo.updatedAt,
+      visibility: repo.visibility, // 添加可见性字段
       owner: repo.owner,
       ...(userId
         ? {

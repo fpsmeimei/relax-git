@@ -13,6 +13,7 @@ export interface CommunityFeedItem {
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  visibility: 'PUBLIC' | 'INTERNAL' | 'PRIVATE'; // 仓库可见性
   owner: {
     id: string;
     username: string;

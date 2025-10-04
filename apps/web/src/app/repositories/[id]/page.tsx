@@ -33,6 +33,11 @@ import {
   useSearchParams,
 } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { MembershipButton } from '@/components/repository/membership-button';
+import { JoinRequestsPanel } from '@/components/repository/join-requests-panel';
+import { MembersList } from '@/components/repository/members-list';
+import { RepositoryDiscussion } from '@/components/repository/repository-discussion';
+import { useRepositoryPermission } from '@/hooks/use-repository-permission';
 
 interface BranchInfo {
   id: string;
@@ -394,29 +399,33 @@ const RepositoryBranches = ({ repositoryId }: { repositoryId: string }) => {
   );
 };
 
-const RepositoryDiscussion = ({ repositoryId }: { repositoryId: string }) => (
-  <div className="space-y-6">
-    <div className="card p-6 bg-card text-card-foreground">
-      <h3 className="text-lg font-semibold mb-4 text-foreground">项目讨论</h3>
-      <p className="text-muted-foreground">项目级评论功能即将上线...</p>
-    </div>
-  </div>
-);
-
 const RepositoryMembers = ({
   repositoryId,
   myRole,
 }: {
   repositoryId: string;
   myRole: string | null;
-}) => (
-  <div className="space-y-6">
-    <div className="card p-6 bg-card text-card-foreground">
-      <h3 className="text-lg font-semibold mb-4 text-foreground">成员管理</h3>
-      <p className="text-muted-foreground">成员管理功能即将上线...</p>
+}) => {
+  const isOwner = myRole === 'OWNER';
+
+  return (
+    <div className="space-y-6">
+      {/* 管理员审批界面 - 仅所有者可见 */}
+      {isOwner && (
+        <JoinRequestsPanel repositoryId={repositoryId} isOwner={isOwner} />
+      )}
+
+      {/* 成员列表 */}
+      <div className="card p-6 bg-card text-card-foreground">
+        <h3 className="text-lg font-semibold mb-4 text-foreground">成员列表</h3>
+        <MembersList
+          repositoryId={repositoryId}
+          myRole={myRole as 'OWNER' | 'ADMIN' | 'MEMBER' | null}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface Repository {
   id: string;
@@ -522,6 +531,17 @@ export default function RepositoryDetailPage() {
 
   // 访问权限
   const [accessDenied, setAccessDenied] = useState<boolean>(false);
+
+  // 使用权限 Hook
+  const permissions = useRepositoryPermission(
+    repository
+      ? {
+          id: repository.id,
+          visibility: repository.visibility,
+          ownerId: repository.owner.id,
+        }
+      : null
+  );
 
   // 加载仓库信息
   const loadRepository = useCallback(async () => {
@@ -771,53 +791,32 @@ export default function RepositoryDetailPage() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  {isJoinNeeded({
-                    visibility: 'PRIVATE',
-                    myRole,
-                    isAuthenticated,
-                    joinStatus,
-                  }) && (
-                    <>
-                      {joinStatus === 'pending' ? (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">已申请，等待审核</Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => void handleCancelJoin()}
-                            disabled={joinCancelling}
-                          >
-                            {joinCancelling && (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            )}
-                            撤回申请
-                          </Button>
-                        </div>
-                      ) : joinStatus === 'approved' ? (
-                        <Badge variant="default">已通过</Badge>
-                      ) : joinStatus === 'rejected' ? (
-                        <Badge variant="destructive">已驳回</Badge>
-                      ) : !isAuthenticated ? (
-                        <Button asChild variant="soft" size="sm">
-                          <Link
-                            href={`/auth/login?intent=login&redirect=${encodeURIComponent(`/repositories/${repositoryId}`)}`}
-                          >
-                            登录后申请加入
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => void handleApplyJoin()}
-                          disabled={joinApplying}
-                        >
-                          {joinApplying && (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          )}
-                          申请加入
-                        </Button>
-                      )}
-                    </>
+                  {/* 简化的申请按钮 - 访问被拒场景 */}
+                  {!myRole && isAuthenticated && (
+                    <MembershipButton
+                      repositoryId={repositoryId}
+                      isOwner={false}
+                      isMember={false}
+                      applicationStatus={
+                        joinStatus === 'pending'
+                          ? 'pending'
+                          : joinStatus === 'approved'
+                            ? 'approved'
+                            : joinStatus === 'rejected'
+                              ? 'rejected'
+                              : 'none'
+                      }
+                      canApply={true}
+                    />
+                  )}
+                  {!isAuthenticated && (
+                    <Button asChild variant="soft" size="sm">
+                      <Link
+                        href={`/auth/login?intent=login&redirect=${encodeURIComponent(`/repositories/${repositoryId}`)}`}
+                      >
+                        登录后申请加入
+                      </Link>
+                    </Button>
                   )}
                   <Button variant="ghost" size="sm" asChild>
                     <Link href="/repositories">返回列表</Link>
@@ -942,52 +941,15 @@ export default function RepositoryDetailPage() {
               </Button>
             )}
 
-            {/* 加入申请按钮 */}
-            {isJoinNeeded({
-              visibility: repository.visibility,
-              myRole,
-              isAuthenticated,
-              joinStatus,
-            }) && (
-              <>
-                {joinStatus === 'pending' && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">已提交申请</Badge>
-                    <Button
-                      size="sm"
-                      variant="outline-subtle"
-                      onClick={handleCancelJoin}
-                      disabled={joinCancelling}
-                    >
-                      {joinCancelling && (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      )}
-                      撤回申请
-                    </Button>
-                  </div>
-                )}
-                {(joinStatus === 'none' || joinStatus === 'rejected') &&
-                  (isAuthenticated ? (
-                    <Button
-                      size="sm"
-                      onClick={handleApplyJoin}
-                      disabled={joinApplying}
-                    >
-                      {joinApplying && (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      )}
-                      {joinStatus === 'rejected' ? '重新申请' : '申请加入'}
-                    </Button>
-                  ) : (
-                    <Button asChild variant="soft" size="sm">
-                      <Link
-                        href={`/auth/login?redirect=${encodeURIComponent(pathname || '')}`}
-                      >
-                        登录
-                      </Link>
-                    </Button>
-                  ))}
-              </>
+            {/* 成员申请按钮 - 使用新组件 */}
+            {repository && (
+              <MembershipButton
+                repositoryId={repository.id}
+                isOwner={permissions.isOwner}
+                isMember={permissions.isMember}
+                applicationStatus={permissions.applicationStatus || 'none'}
+                canApply={permissions.canApply}
+              />
             )}
           </div>
         </div>

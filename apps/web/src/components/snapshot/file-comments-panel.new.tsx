@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
+import { formatSmartTime } from '@/lib/utils/format-time';
 import { Heart, Loader2, Reply, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -125,8 +126,7 @@ export function FileCommentsPanel({
   }, [filePath, load]);
 
   const formatTime = useCallback((s: string) => {
-    const d = new Date(s);
-    return d.toLocaleString('zh-CN');
+    return formatSmartTime(s);
   }, []);
 
   const handleSubmit = useCallback(async () => {

@@ -20,8 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { formatSmartTime } from '@/lib/utils/format-time';
 import React, { useEffect } from 'react';
 import { useSearchStore } from '../../stores/searchStore';
 import { SearchType } from '../../types/search';
@@ -183,10 +182,7 @@ export const SearchHistory: React.FC<SearchHistoryProps> = ({
                       mt={0.5}
                     >
                       <Typography variant="caption" color="text.secondary">
-                        {formatDistanceToNow(new Date(item.createdAt), {
-                          addSuffix: true,
-                          locale: zhCN,
-                        })}
+                        {formatSmartTime(item.createdAt)}
                       </Typography>
                       <Chip
                         label={`${item.resultsCount} 个结果`}

@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
+import { formatSmartTime } from '@/lib/utils/format-time';
 import { Heart, Loader2, MessageCircle, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyHint } from './empty-hint';
@@ -302,14 +303,7 @@ export function LineCommentInlinePanel({
   }, []);
 
   const formatTime = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    if (diff < TIME_MINUTE) return '刚刚';
-    if (diff < TIME_HOUR) return `${Math.floor(diff / TIME_MINUTE)}分钟前`;
-    if (diff < TIME_DAY) return `${Math.floor(diff / TIME_HOUR)}小时前`;
-    if (diff < TIME_WEEK) return `${Math.floor(diff / TIME_DAY)}天前`;
-    return date.toLocaleDateString('zh-CN');
+    return formatSmartTime(dateString);
   }, []);
 
   const formatCount = useCallback((value?: number) => {

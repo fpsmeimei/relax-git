@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
+import { formatSmartTime } from '@/lib/utils/format-time';
 import {
   ChevronDown,
   ChevronUp,
@@ -760,18 +761,9 @@ export function LineCommentsModal({
     };
   }, [handleSubmitReply]);
 
-  // 格式化时间 - B站风格相对时间
+  // 格式化时间 - 统一智能时间格式化
   const formatTime = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-
-    if (diff < 60000) return '刚刚';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-
-    return date.toLocaleDateString('zh-CN');
+    return formatSmartTime(dateString);
   }, []);
 
   // 点赞/取消点赞

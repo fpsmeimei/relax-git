@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/card';
 import { useAuth } from '@/hooks/use-auth';
 import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { formatSmartTime } from '@/lib/utils/format-time';
 import {
   Calendar,
   ExternalLink,
@@ -26,6 +25,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { VisibilityBadge } from './visibility-badge';
 
 interface RepositoryCardProps {
   repository: CommunityFeedItem;
@@ -101,11 +101,7 @@ export function RepositoryCard({
   };
 
   const formatTime = (date: Date | string) => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
-    return formatDistanceToNow(dateObj, {
-      addSuffix: true,
-      locale: zhCN,
-    });
+    return formatSmartTime(date);
   };
 
   // 曝光打点：首次出现在视口中即上报一次浏览
@@ -156,6 +152,10 @@ export function RepositoryCard({
             ) : (
               <GitBranch className="h-8 w-8 text-primary/40" />
             )}
+            {/* 可见性徽章 */}
+            <div className="absolute top-2 right-2">
+              <VisibilityBadge visibility={repository.visibility} />
+            </div>
           </div>
 
           <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">

@@ -32,7 +32,7 @@ interface Comment {
   };
   filePath?: string;
   lineNumber?: number;
-  anchorType: 'LINE' | 'FILE' | 'GENERAL';
+  anchorType: 'LINE' | 'FILE' | 'GENERAL' | 'SNAPSHOT' | 'REPOSITORY';
 }
 
 export default function MyCommentsPage() {
@@ -120,11 +120,17 @@ export default function MyCommentsPage() {
       return '行评论';
     }
 
+    // 如果是SNAPSHOT类型且没有文件路径，说明是项目评论
+    if (comment.anchorType === 'SNAPSHOT' && !comment.filePath) {
+      return '项目评论';
+    }
+
     // 其他情况判断为社区评论
     switch (comment.anchorType) {
       case 'FILE':
         return '文件评论';
       case 'GENERAL':
+      case 'REPOSITORY':
         return '社区评论';
       default:
         return '社区评论';
@@ -141,14 +147,20 @@ export default function MyCommentsPage() {
       return 'default';
     }
 
+    // 项目评论使用紫色
+    if (comment.anchorType === 'SNAPSHOT' && !comment.filePath) {
+      return 'secondary'; // 用于项目评论
+    }
+
     // 社区评论使用绿色
     switch (comment.anchorType) {
       case 'FILE':
         return 'secondary';
       case 'GENERAL':
-        return 'default'; // 临时使用default，稍后自定义样式
+      case 'REPOSITORY':
+        return 'default'; // 用于社区评论
       default:
-        return 'default'; // 临时使用default，稍后自定义样式
+        return 'default';
     }
   };
 
@@ -227,14 +239,18 @@ export default function MyCommentsPage() {
                         <Badge
                           variant={getAnchorTypeBadgeVariant(comment) as any}
                           className={`text-xs ${
-                            // 社区评论使用绿色样式
-                            !(
-                              comment.anchorType === 'LINE' ||
-                              comment.filePath ||
-                              comment.lineNumber
-                            )
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30'
-                              : ''
+                            // 项目评论使用紫色样式
+                            comment.anchorType === 'SNAPSHOT' &&
+                            !comment.filePath
+                              ? 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:hover:bg-purple-900/30'
+                              : // 社区评论使用绿色样式
+                                !(
+                                    comment.anchorType === 'LINE' ||
+                                    comment.filePath ||
+                                    comment.lineNumber
+                                  )
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30'
+                                : ''
                           }`}
                         >
                           {getAnchorTypeLabel(comment)}
