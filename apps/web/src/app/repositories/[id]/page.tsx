@@ -486,6 +486,9 @@ export default function RepositoryDetailPage() {
   // 从URL参数获取默认标签页
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
+  // 从URL参数获取评论ID
+  const highlightCommentId = searchParams?.get('commentId') || null;
+
   const handleTabChange = useCallback(
     (tab: TabType) => {
       setActiveTab(tab);
@@ -508,6 +511,14 @@ export default function RepositoryDetailPage() {
   // 监听URL参数变化
   useEffect(() => {
     const tabFromUrl = searchParams?.get('tab') as TabType | null;
+    const commentIdFromUrl = searchParams?.get('commentId');
+
+    // 如果URL中有commentId参数，自动切换到discussion标签页
+    if (commentIdFromUrl && !tabFromUrl) {
+      setActiveTab('discussion');
+      return;
+    }
+
     if (
       tabFromUrl &&
       ['overview', 'branches', 'discussion', 'members'].includes(tabFromUrl)
@@ -1018,7 +1029,10 @@ export default function RepositoryDetailPage() {
               <RepositoryBranches repositoryId={repositoryId} />
             )}
             {activeTab === 'discussion' && (
-              <RepositoryDiscussion repositoryId={repositoryId} />
+              <RepositoryDiscussion
+                repositoryId={repositoryId}
+                highlightCommentId={highlightCommentId}
+              />
             )}
             {activeTab === 'members' && myRole && (
               <RepositoryMembers repositoryId={repositoryId} myRole={myRole} />

@@ -143,8 +143,8 @@ function CommentItem({
       }}
       className={`flex gap-4 transition-all duration-500 ease-in-out ${
         highlightedCommentId === comment.id
-          ? 'dark:bg-gray-800/40 bg-orange-50/80 rounded-lg p-3 -m-3'
-          : ''
+          ? 'border-l-4 border-l-blue-500 dark:bg-blue-500/5 bg-blue-50/30 pl-3 rounded-r-lg py-2 -ml-1'
+          : 'border-l-4 border-l-transparent'
       }`}
     >
       <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
@@ -279,8 +279,8 @@ function CommentItem({
                       }}
                       className={`flex gap-4 transition-all duration-500 ease-in-out ${
                         highlightedCommentId === reply.id
-                          ? 'dark:bg-gray-800/40 bg-orange-50/80 rounded-lg p-3 -m-3'
-                          : ''
+                          ? 'border-l-4 border-l-blue-500 dark:bg-blue-500/5 bg-blue-50/30 pl-3 rounded-r-lg py-2 -ml-1'
+                          : 'border-l-4 border-l-transparent'
                       }`}
                     >
                       <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">

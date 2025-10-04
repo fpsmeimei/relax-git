@@ -74,6 +74,7 @@ export default function MePage() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   const [myComments, setMyComments] = useState<CommentRespDto[]>([]);
+  const [myCommentsTotal, setMyCommentsTotal] = useState(0);
   const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
@@ -128,6 +129,7 @@ export default function MePage() {
         limit: number;
       }>('/comments/me/comments' as any);
       const items = (res.data as any)?.items ?? [];
+      const total = (res.data as any)?.total ?? 0;
       // 时间正序展示
       const sorted = items
         .slice()
@@ -136,6 +138,7 @@ export default function MePage() {
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
       setMyComments(sorted);
+      setMyCommentsTotal(total);
     } catch {
       // ignore
     } finally {
@@ -245,7 +248,7 @@ export default function MePage() {
               <MessageCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="flex flex-col flex-1">
-              <div className="text-2xl font-bold">{myComments.length}</div>
+              <div className="text-2xl font-bold">{myCommentsTotal}</div>
               <p className="text-xs text-muted-foreground">发表的评论</p>
               <Button
                 asChild

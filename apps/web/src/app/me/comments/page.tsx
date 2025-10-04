@@ -35,6 +35,8 @@ interface Comment {
   anchorType: 'LINE' | 'FILE' | 'GENERAL' | 'SNAPSHOT' | 'REPOSITORY';
 }
 
+type CommentFilter = 'all' | 'line' | 'project' | 'community';
+
 export default function MyCommentsPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +44,7 @@ export default function MyCommentsPage() {
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [filter, setFilter] = useState<CommentFilter>('all');
   const { toast } = useToast();
 
   const limit = 20;
@@ -164,6 +167,34 @@ export default function MyCommentsPage() {
     }
   };
 
+  // 判断评论类型
+  const getCommentType = (
+    comment: Comment
+  ): 'line' | 'project' | 'community' => {
+    if (
+      comment.anchorType === 'LINE' ||
+      comment.filePath ||
+      comment.lineNumber
+    ) {
+      return 'line';
+    }
+
+    if (comment.anchorType === 'SNAPSHOT' && !comment.filePath) {
+      return 'project';
+    }
+
+    return 'community';
+  };
+
+  // 根据筛选条件过滤评论
+  const filteredComments = comments.filter(comment => {
+    if (filter === 'all') return true;
+    return getCommentType(comment) === filter;
+  });
+
+  // 计算筛选后的总数
+  const filteredTotal = filter === 'all' ? total : filteredComments.length;
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -198,12 +229,44 @@ export default function MyCommentsPage() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold mb-2">我的评论</h1>
-          <p className="text-muted-foreground">
-            查看我发表的所有评论 ({total} 条)
+          <p className="text-muted-foreground mb-4">
+            查看我发表的所有评论 ({filteredTotal} 条)
           </p>
+
+          {/* 筛选按钮 */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant={filter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('all')}
+            >
+              默认
+            </Button>
+            <Button
+              variant={filter === 'line' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('line')}
+            >
+              行评论
+            </Button>
+            <Button
+              variant={filter === 'project' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('project')}
+            >
+              项目评论
+            </Button>
+            <Button
+              variant={filter === 'community' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter('community')}
+            >
+              社区评论
+            </Button>
+          </div>
         </div>
 
-        {comments.length === 0 ? (
+        {filteredComments.length === 0 ? (
           <div className="empty-state">
             <MessageCircle className="empty-state-icon" />
             <h3 className="empty-state-title">还没有评论</h3>
@@ -214,7 +277,7 @@ export default function MyCommentsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {comments.map(comment => (
+            {filteredComments.map(comment => (
               <Card key={comment.id} className="hover-lift">
                 <CardContent className="p-6">
                   <div className="flex gap-4">

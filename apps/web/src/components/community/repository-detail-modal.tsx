@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
 import {
   Calendar,
@@ -40,6 +41,7 @@ export function RepositoryDetailModal({
   highlightCommentId,
 }: RepositoryDetailModalProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [repositoryDetail, setRepositoryDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -99,7 +101,8 @@ export function RepositoryDetailModal({
   // 跳转到仓库页面
   const handleViewRepository = () => {
     if (repository) {
-      window.open(`/repositories/${repository.id}`, '_blank');
+      onOpenChange(false); // 关闭弹窗
+      router.push(`/repositories/${repository.id}`);
     }
   };
 
@@ -117,7 +120,7 @@ export function RepositoryDetailModal({
               onClick={handleViewRepository}
               className="ml-4"
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
+              <GitBranch className="h-4 w-4 mr-2" />
               查看仓库
             </Button>
           </DialogTitle>

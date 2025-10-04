@@ -32,6 +32,7 @@ interface RepositoryDiscussionProps {
   repositoryId: string;
   snapshotId?: string;
   className?: string;
+  highlightCommentId?: string | null;
 }
 
 const reactionButtonClass =
@@ -41,6 +42,7 @@ export function RepositoryDiscussion({
   repositoryId,
   snapshotId: providedSnapshotId,
   className = '',
+  highlightCommentId,
 }: RepositoryDiscussionProps) {
   const { user } = useAuth();
   const [snapshotId, setSnapshotId] = useState<string | null>(
@@ -61,6 +63,10 @@ export function RepositoryDiscussion({
   );
   const [likingIds, setLikingIds] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [highlightedCommentId, setHighlightedCommentId] = useState<
+    string | null
+  >(null);
+  const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -131,6 +137,55 @@ export function RepositoryDiscussion({
   useEffect(() => {
     loadComments();
   }, [loadComments]);
+
+  // 处理评论高亮闪烁
+  useEffect(() => {
+    if (highlightCommentId && comments.length > 0) {
+      // 检查是否存在该评论ID（主评论或次评论）
+      let targetCommentId: string | null = null;
+      let isReply = false;
+
+      for (const comment of comments) {
+        if (comment.id === highlightCommentId) {
+          targetCommentId = comment.id;
+          break;
+        }
+        if (comment.replies?.some(reply => reply.id === highlightCommentId)) {
+          targetCommentId = comment.id; // 主评论ID
+          isReply = true;
+          break;
+        }
+      }
+
+      if (targetCommentId) {
+        // 如果是次评论，需要先展开对应的主评论
+        if (isReply) {
+          setExpandedReplies(prev => new Set(prev).add(targetCommentId!));
+        }
+
+        setHighlightedCommentId(highlightCommentId);
+
+        // 滚动到目标评论并居中显示
+        setTimeout(() => {
+          const targetElement = commentRefs.current[highlightCommentId];
+          if (targetElement) {
+            targetElement.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+              inline: 'nearest',
+            });
+          }
+        }, 100); // 稍微延迟确保DOM更新完成
+
+        // 1秒后移除高亮
+        const timer = setTimeout(() => {
+          setHighlightedCommentId(null);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+    return undefined;
+  }, [highlightCommentId, comments]);
 
   // 提交新评论
   const handleSubmit = async () => {
@@ -385,7 +440,17 @@ export function RepositoryDiscussion({
           </div>
         ) : (
           sortedComments.map(comment => (
-            <div key={comment.id} className="flex gap-4">
+            <div
+              key={comment.id}
+              ref={el => {
+                commentRefs.current[comment.id] = el;
+              }}
+              className={`flex gap-4 transition-all duration-500 ease-in-out ${
+                highlightedCommentId === comment.id
+                  ? 'border-l-4 border-l-blue-500 dark:bg-blue-500/5 bg-blue-50/30 pl-3 rounded-r-lg py-2 -ml-1'
+                  : 'border-l-4 border-l-transparent'
+              }`}
+            >
               {/* 主评论头像 */}
               <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
                 <AvatarImage src={comment.author.avatar || undefined} />
@@ -475,7 +540,17 @@ export function RepositoryDiscussion({
                         return (
                           <>
                             {visibleReplies.map(reply => (
-                              <div key={reply.id} className="flex gap-4">
+                              <div
+                                key={reply.id}
+                                ref={el => {
+                                  commentRefs.current[reply.id] = el;
+                                }}
+                                className={`flex gap-4 transition-all duration-500 ease-in-out ${
+                                  highlightedCommentId === reply.id
+                                    ? 'border-l-4 border-l-blue-500 dark:bg-blue-500/5 bg-blue-50/30 pl-3 rounded-r-lg py-2 -ml-1'
+                                    : 'border-l-4 border-l-transparent'
+                                }`}
+                              >
                                 <Avatar className="h-11 w-11 shrink-0 rounded-full ring-2 ring-border shadow-md">
                                   <AvatarImage
                                     src={reply.author.avatar || undefined}
