@@ -29,23 +29,7 @@ import {
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-type FriendEntry =
-  | {
-      type: 'bot';
-      id: 'relax-git-bot';
-      username: string;
-      avatar: string | null;
-      isOnline: boolean;
-      description: string;
-    }
-  | (FriendItem & { type: 'friend' });
-
-interface BotMessage {
-  id: string;
-  sender: 'user' | 'bot';
-  content: string;
-  createdAt: string;
-}
+type FriendEntry = FriendItem & { type: 'friend' };
 
 export default function ChatroomPage() {
   const { user } = useAuth();
@@ -70,38 +54,6 @@ export default function ChatroomPage() {
   const [messageInput, setMessageInput] = useState('');
   const [sending, setSending] = useState(false);
   const [keyword, setKeyword] = useState('');
-  // 从 localStorage 加载机器人消息历史
-  const loadBotMessages = (): BotMessage[] => {
-    try {
-      const stored = localStorage.getItem('relax-git-bot-messages');
-      if (stored) {
-        return JSON.parse(stored);
-      }
-    } catch (error) {
-      console.error('Failed to load bot messages:', error);
-    }
-    // 返回默认欢迎消息
-    return [
-      {
-        id: 'bot-1',
-        sender: 'bot',
-        content:
-          '你好，我是 Relax-Git 助手机器人。\n可以点击下面的输入框和我打个招呼，体验一下聊天的流程吧！',
-        createdAt: new Date().toISOString(),
-      },
-    ];
-  };
-
-  const [botMessages, setBotMessages] = useState<BotMessage[]>(loadBotMessages);
-
-  // 保存机器人消息到 localStorage
-  const saveBotMessages = useCallback((messages: BotMessage[]) => {
-    try {
-      localStorage.setItem('relax-git-bot-messages', JSON.stringify(messages));
-    } catch (error) {
-      console.error('Failed to save bot messages:', error);
-    }
-  }, []);
 
   const chatInitialLoaded = useRef(new Set<string>());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -116,25 +68,12 @@ export default function ChatroomPage() {
     void fetchLatestAvatar();
   }, [fetchLatestAvatar]);
 
-  const relaxGitBot: FriendEntry = useMemo(
-    () => ({
-      type: 'bot',
-      id: 'relax-git-bot',
-      username: 'relax-git 助手',
-      avatar: null,
-      isOnline: true,
-      description: '欢迎使用 Relax-Git 聊天室！',
-    }),
-    []
-  );
-
   const allFriends: FriendEntry[] = useMemo(() => {
-    const mapped: FriendEntry[] = friends.map(f => ({
+    return friends.map(f => ({
       ...f,
       type: 'friend' as const,
     }));
-    return [relaxGitBot, ...mapped];
-  }, [friends, relaxGitBot]);
+  }, [friends]);
 
   const filteredFriends = useMemo(() => {
     const trimmed = keyword.trim().toLowerCase();
@@ -161,12 +100,8 @@ export default function ChatroomPage() {
 
   useEffect(() => {
     if (!selectedFriend) return;
-    if (selectedFriend.type === 'bot') {
-      scrollToBottom(false);
-      return;
-    }
     scrollToBottom();
-  }, [selectedFriend, selectedChatMessages, botMessages, scrollToBottom]);
+  }, [selectedFriend, selectedChatMessages, scrollToBottom]);
 
   useEffect(() => {
     if (!selectedChatId) return;
@@ -199,12 +134,6 @@ export default function ChatroomPage() {
       setSelectedFriend(friend);
       setMessageInput('');
 
-      if (friend.type === 'bot') {
-        setSelectedChatId(null);
-        scrollToBottom(false);
-        return;
-      }
-
       if (friend.chatId) {
         setSelectedChatId(friend.chatId);
         return;
@@ -228,10 +157,10 @@ export default function ChatroomPage() {
         setCreatingChat(false);
       }
     },
-    [loadFriends, scrollToBottom, toast]
+    [loadFriends, toast]
   );
 
-  // 自动选择第一个好友（relax-git 助手）
+  // 自动选择第一个好友
   useEffect(() => {
     if (!selectedFriend && allFriends.length > 0) {
       const firstFriend = allFriends[0];
@@ -240,24 +169,6 @@ export default function ChatroomPage() {
       }
     }
   }, [allFriends, selectedFriend, handleSelectFriend]);
-
-  const handleSendBotMessage = useCallback(() => {
-    const text = messageInput.trim();
-    if (!text) return;
-    const now = new Date().toISOString();
-    const newMessages = [
-      ...botMessages,
-      {
-        id: `user-${now}`,
-        sender: 'user' as const,
-        content: text,
-        createdAt: now,
-      },
-    ];
-    setBotMessages(newMessages);
-    saveBotMessages(newMessages);
-    setMessageInput('');
-  }, [messageInput, botMessages, saveBotMessages]);
 
   const handleSendChatMessage = useCallback(async () => {
     if (!selectedChatId) return;
@@ -290,12 +201,8 @@ export default function ChatroomPage() {
 
   const handleSend = useCallback(() => {
     if (!selectedFriend) return;
-    if (selectedFriend.type === 'bot') {
-      handleSendBotMessage();
-    } else {
-      void handleSendChatMessage();
-    }
-  }, [handleSendBotMessage, handleSendChatMessage, selectedFriend]);
+    void handleSendChatMessage();
+  }, [handleSendChatMessage, selectedFriend]);
 
   const onTextareaKeyDown: React.KeyboardEventHandler<
     HTMLTextAreaElement
@@ -307,7 +214,7 @@ export default function ChatroomPage() {
   };
 
   const renderMessageBubble = (
-    message: BotMessage | ChatMessage,
+    message: ChatMessage,
     isSelf: boolean,
     avatarUrl?: string | null
   ) => {
@@ -380,46 +287,6 @@ export default function ChatroomPage() {
       return (
         <div className="flex h-full items-center justify-center text-muted-foreground">
           请选择左侧的好友开始聊天
-        </div>
-      );
-    }
-
-    if (selectedFriend.type === 'bot') {
-      return (
-        <div className="flex flex-col h-full">
-          <div
-            ref={messageContainerRef}
-            className="flex-1 overflow-y-auto pr-2"
-          >
-            {botMessages.map(message =>
-              renderMessageBubble(
-                message,
-                message.sender === 'user',
-                message.sender === 'user' ? currentAvatar : null
-              )
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-          <div className="border-t pt-3 mt-4">
-            <div className="flex items-center gap-3">
-              <textarea
-                value={messageInput}
-                onChange={e => setMessageInput(e.target.value)}
-                onKeyDown={onTextareaKeyDown}
-                rows={4}
-                placeholder="输入消息，按 Enter 发送"
-                className="flex-1 resize-none rounded-md border bg-background px-3 py-3 text-sm"
-              />
-              <Button
-                onClick={handleSend}
-                disabled={!messageInput.trim()}
-                size="lg"
-                className="h-12 w-12 rounded-full p-0"
-              >
-                <SendHorizonal className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
         </div>
       );
     }
@@ -566,8 +433,7 @@ export default function ChatroomPage() {
                 <div className="space-y-1 px-3 py-3">
                   {filteredFriends.map(friend => {
                     const isSelected = selectedFriend?.id === friend.id;
-                    const avatar =
-                      friend.type === 'bot' ? null : (friend.avatar ?? null);
+                    const avatar = friend.avatar ?? null;
                     return (
                       <button
                         key={friend.id}
@@ -580,9 +446,7 @@ export default function ChatroomPage() {
                         )}
                       >
                         <div className="relative h-11 w-11 rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
-                          {friend.type === 'bot' ? (
-                            <Github className="h-5 w-5" />
-                          ) : avatar ? (
+                          {avatar ? (
                             <Image
                               src={avatar}
                               alt={friend.username}
@@ -595,7 +459,7 @@ export default function ChatroomPage() {
                               {friend.username.charAt(0).toUpperCase()}
                             </span>
                           )}
-                          {friend.type === 'friend' && friend.isOnline && (
+                          {friend.isOnline && (
                             <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500" />
                           )}
                         </div>
@@ -604,22 +468,19 @@ export default function ChatroomPage() {
                             <span className="font-medium truncate">
                               {friend.username}
                             </span>
-                            {friend.type === 'friend' &&
-                              friend.lastMessage?.createdAt && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {new Date(
-                                    friend.lastMessage.createdAt
-                                  ).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </span>
-                              )}
+                            {friend.lastMessage?.createdAt && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {new Date(
+                                  friend.lastMessage.createdAt
+                                ).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            )}
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground truncate">
-                            {friend.type === 'bot'
-                              ? friend.description
-                              : (friend.lastMessage?.content ?? '暂无消息')}
+                            {friend.lastMessage?.content ?? '暂无消息'}
                           </div>
                         </div>
                       </button>
