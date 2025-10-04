@@ -177,32 +177,6 @@ export default function MePage() {
     }
   };
 
-  // 点击通知：标记已读并跳转（若可跳）
-  const handleOpenNotification = async (n: NotificationDto) => {
-    try {
-      await markOneRead(n.id);
-      const hash = buildAnchorHash(
-        n.comment?.filePath,
-        n.comment?.lineStart,
-        n.comment?.lineEnd
-      );
-      const href = (n as any).repoId
-        ? `/repositories/${(n as any).repoId}?tab=branches`
-        : undefined;
-      if (href) {
-        router.push(href);
-      } else {
-        toast({
-          title: '已标为已读',
-          description: '该通知缺少定位信息，无法跳转',
-          variant: 'default',
-        } as any);
-      }
-    } catch {
-      // ignore
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold mb-6">个人中心</h1>
@@ -352,14 +326,28 @@ export default function MePage() {
           ) : (
             <ul className="space-y-3">
               {notiData.items.map(n => {
-                const hash = buildAnchorHash(
-                  n.comment?.filePath,
-                  n.comment?.lineStart,
-                  n.comment?.lineEnd
-                );
-                const href = n.snapshotId
-                  ? `/snapshots/${n.snapshotId}${hash}`
-                  : undefined;
+                // 构建跳转链接（参考 /me/comments 页面的实现）
+                const href = (() => {
+                  if (!n.snapshotId || !n.commentId) return undefined;
+
+                  // 如果有文件路径和行号，构建完整的查询参数
+                  if (n.comment?.filePath) {
+                    const params = new URLSearchParams();
+                    params.set('file', n.comment.filePath);
+
+                    if (n.comment.lineStart) {
+                      params.set('line', String(n.comment.lineStart));
+                    }
+
+                    // 使用评论ID而不是通知ID
+                    params.set('commentId', n.commentId);
+
+                    return `/snapshots/${n.snapshotId}?${params.toString()}`;
+                  }
+
+                  // 如果只有评论ID，直接定位到评论
+                  return `/snapshots/${n.snapshotId}?commentId=${n.commentId}`;
+                })();
 
                 const getNotificationIcon = () => {
                   if (n.type === 'COMMENT_REPLY')
@@ -376,9 +364,7 @@ export default function MePage() {
                 return (
                   <li
                     key={n.id}
-                    className="group relative border border-border rounded-lg p-4 flex items-start gap-4 hover:bg-accent/30 hover:border-accent/70 hover:shadow-sm cursor-pointer transition-all duration-200"
-                    onClick={() => void handleOpenNotification(n)}
-                    role="button"
+                    className="group relative border border-border rounded-lg p-4 flex items-start gap-4 hover:bg-accent/20 hover:border-accent/50 hover:shadow-sm transition-all duration-200"
                   >
                     {/* 头像区域 */}
                     <div className="relative shrink-0">
@@ -432,15 +418,12 @@ export default function MePage() {
                     </div>
 
                     {/* 操作按钮区域 */}
-                    <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="shrink-0">
                       {href ? (
                         <Link
                           href={href}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/90 text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all"
-                          onClick={e => {
-                            e.stopPropagation();
-                            void markOneRead(n.id);
-                          }}
+                          onClick={() => void markOneRead(n.id)}
                         >
                           <Sparkles className="h-3 w-3" />
                           查看详情
