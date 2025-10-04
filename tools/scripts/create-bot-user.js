@@ -40,7 +40,7 @@ async function createBotUser() {
         role: 'USER',
         isActive: true,
         isOnline: true,
-        avatar: null, // 可以后续添加机器人头像
+        avatar: 'https://avatars.githubusercontent.com/u/9919?s=200&v=4', // GitHub Octocat 头像
       },
     });
 
