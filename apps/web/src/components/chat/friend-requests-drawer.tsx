@@ -71,154 +71,171 @@ export function FriendRequestsDrawer() {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>聊天室通知</SheetTitle>
-          <SheetDescription>好友申请与处理记录</SheetDescription>
-        </SheetHeader>
+      <SheetContent className="p-0 sm:max-w-md">
+        <div className="flex h-full flex-col">
+          <SheetHeader className="px-6 pt-6 pb-4 border-b">
+            <SheetTitle className="text-lg">聊天室通知</SheetTitle>
+            <SheetDescription className="text-sm text-muted-foreground">
+              好友申请与处理记录
+            </SheetDescription>
+          </SheetHeader>
 
-        <div className="mt-6 space-y-6">
-          {requestsLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          )}
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            {requestsLoading ? (
+              <div className="flex h-32 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <section className="space-y-3">
+                  <header>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      收到的申请
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      及时处理新朋友的申请
+                    </p>
+                  </header>
+                  {incomingRequests.length === 0 ? (
+                    <div className="rounded-lg border border-dashed bg-muted/40 py-6 text-center text-sm text-muted-foreground">
+                      暂无待处理的申请
+                    </div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {incomingRequests.map(request => {
+                        const isProcessing = processingIds.has(request.id);
+                        const isPending = request.status === 'PENDING';
 
-          {!requestsLoading && (
-            <>
-              {/* 收到的申请 */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">收到的申请</h3>
-                {incomingRequests.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-4">
-                    暂无待处理的申请
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {incomingRequests.map(request => {
-                      const isProcessing = processingIds.has(request.id);
-                      const isPending = request.status === 'PENDING';
-
-                      return (
-                        <div
-                          key={request.id}
-                          className="p-3 rounded-lg border bg-card space-y-2"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium">
-                                {request.fromUser?.username || '未知用户'}
-                              </div>
-                              {request.message && (
-                                <div className="text-sm text-muted-foreground mt-1">
-                                  {request.message}
+                        return (
+                          <li
+                            key={request.id}
+                            className="rounded-lg border bg-card p-3 shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <div className="font-medium truncate">
+                                  {request.fromUser?.username || '未知用户'}
                                 </div>
+                                {request.message && (
+                                  <p className="text-sm text-muted-foreground line-clamp-2">
+                                    {request.message}
+                                  </p>
+                                )}
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(request.createdAt).toLocaleString(
+                                    'zh-CN'
+                                  )}
+                                </div>
+                              </div>
+                              {!isPending && (
+                                <span
+                                  className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                    request.status === 'ACCEPTED'
+                                      ? 'bg-green-500/10 text-green-600'
+                                      : 'bg-gray-500/10 text-muted-foreground'
+                                  }`}
+                                >
+                                  {request.status === 'ACCEPTED'
+                                    ? '已通过'
+                                    : '已拒绝'}
+                                </span>
                               )}
-                              <div className="text-xs text-muted-foreground mt-1">
+                            </div>
+                            {isPending && (
+                              <div className="mt-3 grid grid-cols-2 gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => void handleAccept(request.id)}
+                                  disabled={isProcessing}
+                                  className="justify-center"
+                                >
+                                  {isProcessing && (
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  )}
+                                  <Check className="mr-1 h-3 w-3" />
+                                  通过
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void handleReject(request.id)}
+                                  disabled={isProcessing}
+                                  className="justify-center"
+                                >
+                                  {isProcessing && (
+                                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  )}
+                                  <X className="mr-1 h-3 w-3" />
+                                  拒绝
+                                </Button>
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </section>
+
+                <section className="space-y-3">
+                  <header>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      发出的申请
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      查看你已发送的好友申请状态
+                    </p>
+                  </header>
+                  {outgoingRequests.length === 0 ? (
+                    <div className="rounded-lg border border-dashed bg-muted/40 py-6 text-center text-sm text-muted-foreground">
+                      暂无发出的申请
+                    </div>
+                  ) : (
+                    <ul className="space-y-3">
+                      {outgoingRequests.map(request => (
+                        <li
+                          key={request.id}
+                          className="rounded-lg border bg-card p-3 shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="font-medium truncate">
+                                {request.toUser?.username || '未知用户'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
                                 {new Date(request.createdAt).toLocaleString(
                                   'zh-CN'
                                 )}
                               </div>
                             </div>
-                            {!isPending && (
-                              <span
-                                className={`text-xs px-2 py-1 rounded ${
-                                  request.status === 'ACCEPTED'
-                                    ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                                    : 'bg-gray-500/10 text-gray-700 dark:text-gray-400'
-                                }`}
-                              >
-                                {request.status === 'ACCEPTED'
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium whitespace-nowrap ${
+                                request.status === 'PENDING'
+                                  ? 'bg-yellow-500/10 text-yellow-600'
+                                  : request.status === 'ACCEPTED'
+                                    ? 'bg-green-500/10 text-green-600'
+                                    : 'bg-gray-500/10 text-muted-foreground'
+                              }`}
+                            >
+                              {request.status === 'PENDING'
+                                ? '等待对方'
+                                : request.status === 'ACCEPTED'
                                   ? '已通过'
                                   : '已拒绝'}
-                              </span>
-                            )}
+                            </span>
                           </div>
-
-                          {isPending && (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => void handleAccept(request.id)}
-                                disabled={isProcessing}
-                                className="flex-1"
-                              >
-                                {isProcessing && (
-                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                )}
-                                <Check className="h-3 w-3 mr-1" />
-                                通过
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => void handleReject(request.id)}
-                                disabled={isProcessing}
-                                className="flex-1"
-                              >
-                                {isProcessing && (
-                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                )}
-                                <X className="h-3 w-3 mr-1" />
-                                拒绝
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
               </div>
+            )}
+          </div>
 
-              {/* 发出的申请 */}
-              <div>
-                <h3 className="text-sm font-semibold mb-3">发出的申请</h3>
-                {outgoingRequests.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-4">
-                    暂无发出的申请
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {outgoingRequests.map(request => (
-                      <div
-                        key={request.id}
-                        className="p-3 rounded-lg border bg-card"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium">
-                              {request.toUser?.username || '未知用户'}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {new Date(request.createdAt).toLocaleString(
-                                'zh-CN'
-                              )}
-                            </div>
-                          </div>
-                          <span
-                            className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
-                              request.status === 'PENDING'
-                                ? 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'
-                                : request.status === 'ACCEPTED'
-                                  ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                                  : 'bg-gray-500/10 text-gray-700 dark:text-gray-400'
-                            }`}
-                          >
-                            {request.status === 'PENDING'
-                              ? '等待对方'
-                              : request.status === 'ACCEPTED'
-                                ? '已通过'
-                                : '已拒绝'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+          <div className="border-t bg-muted/30 px-6 py-3 text-xs text-muted-foreground">
+            小提示：好友通过申请后会自动添加到左侧列表，可立即开始聊天。
+          </div>
         </div>
       </SheetContent>
     </Sheet>

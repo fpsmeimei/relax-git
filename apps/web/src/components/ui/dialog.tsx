@@ -52,12 +52,38 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
   return createPortal(content, document.body);
 };
 
-const DialogTrigger: React.FC<React.HTMLAttributes<HTMLButtonElement>> = ({
-  children,
-  ...props
-}) => <button {...props}>{children}</button>;
+interface DialogTriggerProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
 
-const DialogClose: React.FC<React.HTMLAttributes<HTMLButtonElement>> = ({
+const DialogTrigger: React.FC<DialogTriggerProps> = ({
+  children,
+  asChild = false,
+  onClick,
+  ...props
+}) => {
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, {
+      ...props,
+      ...(children.props || {}),
+      onClick: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        onClick?.(event);
+        if (typeof children.props?.onClick === 'function') {
+          children.props.onClick(event);
+        }
+      },
+    });
+  }
+
+  return (
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
+  );
+};
+
+const DialogClose: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
   children,
   ...props
 }) => <button {...props}>{children}</button>;

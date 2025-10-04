@@ -3,10 +3,12 @@
 import { useSocket } from '@/components/socket-provider';
 import { useChatStore } from '@/stores/chat-store';
 import { useChatFriendsStore } from '@/stores/chat-friends-store';
+import { useAuth } from '@/stores/auth-store';
 import { useEffect } from 'react';
 
 export function useChatSocket() {
   const { isConnected, on } = useSocket();
+  const { user } = useAuth();
   const { updateOnNewMessage } = useChatStore();
   const {
     addIncomingRequest,
@@ -22,7 +24,12 @@ export function useChatSocket() {
     const handleNewMessage = (message: any) => {
       console.log('[use-chat-socket] 收到新消息推送:', message);
       // 判断是否是自己发送的消息
-      const isSelf = false; // TODO: 获取当前用户ID并比较
+      const isSelf = user?.id === message.senderId;
+      console.log('[use-chat-socket] 消息发送者判断:', {
+        currentUserId: user?.id,
+        messageSenderId: message.senderId,
+        isSelf,
+      });
       updateOnNewMessage(message, isSelf);
     };
 
@@ -113,6 +120,7 @@ export function useChatSocket() {
   }, [
     isConnected,
     on,
+    user?.id,
     updateOnNewMessage,
     addIncomingRequest,
     updateRequestStatus,

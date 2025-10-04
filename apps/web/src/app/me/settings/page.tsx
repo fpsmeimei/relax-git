@@ -235,7 +235,7 @@ export default function SettingsPage() {
       });
       const fd = new FormData();
       fd.append('file', uploadFile);
-      const { data } = await apiClient.post('/api/users/me/avatar', fd, {
+      const { data } = await apiClient.post('/users/me/avatar', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const newAvatarUrl = (data as any)?.avatar || null;

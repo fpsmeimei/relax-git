@@ -1,7 +1,6 @@
 'use client';
 
 import { FriendRequestsDrawer } from '@/components/chat/friend-requests-drawer';
-import { SearchUsersDialog } from '@/components/chat/search-users-dialog';
 import { useSocket } from '@/components/socket-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,7 +25,6 @@ import type { ChatMessage } from '@/types/chat';
 import {
   Github,
   MessageSquarePlus,
-  Plus,
   Search,
   SendHorizonal,
   Trash2,
@@ -47,7 +45,16 @@ export default function ChatroomPage() {
   // 启用聊天室 WebSocket 监听
   useChatSocket();
 
-  const { friends, friendsLoading, loadFriends } = useChatFriendsStore();
+  const {
+    friends,
+    friendsLoading,
+    loadFriends,
+    searchResults,
+    searchLoading,
+    searchUsers,
+    clearSearchResults,
+    sendFriendRequest,
+  } = useChatFriendsStore();
   const {
     messages,
     loadMoreMessages,
@@ -72,6 +79,8 @@ export default function ChatroomPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     void loadFriends();
   }, [loadFriends]);
@@ -80,6 +89,29 @@ export default function ChatroomPage() {
   useEffect(() => {
     void fetchLatestAvatar();
   }, [fetchLatestAvatar]);
+
+  useEffect(() => {
+    const trimmed = keyword.trim();
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    if (!trimmed) {
+      debounceRef.current = setTimeout(() => {
+        clearSearchResults();
+      }, 150);
+      return () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      };
+    }
+
+    debounceRef.current = setTimeout(() => {
+      void searchUsers(trimmed);
+    }, 250);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [clearSearchResults, keyword, searchUsers]);
 
   const allFriends: FriendEntry[] = useMemo(() => {
     return friends.map(f => ({
@@ -95,6 +127,15 @@ export default function ChatroomPage() {
       friend.username.toLowerCase().includes(trimmed)
     );
   }, [allFriends, keyword]);
+
+  const externalResults = useMemo(() => {
+    const trimmed = keyword.trim().toLowerCase();
+    if (!trimmed) return [] as typeof searchResults;
+    return (searchResults || []).filter(result => {
+      if (result.status === 'friend') return false;
+      return !allFriends.some(friend => friend.id === result.id);
+    });
+  }, [allFriends, keyword, searchResults]);
 
   const selectedChatMessages: ChatMessage[] = useMemo(() => {
     if (!selectedChatId) return [];
@@ -442,14 +483,13 @@ export default function ChatroomPage() {
           </div>
           <div className="flex items-center gap-2">
             <FriendRequestsDrawer />
-            <SearchUsersDialog />
           </div>
         </div>
       </nav>
 
       <div className="flex-1 py-4">
         <div className="container-responsive max-w-6xl mx-auto h-[calc(100vh-8rem)] flex gap-6">
-          <aside className="w-72 border border-border/40 bg-card/40 backdrop-blur-sm rounded-2xl flex flex-col overflow-hidden">
+          <aside className="w-72 border border-border/40 bg-card/40 backdrop-blur-sm rounded-2xl flex flex-col overflow-hidden text-foreground">
             <div className="px-4 py-3 border-b">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -508,7 +548,7 @@ export default function ChatroomPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium truncate">
+                            <span className="font-medium truncate text-card-foreground">
                               {friend.username}
                             </span>
                             {friend.lastMessage?.createdAt && (
@@ -538,15 +578,7 @@ export default function ChatroomPage() {
             <div className="h-full flex flex-col rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm">
               <div className="flex items-center justify-between px-6 py-4 border-b border-border/20">
                 <h2 className="text-lg font-semibold">聊天</h2>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 w-8 p-0 rounded-full"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <div className="flex items-center gap-2"></div>
               </div>
               <div className="flex-1 overflow-hidden rounded-b-2xl bg-card p-6">
                 {renderConversation()}

@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +11,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useChatFriendsStore } from '@/stores/chat-friends-store';
-import { Check, Loader2, PlusCircle, Search, UserPlus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Check, Loader2, Plus, Search, UserPlus, X } from 'lucide-react';
 import { useState } from 'react';
 
 export function SearchUsersDialog() {
@@ -61,14 +61,12 @@ export function SearchUsersDialog() {
       open={open}
       onOpenChange={val => (val ? setOpen(true) : handleClose())}
     >
-      <DialogTrigger>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0 rounded-full border-primary/30 hover:bg-primary/10"
-        >
-          <PlusCircle className="h-5 w-5 stroke-[2.5] text-primary" />
-        </Button>
+      <DialogTrigger
+        type="button"
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary shadow-sm transition hover:bg-primary/25"
+        aria-label="添加好友"
+      >
+        <Plus className="h-4 w-4" strokeWidth={2.5} />
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
