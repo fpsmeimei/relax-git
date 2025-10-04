@@ -407,7 +407,7 @@ export default function ChatroomPage() {
       </nav>
 
       <div className="flex-1 py-4">
-        <div className="container-responsive max-w-6xl mx-auto min-h-[85vh] flex gap-6">
+        <div className="container-responsive max-w-6xl mx-auto h-[calc(100vh-8rem)] flex gap-6">
           <aside className="w-72 border border-border/40 bg-card/40 backdrop-blur-sm rounded-2xl flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b">
               <div className="relative">
@@ -492,7 +492,7 @@ export default function ChatroomPage() {
           </aside>
 
           <main className="flex-1 bg-background">
-            <div className="h-full min-h-[85vh] flex flex-col rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm">
+            <div className="h-full flex flex-col rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm">
               <div className="flex items-center justify-between px-6 py-4 border-b border-border/20">
                 <h2 className="text-lg font-semibold">聊天</h2>
                 <div className="flex items-center gap-2">
