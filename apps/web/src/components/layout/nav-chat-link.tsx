@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useChatFriendsStore } from '@/stores/chat-friends-store';
-import { MessageSquarePlus } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
 
@@ -14,16 +14,20 @@ export function NavChatLink() {
     void loadFriendRequests('PENDING');
   }, [loadFriendRequests]);
 
+  const displayCount = unreadRequestCount > 99 ? '99' : unreadRequestCount;
+
   return (
     <Link href="/chatroom">
       <Button variant="ghost" size="sm" className="relative">
-        <MessageSquarePlus className="h-4 w-4 mr-2" />
+        <div className="relative mr-2">
+          <MessageSquare className="h-4 w-4" />
+          {unreadRequestCount > 0 && (
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-primary-foreground">
+              {displayCount}
+            </span>
+          )}
+        </div>
         聊天室
-        {unreadRequestCount > 0 && (
-          <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium">
-            {unreadRequestCount > 99 ? '99+' : unreadRequestCount}
-          </span>
-        )}
       </Button>
     </Link>
   );
