@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsEnum, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsEnum, IsOptional, IsString, Length } from 'class-validator';
 import { FriendRequestStatus } from '@relax-git/shared/generated/prisma-client';
 
 export class SearchFriendsQueryDto {
@@ -20,7 +20,7 @@ export class FriendRequestsQueryDto {
 }
 
 export class SendFriendRequestDto {
-  @IsUUID('4', { message: '好友 ID 格式不正确' })
+  @IsString({ message: '好友 ID 格式不正确' })
   toUserId!: string;
 
   @IsOptional()
@@ -31,11 +31,11 @@ export class SendFriendRequestDto {
 }
 
 export class FriendRequestIdParamDto {
-  @IsUUID('4', { message: '好友申请 ID 格式不正确' })
+  @IsString({ message: '好友申请 ID 格式不正确' })
   id!: string;
 }
 
 export class RemoveFriendParamDto {
-  @IsUUID('4', { message: '好友 ID 格式不正确' })
+  @IsString({ message: '好友 ID 格式不正确' })
   friendId!: string;
 }

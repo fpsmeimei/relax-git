@@ -74,11 +74,15 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   if (!isAuthenticated) {
     return (
       <div className={cn('flex items-center gap-3', className)}>
-        {/* 未登录状态的占位头像 */}
-        <div className="h-8 w-8 rounded-full overflow-hidden border border-border/20 shadow-md">
-          <div className="h-full w-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center text-gray-600 dark:text-gray-300 text-sm font-semibold">
-            <span className="select-none">用</span>
-          </div>
+        {/* 未登录状态的优雅头像 */}
+        <div className="h-8 w-8 rounded-full overflow-hidden border border-border/30 shadow-sm bg-gradient-to-br from-muted/80 to-muted flex items-center justify-center">
+          <svg
+            className="h-4 w-4 text-muted-foreground/70"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+          </svg>
         </div>
         <Link
           href="/auth/login"

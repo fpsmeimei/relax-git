@@ -177,8 +177,32 @@ export class ChatsService {
   ) {
     await this.ensureMember(userId, chatId);
     const take = Math.max(1, Math.min(100, limit));
+
+    // 查询消息，同时检查可见性
     const items = await (this.prisma as any).message.findMany({
-      where: { chatId },
+      where: {
+        chatId,
+        // 只显示对当前用户可见的消息
+        OR: [
+          // 没有可见性记录的消息（默认可见）
+          {
+            visibility: {
+              none: {
+                userId,
+              },
+            },
+          },
+          // 有可见性记录且设置为可见的消息
+          {
+            visibility: {
+              some: {
+                userId,
+                isVisible: true,
+              },
+            },
+          },
+        ],
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -192,6 +216,7 @@ export class ChatsService {
         readAt: true,
       },
     });
+
     const nextCursor =
       items.length === take ? items[items.length - 1]?.id : null;
     // 返回升序，便于前端自然渲染
@@ -376,10 +401,44 @@ export class ChatsService {
   async clearMessages(userId: string, chatId: string) {
     await this.ensureMember(userId, chatId);
 
-    const result = await (this.prisma as any).message.deleteMany({
+    // 方案：将该聊天中对当前用户可见的所有消息设置为不可见
+    // 这样用户看到的是完全清空，但数据库中消息仍然存在，对方不受影响
+
+    // 1. 获取该聊天的所有消息ID
+    const messages = await (this.prisma as any).message.findMany({
       where: { chatId },
+      select: { id: true },
     });
 
-    return { ok: true, deleted: result.count };
+    if (messages.length === 0) {
+      return { ok: true, hidden: 0 };
+    }
+
+    const messageIds = messages.map((m: any) => m.id);
+
+    // 2. 为当前用户创建或更新消息可见性记录，设置为不可见
+    await (this.prisma as any).messageVisibility.createMany({
+      data: messageIds.map((messageId: string) => ({
+        messageId,
+        userId,
+        isVisible: false,
+        hiddenAt: new Date(),
+      })),
+      skipDuplicates: true, // 如果已存在则跳过
+    });
+
+    // 3. 更新已存在的可见性记录
+    await (this.prisma as any).messageVisibility.updateMany({
+      where: {
+        messageId: { in: messageIds },
+        userId,
+      },
+      data: {
+        isVisible: false,
+        hiddenAt: new Date(),
+      },
+    });
+
+    return { ok: true, hidden: messageIds.length };
   }
 }

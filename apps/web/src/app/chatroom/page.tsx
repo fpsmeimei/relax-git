@@ -85,10 +85,12 @@ export default function ChatroomPage() {
     void loadFriends();
   }, [loadFriends]);
 
-  // 组件加载时获取最新头像
+  // 组件加载时获取最新头像（仅在已登录时）
   useEffect(() => {
-    void fetchLatestAvatar();
-  }, [fetchLatestAvatar]);
+    if (user?.id) {
+      void fetchLatestAvatar();
+    }
+  }, [fetchLatestAvatar, user?.id]);
 
   useEffect(() => {
     const trimmed = keyword.trim();
@@ -136,6 +138,25 @@ export default function ChatroomPage() {
       return !allFriends.some(friend => friend.id === result.id);
     });
   }, [allFriends, keyword, searchResults]);
+
+  const handleSendFriendRequest = useCallback(
+    async (userId: string) => {
+      try {
+        await sendFriendRequest(userId);
+        toast({
+          title: '好友申请已发送',
+          description: '等待对方通过申请',
+        });
+      } catch (error: any) {
+        toast({
+          title: '发送失败',
+          description: error?.message || '请稍后重试',
+          variant: 'destructive',
+        });
+      }
+    },
+    [sendFriendRequest, toast]
+  );
 
   const selectedChatMessages: ChatMessage[] = useMemo(() => {
     if (!selectedChatId) return [];
@@ -309,7 +330,6 @@ export default function ChatroomPage() {
           'flex gap-2 mb-4',
           isSelf ? 'justify-end' : 'justify-start'
         )}
-        key={message.id}
       >
         {!isSelf && (
           <div className="h-10 w-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
@@ -331,8 +351,8 @@ export default function ChatroomPage() {
         <div className="flex flex-col max-w-[70%]">
           <div
             className={cn(
-              'rounded-2xl px-4 py-2 text-sm relative',
-              isSelf ? 'bg-blue-500 text-white ml-auto' : 'bg-muted'
+              'rounded-2xl px-4 py-2 text-sm relative bg-muted',
+              isSelf && 'ml-auto'
             )}
           >
             <div className="whitespace-pre-wrap leading-relaxed">{content}</div>
@@ -431,10 +451,14 @@ export default function ChatroomPage() {
           ) : (
             selectedChatMessages.map(message => {
               const isSelf = message.senderId === user?.id;
-              return renderMessageBubble(
-                message,
-                isSelf,
-                isSelf ? currentAvatar : friendAvatar
+              return (
+                <div key={message.id}>
+                  {renderMessageBubble(
+                    message,
+                    isSelf,
+                    isSelf ? currentAvatar : friendAvatar
+                  )}
+                </div>
               );
             })
           )}
@@ -488,7 +512,7 @@ export default function ChatroomPage() {
       </nav>
 
       <div className="flex-1 py-4">
-        <div className="container-responsive max-w-6xl mx-auto h-[calc(100vh-8rem)] flex gap-6">
+        <div className="container-responsive max-w-6xl mx-auto h-[calc(100vh-10rem)] flex gap-6">
           <aside className="w-72 border border-border/40 bg-card/40 backdrop-blur-sm rounded-2xl flex flex-col overflow-hidden text-foreground">
             <div className="px-4 py-3 border-b">
               <div className="relative">
@@ -496,79 +520,167 @@ export default function ChatroomPage() {
                 <Input
                   value={keyword}
                   onChange={e => setKeyword(e.target.value)}
-                  placeholder="搜索好友"
+                  placeholder="搜索用户"
                   className="pl-10"
                 />
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {friendsLoading ? (
+              {friendsLoading || searchLoading ? (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  正在加载好友...
-                </div>
-              ) : filteredFriends.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  没有找到匹配的好友
+                  {friendsLoading ? '正在加载好友...' : '正在搜索...'}
                 </div>
               ) : (
-                <div className="space-y-1 px-3 py-3">
-                  {filteredFriends.map(friend => {
-                    const isSelected = selectedFriend?.id === friend.id;
-                    const avatar = friend.avatar ?? null;
-                    return (
-                      <button
-                        key={friend.id}
-                        onClick={() => void handleSelectFriend(friend)}
-                        className={cn(
-                          'w-full rounded-xl px-3 py-2 transition-colors flex items-center gap-3 text-left',
-                          isSelected
-                            ? 'bg-primary/10 text-primary-foreground'
-                            : 'hover:bg-muted/60'
-                        )}
-                      >
-                        <div className="relative h-11 w-11 flex-shrink-0">
-                          <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
-                            {avatar ? (
-                              <Image
-                                src={avatar}
-                                alt={friend.username}
-                                width={44}
-                                height={44}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-base font-semibold">
-                                {friend.username.charAt(0).toUpperCase()}
-                              </span>
-                            )}
+                <div className="space-y-4">
+                  {/* 好友列表 */}
+                  {filteredFriends.length > 0 && (
+                    <div className="px-3 py-3">
+                      <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
+                        我的好友
+                      </div>
+                      <div className="space-y-1">
+                        {filteredFriends.map(friend => {
+                          const isSelected = selectedFriend?.id === friend.id;
+                          const avatar = friend.avatar ?? null;
+                          return (
+                            <button
+                              key={friend.id}
+                              onClick={() => void handleSelectFriend(friend)}
+                              className={cn(
+                                'w-full rounded-xl px-3 py-2 transition-colors flex items-center gap-3 text-left',
+                                isSelected
+                                  ? 'bg-primary/10 text-primary-foreground'
+                                  : 'hover:bg-muted/60'
+                              )}
+                            >
+                              <div className="relative h-11 w-11 flex-shrink-0">
+                                <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
+                                  {avatar ? (
+                                    <Image
+                                      src={avatar}
+                                      alt={friend.username}
+                                      width={44}
+                                      height={44}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-base font-semibold">
+                                      {friend.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                {friend.isOnline && (
+                                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium truncate text-card-foreground">
+                                    {friend.username}
+                                  </span>
+                                  {friend.lastMessage?.createdAt && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {new Date(
+                                        friend.lastMessage.createdAt
+                                      ).toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground truncate">
+                                  {friend.lastMessage?.content ?? '暂无消息'}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 搜索到的外部用户 */}
+                  {keyword.trim() && externalResults.length > 0 && (
+                    <div className="px-3 py-3">
+                      <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
+                        搜索结果
+                      </div>
+                      <div className="space-y-1">
+                        {externalResults.map(user => (
+                          <div
+                            key={user.id}
+                            className="w-full rounded-xl px-3 py-2 border bg-card/50 flex items-center gap-3"
+                          >
+                            <div className="relative h-10 w-10 flex-shrink-0">
+                              <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
+                                {user.avatar ? (
+                                  <Image
+                                    src={user.avatar}
+                                    alt={user.username}
+                                    width={40}
+                                    height={40}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-semibold">
+                                    {user.username.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-card-foreground">
+                                {user.username}
+                              </div>
+                              {(user.status === 'pendingOutgoing' ||
+                                user.status === 'pendingIncoming') && (
+                                <div className="text-xs text-muted-foreground">
+                                  {user.status === 'pendingOutgoing'
+                                    ? '等待对方通过'
+                                    : '请求通过你'}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              {user.status === 'none' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    void handleSendFriendRequest(user.id)
+                                  }
+                                  className="text-xs"
+                                >
+                                  添加好友
+                                </Button>
+                              )}
+                              {user.status === 'pendingOutgoing' && (
+                                <span className="text-xs text-muted-foreground">
+                                  等待通过
+                                </span>
+                              )}
+                              {user.status === 'pendingIncoming' && (
+                                <span className="text-xs text-primary">
+                                  待处理
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          {friend.isOnline && (
-                            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium truncate text-card-foreground">
-                              {friend.username}
-                            </span>
-                            {friend.lastMessage?.createdAt && (
-                              <span className="text-[10px] text-muted-foreground">
-                                {new Date(
-                                  friend.lastMessage.createdAt
-                                ).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground truncate">
-                            {friend.lastMessage?.content ?? '暂无消息'}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 无结果提示 */}
+                  {!friendsLoading &&
+                    !searchLoading &&
+                    filteredFriends.length === 0 &&
+                    (!keyword.trim() || externalResults.length === 0) && (
+                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                        {keyword.trim() ? '未找到匹配的用户' : '暂无好友'}
+                      </div>
+                    )}
                 </div>
               )}
             </div>
@@ -594,7 +706,7 @@ export default function ChatroomPage() {
           <DialogHeader>
             <DialogTitle>确认清屏</DialogTitle>
             <DialogDescription>
-              此操作将清除当前聊天的所有消息记录，且无法恢复。确定要继续吗？
+              此操作将清除当前聊天中的所有消息记录（仅对你可见），对方不会受到影响，且无法恢复。确定要继续吗？
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

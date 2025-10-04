@@ -72,6 +72,8 @@ model User {
   repositoryLikes        RepositoryLike[]       @relation("UserRepositoryLikes")
   repositoryCollections  RepositoryCollection[] @relation("UserRepositoryCollections")
   repositoryViews        RepositoryView[]       @relation("UserRepositoryViews")
+  // 消息可见性关联
+  messageVisibility      MessageVisibility[]    @relation("MessageVisibility")
 
   @@map("users")
 }
@@ -590,6 +592,9 @@ model Message {
   // 关联
   chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
   sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  // 消息可见性关系
+  visibility MessageVisibility[]
 
   @@index([chatId, createdAt])
   @@index([chatId, isRead])
@@ -735,10 +740,35 @@ model ChatMessage {
   // 关联关系
   fromUser User @relation("SentChatMessages", fields: [fromUserId], references: [id], onDelete: Cascade)
   toUser   User @relation("ReceivedChatMessages", fields: [toUserId], references: [id], onDelete: Cascade)
+  
+  // 消息可见性关系
+  visibility MessageVisibility[]
 
   @@index([fromUserId, toUserId, createdAt])
   @@index([toUserId, isRead])
   @@index([fromUserId])
   @@index([toUserId])
   @@map("chat_messages")
+}
+
+// 消息可见性表（控制每个用户是否能看到特定消息）
+model MessageVisibility {
+  id            String   @id @default(cuid())
+  messageId     String?
+  chatMessageId String?
+  userId        String
+  isVisible     Boolean  @default(true)
+  hiddenAt      DateTime?
+  
+  // 关联关系 - 支持两种消息类型
+  message     Message?     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  chatMessage ChatMessage? @relation(fields: [chatMessageId], references: [id], onDelete: Cascade)
+  user        User         @relation("MessageVisibility", fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, userId])
+  @@unique([chatMessageId, userId])
+  @@index([userId, isVisible])
+  @@index([messageId])
+  @@index([chatMessageId])
+  @@map("message_visibility")
 }

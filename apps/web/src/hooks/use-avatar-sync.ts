@@ -44,23 +44,25 @@ export const useAvatarSync = (initialAvatar?: string | null) => {
   // 获取最新头像的函数
   const fetchLatestAvatar = async () => {
     try {
-      console.log('Fetching avatar from /_auth/profile...');
       const res = await apiClient.get('/_auth/profile');
-      console.log('Avatar response:', res.data);
       const avatarUrl = res.data?.avatar;
       if (avatarUrl !== currentAvatar) {
-        console.log('Updating avatar:', avatarUrl);
         setCurrentAvatar(avatarUrl || null);
         return avatarUrl;
       }
       return currentAvatar;
     } catch (error: any) {
-      console.error('Failed to fetch latest avatar:', error);
-      console.error('Error details:', {
+      // 如果是401未授权错误（用户未登录），静默处理
+      if (error?.status === 401 || error?.code === 'UNAUTHORIZED') {
+        setCurrentAvatar(null);
+        return null;
+      }
+
+      // 其他错误才打印日志
+      console.warn('Failed to fetch avatar (non-critical):', {
         message: error?.message,
-        status: error?.response?.status,
-        statusText: error?.response?.statusText,
-        url: error?.config?.url,
+        status: error?.status,
+        code: error?.code,
       });
       return currentAvatar;
     }
