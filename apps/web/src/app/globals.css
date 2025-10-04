@@ -1078,3 +1078,15 @@ pre[class*='language-'] {
 .heatmap-cell.level-5 {
   @apply bg-green-500 dark:bg-green-500;
 }
+
+/* 隐藏滚动条但保留滚动功能 */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+}

@@ -333,7 +333,7 @@ export default function ChatroomPage() {
 
         <div
           ref={messageContainerRef}
-          className="flex-1 overflow-y-auto pr-2 py-4"
+          className="flex-1 overflow-y-auto pr-2 py-4 scrollbar-hide"
         >
           {creatingChat && (
             <div className="flex justify-center">
