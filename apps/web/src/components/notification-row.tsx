@@ -3,9 +3,10 @@
 import { cn } from '@/lib/utils';
 import * as Dialog from '@radix-ui/react-dialog';
 import { formatSmartTime } from '@/lib/utils/format-time';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle, UserCheck, UserX, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 function formatTimeDistance(d: Date): string {
   try {
@@ -26,8 +27,6 @@ function truncateText(s: string, max = 120): string {
 function buildTitle(n: any, actor: string): string {
   const type = n?.type;
   switch (type) {
-    case 'MENTION':
-      return `${actor} 在评论中 @ 了你`;
     case 'COMMENT_REPLY':
       return `${actor} 回复了你`;
     case 'JOIN_REQUEST_APPROVED':
@@ -43,6 +42,32 @@ function buildDescription(n: any): string {
   const content = (n?.content ?? '').toString().trim();
   if (!content) return '点击查看详情';
   return truncateText(content, 120);
+}
+
+function getNotificationIcon(type: string) {
+  switch (type) {
+    case 'COMMENT_REPLY':
+      return <MessageCircle className="h-3 w-3" />;
+    case 'JOIN_REQUEST_APPROVED':
+      return <UserCheck className="h-3 w-3" />;
+    case 'JOIN_REQUEST_REJECTED':
+      return <UserX className="h-3 w-3" />;
+    default:
+      return <Bell className="h-3 w-3" />;
+  }
+}
+
+function getNotificationBgColor(type: string): string {
+  switch (type) {
+    case 'COMMENT_REPLY':
+      return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
+    case 'JOIN_REQUEST_APPROVED':
+      return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+    case 'JOIN_REQUEST_REJECTED':
+      return 'bg-red-500/10 text-red-600 dark:text-red-400';
+    default:
+      return 'bg-primary/10 text-primary';
+  }
 }
 
 export interface NotificationRowProps {
@@ -78,33 +103,71 @@ export function NotificationRow({
   }, [n]);
 
   const actor = useMemo(() => n?.actor?.username ?? '有人', [n]);
+  const actorAvatar = useMemo(() => n?.actor?.avatar, [n]);
   const title = useMemo(() => buildTitle(n, actor), [n, actor]);
   const description = useMemo(() => buildDescription(n), [n]);
   const createdAt = n?.createdAt ? new Date(n.createdAt) : undefined;
+  const notificationType = n?.type ?? 'DEFAULT';
 
   const rowMain = (
     <div
       className={cn(
-        'flex w-full items-start gap-3 rounded-md p-2 pr-16 transition-colors hover:bg-accent/70 focus-within:bg-accent/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        n?.isRead ? 'opacity-70' : ''
+        'relative flex w-full items-start gap-3 rounded-lg p-3 pr-20 transition-all duration-200',
+        'border border-transparent',
+        !n?.isRead && 'bg-accent/30 border-accent',
+        'hover:bg-accent/50 hover:border-accent/70 hover:shadow-sm',
+        'focus-within:bg-accent/50 focus-within:border-accent/70 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1',
+        n?.isRead && 'opacity-75 hover:opacity-100'
       )}
     >
+      {/* 未读指示器 */}
       {!n?.isRead && (
         <div
-          className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-primary ring-2 ring-background"
+          className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-lg"
           aria-hidden="true"
         />
       )}
-      <div className="min-w-0 flex-1">
-        <div className="line-clamp-1 text-sm font-medium group-hover:underline">
-          {title}
+
+      {/* 头像区域 */}
+      <div className="relative shrink-0">
+        <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
+          <AvatarImage src={actorAvatar || undefined} alt={actor} />
+          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-sm font-semibold">
+            {actor.slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        {/* 通知类型图标徽章 */}
+        <div
+          className={cn(
+            'absolute -bottom-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center shadow-sm border-2 border-background',
+            getNotificationBgColor(notificationType)
+          )}
+        >
+          {getNotificationIcon(notificationType)}
         </div>
-        <div className="line-clamp-2 text-xs text-muted-foreground">
-          {actor}：{description}
+      </div>
+
+      {/* 内容区域 */}
+      <div className="min-w-0 flex-1 space-y-1">
+        {/* 标题 */}
+        <div className="flex items-center gap-2">
+          <div className="line-clamp-1 text-sm font-semibold text-foreground group-hover:underline">
+            {title}
+          </div>
+          {!n?.isRead && (
+            <span className="shrink-0 h-2 w-2 rounded-full bg-primary animate-pulse" />
+          )}
         </div>
+
+        {/* 描述 */}
+        <div className="line-clamp-2 text-xs text-muted-foreground leading-relaxed">
+          {description}
+        </div>
+
+        {/* 时间 */}
         {createdAt && (
-          <div className="mt-1 text-[10px] text-muted-foreground">
-            {formatTimeDistance(createdAt)}
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+            <span>{formatTimeDistance(createdAt)}</span>
           </div>
         )}
       </div>
@@ -112,7 +175,7 @@ export function NotificationRow({
   );
 
   const actions = (
-    <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
       <div className="flex items-center gap-2">
         {href && (
           <span className="pointer-events-auto">
@@ -120,12 +183,12 @@ export function NotificationRow({
               <Link
                 href={href}
                 aria-label={`查看通知：${title}`}
-                className="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="inline-flex items-center gap-1 rounded-md bg-primary/90 px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onClick={e => {
                   onNavigate?.();
                 }}
               >
-                查看
+                查看详情
               </Link>
             </Dialog.Close>
           </span>
@@ -140,10 +203,10 @@ export function NotificationRow({
             }}
             disabled={!!pending}
             aria-label={`设为已读：${title}`}
-            className="pointer-events-auto inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] text-muted-foreground hover:bg-secondary disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground disabled:opacity-60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {pending && <Loader2 className="h-3 w-3 animate-spin" />}
-            设为已读
+            {!pending && '标记已读'}
           </button>
         )}
         {n?.isRead && pending && (

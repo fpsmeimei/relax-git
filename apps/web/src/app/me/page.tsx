@@ -2,11 +2,20 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/stores/auth-store';
 import { useNotificationsStore } from '@/stores/notifications-store';
-import { Bell, MessageCircle, Settings, User } from 'lucide-react';
+import {
+  Bell,
+  MessageCircle,
+  Settings,
+  User,
+  UserCheck,
+  UserX,
+  Sparkles,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -341,7 +350,7 @@ export default function MePage() {
           ) : notiData.items.length === 0 ? (
             <div className="text-sm text-muted-foreground">暂无通知</div>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {notiData.items.map(n => {
                 const hash = buildAnchorHash(
                   n.comment?.filePath,
@@ -351,35 +360,90 @@ export default function MePage() {
                 const href = n.snapshotId
                   ? `/snapshots/${n.snapshotId}${hash}`
                   : undefined;
+
+                const getNotificationIcon = () => {
+                  if (n.type === 'COMMENT_REPLY')
+                    return <MessageCircle className="h-3.5 w-3.5" />;
+                  return <Bell className="h-3.5 w-3.5" />;
+                };
+
+                const getNotificationColor = () => {
+                  if (n.type === 'COMMENT_REPLY')
+                    return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
+                  return 'bg-primary/10 text-primary';
+                };
+
                 return (
                   <li
                     key={n.id}
-                    className="border rounded p-3 flex items-start justify-between gap-3 hover:bg-muted/30 cursor-pointer"
+                    className="group relative border border-border rounded-lg p-4 flex items-start gap-4 hover:bg-accent/30 hover:border-accent/70 hover:shadow-sm cursor-pointer transition-all duration-200"
                     onClick={() => void handleOpenNotification(n)}
                     role="button"
                   >
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium">
-                        {n.actor?.username ?? '有人'}
-                      </div>
-                      <div className="text-sm text-foreground break-words">
-                        {n.content ?? '有新的回复'}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(n.createdAt).toLocaleString()}
+                    {/* 头像区域 */}
+                    <div className="relative shrink-0">
+                      <Avatar className="h-12 w-12 border-2 border-background shadow-sm ring-1 ring-border">
+                        <AvatarImage
+                          src={n.actor?.avatar || undefined}
+                          alt={n.actor?.username ?? '有人'}
+                        />
+                        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-sm font-semibold">
+                          {(n.actor?.username ?? '有')
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {/* 通知类型徽章 */}
+                      <div
+                        className={`absolute -bottom-1 -right-1 h-6 w-6 rounded-full flex items-center justify-center shadow-sm border-2 border-background ${getNotificationColor()}`}
+                      >
+                        {getNotificationIcon()}
                       </div>
                     </div>
-                    <div className="shrink-0">
+
+                    {/* 内容区域 */}
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">
+                          {n.actor?.username ?? '有人'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          回复了你
+                        </span>
+                        {!readIds.has(n.id) && (
+                          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                        )}
+                      </div>
+
+                      <div className="text-sm text-muted-foreground break-words leading-relaxed line-clamp-2">
+                        {n.content ?? '有新的回复'}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+                        <span>
+                          {new Date(n.createdAt).toLocaleString('zh-CN', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 操作按钮区域 */}
+                    <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       {href ? (
                         <Link
                           href={href}
-                          className="text-sm text-primary smooth-underline"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/90 text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all"
                           onClick={e => {
                             e.stopPropagation();
                             void markOneRead(n.id);
                           }}
                         >
-                          查看
+                          <Sparkles className="h-3 w-3" />
+                          查看详情
                         </Link>
                       ) : null}
                     </div>
