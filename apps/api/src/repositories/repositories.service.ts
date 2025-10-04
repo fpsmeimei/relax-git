@@ -167,28 +167,22 @@ export class RepositoriesService {
   }> {
     const skip = (page - 1) * limit;
 
-    // ??????
+    // 构建查询条件
     const where: any = { isActive: true };
 
-    // ????????????????PUBLIC/INTERNAL????
+    // 非管理员只能查看自己的仓库
     if (userRole !== UserRole.ADMIN) {
-      const andConditions: any[] = [
-        {
-          OR: [
-            { ownerId: userId },
-            { visibility: RepositoryVisibility.PUBLIC },
-            { visibility: RepositoryVisibility.INTERNAL },
-          ],
-        },
-      ];
+      where.ownerId = userId;
+
+      // 如果有搜索条件，添加名称过滤
       if (search) {
-        andConditions.unshift({
-          name: { contains: search, mode: 'insensitive' },
-        });
+        where.name = { contains: search, mode: 'insensitive' };
       }
-      where.AND = andConditions;
-    } else if (search) {
-      where.name = { contains: search, mode: 'insensitive' };
+    } else {
+      // 管理员可以查看所有仓库
+      if (search) {
+        where.name = { contains: search, mode: 'insensitive' };
+      }
     }
 
     this.logger.log(
