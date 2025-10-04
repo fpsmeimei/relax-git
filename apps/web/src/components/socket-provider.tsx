@@ -154,16 +154,30 @@ export function SocketProvider({ children }: SocketProviderProps) {
       }
     };
 
+    // 心跳检测定时器
+    let heartbeatTimer: NodeJS.Timeout | null = null;
+
     socketInstance.on('connect', () => {
       setIsConnected(true);
       setIsConnecting(false);
       // 重放订阅
       replaySubscriptions();
+
+      // 启动心跳（每30秒ping一次）
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(() => {
+        if (socketInstance.connected) {
+          socketInstance.emit('ping');
+        }
+      }, 30000);
     });
 
     socketInstance.on('disconnect', () => {
       setIsConnected(false);
       setIsConnecting(false);
+
+      // 清理心跳
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
     });
 
     socketInstance.on('connect_error', async error => {

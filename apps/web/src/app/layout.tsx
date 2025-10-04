@@ -1,5 +1,6 @@
 import { ConnectionStatus } from '@/components/connection-status';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { NetworkStatus } from '@/components/network-status';
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/toaster';
 import { AppLayout } from '@/components/app-layout';
@@ -96,6 +97,7 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <Providers>
+            <NetworkStatus />
             <AppLayout>
               {children}
               <ConnectionStatus />

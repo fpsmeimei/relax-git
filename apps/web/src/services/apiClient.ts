@@ -20,7 +20,11 @@ class ApiClient {
 
     // 请求拦截器（JWT 通过 HttpOnly Cookie 或 NextAuth session 自动携带）
     this.client.interceptors.request.use(
-      async config => config,
+      async config => {
+        // 初始化重试计数
+        (config as any).__retryCount = (config as any).__retryCount || 0;
+        return config;
+      },
       error => Promise.reject(error)
     );
 
@@ -31,6 +35,30 @@ class ApiClient {
         const originalConfig = error?.config || {};
         const resp = error?.response;
         const data = resp?.data ?? {};
+
+        // 自动重试逻辑（网络错误或5xx错误）
+        const retryCount = (originalConfig as any).__retryCount || 0;
+        const maxRetries = 3;
+        const shouldRetry =
+          !resp || // 网络错误
+          (resp.status >= 500 && resp.status < 600) || // 服务器错误
+          error.code === 'ECONNABORTED'; // 超时
+
+        if (
+          shouldRetry &&
+          retryCount < maxRetries &&
+          originalConfig &&
+          !originalConfig.__noRetry
+        ) {
+          (originalConfig as any).__retryCount = retryCount + 1;
+          // 指数退避: 1s, 2s, 4s
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(
+            `[API] 请求失败，${delay}ms后重试 (${retryCount + 1}/${maxRetries})...`
+          );
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return this.client.request(originalConfig);
+        }
 
         // 后端统一错误结构: { success:false, code, message, status, details? }
         const normalized: any = new Error(
