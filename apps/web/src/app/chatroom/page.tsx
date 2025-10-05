@@ -83,29 +83,58 @@ export default function ChatroomPage() {
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 从 LocalStorage 加载 AI 消息历史
+  // 从 LocalStorage 加载 AI 消息历史（按用户ID隔离）
   useEffect(() => {
+    if (!user?.id) return;
+
     try {
-      const saved = localStorage.getItem('ai-chat-history');
+      const userAiChatKey = `ai-chat-history-${user.id}`;
+      const saved = localStorage.getItem(userAiChatKey);
+
+      // 🚨 安全修复：清理旧的全局AI聊天记录（如果存在）
+      const oldGlobalRecord = localStorage.getItem('ai-chat-history');
+      if (oldGlobalRecord) {
+        console.warn(
+          `[AI Chat] 🔒 发现旧的全局AI聊天记录，正在清理以防信息泄露`
+        );
+        localStorage.removeItem('ai-chat-history');
+      }
+
       if (saved) {
         const parsed = JSON.parse(saved);
         setAiMessages(parsed);
+        console.log(
+          `[AI Chat] 加载用户 ${user.id} 的AI消息历史:`,
+          parsed.length,
+          '条'
+        );
+      } else {
+        // 如果没有该用户的AI消息，清空状态
+        setAiMessages([]);
+        console.log(`[AI Chat] 用户 ${user.id} 没有AI消息历史，清空状态`);
       }
     } catch (error) {
       console.error('Failed to load AI chat history:', error);
+      setAiMessages([]);
     }
-  }, []);
+  }, [user?.id]);
 
-  // 保存 AI 消息到 LocalStorage
+  // 保存 AI 消息到 LocalStorage（按用户ID隔离）
   useEffect(() => {
-    if (aiMessages.length > 0) {
-      try {
-        localStorage.setItem('ai-chat-history', JSON.stringify(aiMessages));
-      } catch (error) {
-        console.error('Failed to save AI chat history:', error);
-      }
+    if (!user?.id) return;
+
+    try {
+      const userAiChatKey = `ai-chat-history-${user.id}`;
+      localStorage.setItem(userAiChatKey, JSON.stringify(aiMessages));
+      console.log(
+        `[AI Chat] 保存用户 ${user.id} 的AI消息:`,
+        aiMessages.length,
+        '条'
+      );
+    } catch (error) {
+      console.error('Failed to save AI chat history:', error);
     }
-  }, [aiMessages]);
+  }, [aiMessages, user?.id]);
 
   useEffect(() => {
     void loadFriends();

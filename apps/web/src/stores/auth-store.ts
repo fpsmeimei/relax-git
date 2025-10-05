@@ -114,6 +114,33 @@ export const useAuthStore = create<AuthState>()(
               }
             });
 
+            // 🚨 安全修复：清理所有用户的AI聊天记录，防止信息泄露
+            try {
+              const allKeys = Object.keys(localStorage);
+              const aiChatKeys = allKeys.filter(key =>
+                key.startsWith('ai-chat-history-')
+              );
+
+              aiChatKeys.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`[auth-store] 🔒 已清理AI聊天记录: ${key}`);
+              });
+
+              // 也清理旧的全局AI聊天记录（如果存在）
+              if (localStorage.getItem('ai-chat-history')) {
+                localStorage.removeItem('ai-chat-history');
+                console.log(
+                  `[auth-store] 🔒 已清理旧的AI聊天记录: ai-chat-history`
+                );
+              }
+
+              console.log(
+                `[auth-store] 🔒 安全清理完成：已清理 ${aiChatKeys.length} 个AI聊天记录`
+              );
+            } catch (e) {
+              console.warn(`[auth-store] 清理AI聊天记录失败:`, e);
+            }
+
             // 广播全局登出事件，供其他提供者清理缓存/断开连接
             try {
               window.dispatchEvent(new Event('RG_LOGOUT'));
