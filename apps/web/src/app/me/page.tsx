@@ -32,10 +32,17 @@ interface NotificationDto {
   comment?: {
     id: string;
     snapshotId: string;
+    anchorType?: 'SNAPSHOT' | 'PROJECT' | 'COMMIT' | 'FILE' | 'LINE';
     commitSha?: string | null;
     filePath?: string | null;
     lineStart?: number | null;
     lineEnd?: number | null;
+    snapshot?: {
+      repository?: {
+        id: string;
+        name: string;
+      };
+    };
   };
 }
 
@@ -326,27 +333,45 @@ export default function MePage() {
           ) : (
             <ul className="space-y-3">
               {notiData.items.map(n => {
-                // 构建跳转链接（参考 /me/comments 页面的实现）
+                // 构建跳转链接，根据评论类型决定跳转位置
                 const href = (() => {
-                  if (!n.snapshotId || !n.commentId) return undefined;
+                  if (!n.commentId) return undefined;
 
-                  // 如果有文件路径和行号，构建完整的查询参数
-                  if (n.comment?.filePath) {
+                  // 根据评论的锚点类型决定跳转逻辑
+                  const anchorType = n.comment?.anchorType;
+
+                  if (anchorType === 'PROJECT') {
+                    // 项目级评论：跳转到社区页面
+                    const repoId = n.comment?.snapshot?.repository?.id;
+                    if (repoId) {
+                      return `/community?repoId=${repoId}&commentId=${n.commentId}`;
+                    }
+                  } else if (
+                    anchorType === 'SNAPSHOT' &&
+                    !n.comment?.filePath
+                  ) {
+                    // 项目讨论评论：跳转到项目讨论页面
+                    const repoId = n.comment?.snapshot?.repository?.id;
+                    if (repoId) {
+                      return `/repositories/${repoId}?tab=discussion&commentId=${n.commentId}`;
+                    }
+                  } else if (
+                    anchorType === 'LINE' &&
+                    n.comment?.filePath &&
+                    n.comment?.lineStart
+                  ) {
+                    // 行级评论：跳转到快照页面的具体行
                     const params = new URLSearchParams();
                     params.set('file', n.comment.filePath);
-
-                    if (n.comment.lineStart) {
-                      params.set('line', String(n.comment.lineStart));
-                    }
-
-                    // 使用评论ID而不是通知ID
+                    params.set('line', String(n.comment.lineStart));
                     params.set('commentId', n.commentId);
-
                     return `/snapshots/${n.snapshotId}?${params.toString()}`;
+                  } else if (n.snapshotId) {
+                    // 快照级评论或其他类型：跳转到快照页面
+                    return `/snapshots/${n.snapshotId}?commentId=${n.commentId}`;
                   }
 
-                  // 如果只有评论ID，直接定位到评论
-                  return `/snapshots/${n.snapshotId}?commentId=${n.commentId}`;
+                  return undefined;
                 })();
 
                 const getNotificationIcon = () => {

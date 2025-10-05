@@ -32,6 +32,7 @@ interface ChatState {
   setCurrentChat: (chatId: string | null) => void;
   updateOnNewMessage: (msg: ChatMessage, isSelf: boolean) => void;
   clearMessages: (chatId: string) => Promise<void>;
+  reset: () => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -48,12 +49,12 @@ export const useChatStore = create<ChatState>()(
         set({ loadingChats: true });
         try {
           const res = await apiClient.get<ChatSummary[]>('/chats');
-          set({ chats: res.data || [] });
-        } catch (err) {
-          // 静默处理聊天列表加载失败，避免在首页抛出未捕获异常
-          console.debug('loadChats failed (silent):', err);
-        } finally {
-          set({ loadingChats: false });
+          const data = res.data || [];
+          const list = Array.isArray(data) ? data : [];
+          set({ chats: list, loadingChats: false });
+        } catch (error) {
+          console.error('[chat-store] 加载聊天列表失败:', error);
+          set({ chats: [], loadingChats: false });
         }
       },
 
@@ -172,7 +173,8 @@ export const useChatStore = create<ChatState>()(
             createdAt: msg.createdAt,
             senderId: msg.senderId,
           };
-          const shouldIncUnread = !isSelf && state.currentChatId !== chatId;
+          // 简化逻辑：只要不是自己发送的消息就增加未读数，依赖用户主动标记已读来清除
+          const shouldIncUnread = !isSelf;
 
           let nextChats: ChatSummary[];
           if (existsIdx >= 0) {
@@ -237,6 +239,18 @@ export const useChatStore = create<ChatState>()(
           console.error('[chat-store] 清空消息失败:', error);
           throw error;
         }
+      },
+
+      reset: () => {
+        console.log('[chat-store] 重置聊天状态');
+        set({
+          chats: [],
+          loadingChats: false,
+          messages: {},
+          nextCursor: {},
+          loadingMessages: {},
+          currentChatId: null,
+        });
       },
     }),
     { name: 'chat-store' }

@@ -54,6 +54,7 @@ interface LineCommentData {
       createdAt: string;
       likes?: number;
       isLiked?: boolean;
+      parentAuthor?: string; // 被回复者的用户名
     }>;
   }>;
 }
@@ -335,6 +336,14 @@ export function SnapshotCodeViewer({
           content: string;
           createdAt: string;
           author?: { id?: string; username?: string; avatar?: string };
+          parent?: {
+            id: string;
+            author: {
+              id: string;
+              username: string;
+              avatar?: string;
+            };
+          } | null;
           _count?: { likes?: number };
           likesCount?: number;
           liked?: boolean;
@@ -390,6 +399,19 @@ export function SnapshotCodeViewer({
               authorAvatar: r.author?.avatar,
             };
             if (r.author?.id) item.authorId = r.author.id;
+
+            // 添加被回复者的用户名
+            if (r.parent?.author?.username) {
+              // 优先使用后端返回的parent信息
+              item.parentAuthor = r.parent.author.username;
+            } else if (r.parentId) {
+              // 回退到通过parentId查找
+              const parentComment = byId.get(r.parentId);
+              if (parentComment?.author?.username) {
+                item.parentAuthor = parentComment.author.username;
+              }
+            }
+
             return item;
           };
 

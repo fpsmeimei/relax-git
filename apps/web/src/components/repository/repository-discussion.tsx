@@ -20,6 +20,14 @@ interface Comment {
     username: string;
     avatar: string | null;
   };
+  parent?: {
+    id: string;
+    author: {
+      id: string;
+      username: string;
+      avatar: string | null;
+    };
+  } | null;
   _count?: {
     likes: number;
     replies: number;
@@ -572,7 +580,8 @@ export function RepositoryDiscussion({
                                       ▶
                                     </span>
                                     <span className="text-[16px] font-semibold text-foreground">
-                                      {comment.author.username}
+                                      {reply.parent?.author?.username ||
+                                        comment.author.username}
                                     </span>
                                     <span className="text-muted-foreground/70">
                                       {formatSmartTime(reply.createdAt)}

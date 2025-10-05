@@ -299,7 +299,8 @@ function CommentItem({
                           </span>
                           <span className="text-muted-foreground">▶</span>
                           <span className="text-[16px] font-semibold text-foreground">
-                            {comment.author.username}
+                            {reply.parent?.author?.username ||
+                              comment.author.username}
                           </span>
                           <span className="text-muted-foreground/70">
                             {formatTime(reply.createdAt)}

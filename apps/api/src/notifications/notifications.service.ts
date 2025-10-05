@@ -30,10 +30,21 @@ export class NotificationsService {
             select: {
               id: true,
               snapshotId: true,
+              anchorType: true,
               commitSha: true,
               filePath: true,
               lineStart: true,
               lineEnd: true,
+              snapshot: {
+                select: {
+                  repository: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },

@@ -61,7 +61,6 @@ export class ChatsService {
           where: {
             chatId: m.chatId,
             senderId: { not: userId },
-            isRead: false,
             createdAt: { gt: lastRead },
           },
         });

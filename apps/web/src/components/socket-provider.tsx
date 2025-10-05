@@ -93,11 +93,18 @@ export function SocketProvider({ children }: SocketProviderProps) {
       typeof pathname === 'string' && pathname.startsWith('/auth');
     if (!isAuthenticated || onAuthPage) {
       if (socket) {
-        socket.disconnect();
+        try {
+          socket.disconnect();
+        } catch {}
         setSocket(null);
-        setIsConnected(false);
-        setIsConnecting(false);
       }
+      setIsConnected(false);
+      setIsConnecting(false);
+      // 清空订阅清单，避免跨账户重放订阅
+      try {
+        const subs = subscriptionsRef.current;
+        if (subs && typeof subs.clear === 'function') subs.clear();
+      } catch {}
       return;
     }
 
@@ -308,10 +315,40 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     // 清理函数
     return () => {
-      socketInstance.disconnect();
+      try {
+        socketInstance.disconnect();
+      } catch {}
+      // 清空订阅清单，避免下次登录重放
+      try {
+        const subs = subscriptionsRef.current;
+        if (subs && typeof subs.clear === 'function') subs.clear();
+      } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, pathname]);
+
+  // 监听全局登出事件：清空订阅并断开连接，防抖本地状态
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleLogout = () => {
+      try {
+        const subs = subscriptionsRef.current;
+        if (subs && typeof subs.clear === 'function') subs.clear();
+      } catch {}
+      try {
+        if (socket) {
+          socket.disconnect();
+        }
+      } catch {}
+      setSocket(null);
+      setIsConnected(false);
+      setIsConnecting(false);
+    };
+    window.addEventListener('RG_LOGOUT', handleLogout);
+    return () => {
+      window.removeEventListener('RG_LOGOUT', handleLogout);
+    };
+  }, [socket]);
 
   // 提供的方法
   const emit = (event: string, data?: unknown) => {

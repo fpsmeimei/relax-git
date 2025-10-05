@@ -85,6 +85,7 @@ interface ChatFriendsState {
     requestId: string,
     status: 'ACCEPTED' | 'REJECTED'
   ) => void;
+  reset: () => void;
 }
 
 export const useChatFriendsStore = create<ChatFriendsState>()(
@@ -290,6 +291,21 @@ export const useChatFriendsStore = create<ChatFriendsState>()(
             r.id === requestId ? { ...r, status } : r
           ),
         }));
+      },
+
+      reset: () => {
+        console.log('[chat-friends-store] 重置好友状态');
+        set({
+          searchResults: [],
+          searchLoading: false,
+          searchKeyword: '',
+          friends: [],
+          friendsLoading: false,
+          incomingRequests: [],
+          outgoingRequests: [],
+          requestsLoading: false,
+          unreadRequestCount: 0,
+        });
       },
     }),
     { name: 'chat-friends-store' }

@@ -97,6 +97,14 @@ export interface RepositoryCommentDto {
     avatar: string | null;
   };
   parentId?: string | null;
+  parent?: {
+    id: string;
+    author: {
+      id: string;
+      username: string;
+      avatar: string | null;
+    };
+  } | null;
   replies?: RepositoryCommentDto[];
 }
 

@@ -28,6 +28,7 @@ interface NotificationsState {
   clear: () => void;
   // P1-2 多标签页同步
   syncUnreadCount: (n: number) => void;
+  reset: () => void;
 }
 
 // P1-2 多标签页同步：使用 BroadcastChannel 跨标签页通信
@@ -86,6 +87,21 @@ export const useNotificationsStore = create<NotificationsState>()(
       },
       // P1-2 接收其他标签页的同步数据（不再广播，避免循环）
       syncUnreadCount: n => set({ unreadCount: Math.max(0, n | 0) }),
+
+      // 重置通知状态（用于用户切换）
+      reset: () => {
+        console.log('[notifications-store] 重置通知状态');
+        set({ unreadCount: 0, items: [] });
+        // 同步到其他标签页
+        if (broadcastChannel) {
+          try {
+            broadcastChannel.postMessage({
+              type: 'UNREAD_COUNT_CHANGED',
+              count: 0,
+            });
+          } catch {}
+        }
+      },
     }),
     {
       name: 'notifications-store',

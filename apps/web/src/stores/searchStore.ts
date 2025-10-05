@@ -41,6 +41,7 @@ interface SearchState {
   loadSearchHistory: (repositoryId?: string, page?: number) => Promise<void>;
   deleteSearchHistory: (historyId: string) => Promise<void>;
   clearSearchHistory: () => void;
+  reset: () => void;
 }
 
 export const useSearchStore = create<SearchState>()(
@@ -185,6 +186,29 @@ export const useSearchStore = create<SearchState>()(
             page: 1,
             limit: 20,
             total: 0,
+          },
+        });
+      },
+
+      reset: () => {
+        console.log('[search-store] 重置搜索状态');
+        set({
+          currentSearch: null,
+          isSearching: false,
+          searchError: null,
+          searchHistory: [],
+          historyLoading: false,
+          historyError: null,
+          historyPagination: {
+            page: 1,
+            limit: 20,
+            total: 0,
+          },
+          searchForm: {
+            repositoryId: '',
+            query: '',
+            searchType: SearchType.CONTENT,
+            maxResults: 100,
           },
         });
       },

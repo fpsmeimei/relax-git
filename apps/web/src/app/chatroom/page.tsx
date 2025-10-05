@@ -56,6 +56,7 @@ export default function ChatroomPage() {
     sendFriendRequest,
   } = useChatFriendsStore();
   const {
+    chats,
     messages,
     loadMoreMessages,
     sendMessage,
@@ -154,15 +155,26 @@ export default function ChatroomPage() {
       type: 'friend' as const,
     };
 
-    // AI 助手始终显示在第一位
-    return [
-      aiBot,
-      ...friends.map(f => ({
+    // 将聊天数据中的未读数映射到好友数据
+    const friendsWithUnread = friends.map(f => {
+      // 查找对应的聊天室数据
+      const chat = chats.find(
+        (c: any) =>
+          c.type === 'DIRECT' && c.members.some((m: any) => m.id === f.id)
+      );
+
+      const unreadCount = chat?.unreadCount || 0;
+
+      return {
         ...f,
+        unreadCount,
         type: 'friend' as const,
-      })),
-    ];
-  }, [friends]);
+      };
+    });
+
+    // AI 助手始终显示在第一位
+    return [aiBot, ...friendsWithUnread];
+  }, [friends, chats]);
 
   const filteredFriends = useMemo(() => {
     const trimmed = keyword.trim().toLowerCase();
@@ -260,7 +272,8 @@ export default function ChatroomPage() {
 
     chatInitialLoaded.current.add(selectedChatId);
     void loadMoreMessages(selectedChatId).then(() => {
-      void markRead(selectedChatId);
+      // 只有当用户主动选择聊天室时才标记已读，不要自动标记
+      // void markRead(selectedChatId);
       scrollToBottom(false);
     });
   }, [loadMoreMessages, markRead, scrollToBottom, selectedChatId]);
@@ -276,30 +289,40 @@ export default function ChatroomPage() {
         return;
       }
 
+      // 如果好友已经有chatId，直接使用；否则创建新聊天室
       if (friend.chatId) {
+        console.log('[handleSelectFriend] 使用已存在的聊天室:', friend.chatId);
         setSelectedChatId(friend.chatId);
+        // 点击好友时自动标记该聊天室为已读
+        void markRead(friend.chatId);
         return;
       }
 
+      setCreatingChat(true);
       try {
-        setCreatingChat(true);
-        const { data } = await apiClient.post<{ id: string }>('/chats/direct', {
+        console.log('[handleSelectFriend] 创建新聊天室，好友ID:', friend.id);
+
+        const res = await apiClient.post<{ chatId: string }>('/chats/direct', {
           userId: friend.id,
         });
-        const newChatId = (data as any)?.id as string;
-        await loadFriends();
-        setSelectedChatId(newChatId);
-      } catch (error) {
+        const chatId = res.data?.chatId;
+        if (chatId) {
+          setSelectedChatId(chatId);
+          // 点击好友时自动标记该聊天室为已读
+          void markRead(chatId);
+        }
+      } catch (error: any) {
+        console.error('创建聊天失败:', error);
         toast({
           title: '创建聊天失败',
-          description: '请稍后重试',
+          description: error?.message ?? '请稍后重试',
           variant: 'destructive',
         });
       } finally {
         setCreatingChat(false);
       }
     },
-    [loadFriends, toast]
+    [toast, markRead]
   );
 
   // 自动选择第一个好友
@@ -387,7 +410,8 @@ export default function ChatroomPage() {
         // 发送给真实用户
         await sendMessage(selectedChatId, text);
         setMessageInput('');
-        void markRead(selectedChatId);
+        // 移除自动标记已读，让用户主动控制
+        // void markRead(selectedChatId);
         scrollToBottom();
       }
     } catch (error: any) {
@@ -401,7 +425,6 @@ export default function ChatroomPage() {
     }
   }, [
     aiMessages,
-    markRead,
     messageInput,
     scrollToBottom,
     selectedChatId,
@@ -698,7 +721,7 @@ export default function ChatroomPage() {
                               key={friend.id}
                               onClick={() => void handleSelectFriend(friend)}
                               className={cn(
-                                'w-full rounded-xl px-3 py-2 transition-colors flex items-center gap-3 text-left',
+                                'w-full h-16 rounded-xl px-3 py-2 transition-colors flex items-center gap-3 text-left',
                                 isSelected
                                   ? 'bg-primary/10 text-primary-foreground'
                                   : 'hover:bg-muted/60'
@@ -724,23 +747,32 @@ export default function ChatroomPage() {
                                   <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
                                 )}
                               </div>
-                              <div className="min-w-0 flex-1">
+                              <div className="min-w-0 flex-1 flex flex-col justify-between py-1">
                                 <div className="flex items-center justify-between">
-                                  <span className="font-medium truncate text-card-foreground">
+                                  <span className="font-medium truncate text-card-foreground flex-1 pr-2">
                                     {friend.username}
                                   </span>
-                                  {friend.lastMessage?.createdAt && (
-                                    <span className="text-[10px] text-muted-foreground">
-                                      {new Date(
-                                        friend.lastMessage.createdAt
-                                      ).toLocaleTimeString([], {
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })}
-                                    </span>
-                                  )}
+                                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                    {friend.lastMessage?.createdAt && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        {new Date(
+                                          friend.lastMessage.createdAt
+                                        ).toLocaleTimeString([], {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })}
+                                      </span>
+                                    )}
+                                    {friend.unreadCount > 0 && (
+                                      <span className="inline-flex h-3.5 min-w-[14px] px-1 items-center justify-center rounded-full bg-destructive text-[9px] font-medium text-destructive-foreground mt-0.5">
+                                        {friend.unreadCount > 99
+                                          ? '99+'
+                                          : friend.unreadCount}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="mt-1 text-xs text-muted-foreground truncate">
+                                <div className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
                                   {friend.lastMessage?.content ?? '暂无消息'}
                                 </div>
                               </div>

@@ -79,7 +79,8 @@ export default function ChatDetailPage() {
       await sendMessage(chatId, text);
       setInput('');
       scrollToBottomSmooth();
-      void markRead(chatId);
+      // 移除自动标记已读，让用户主动控制
+      // void markRead(chatId);
     } finally {
       setSending(false);
     }

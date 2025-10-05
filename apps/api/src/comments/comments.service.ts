@@ -178,7 +178,7 @@ export class CommentsService {
     }
 
     // WebSocket实时推送（标准化负载：包含 snapshotId，时间使用 ISO 字符串）
-    this.websocketGateway.emitNewComment(snapshotId, {
+    this.websocketGateway.emitNewComment(baseSnapshotId, {
       id: comment.id,
       snapshotId: comment.snapshotId,
       content: comment.content,
@@ -210,7 +210,7 @@ export class CommentsService {
               type: 'COMMENT_REPLY' as any,
               commentId: comment.id,
               parentId,
-              snapshotId,
+              snapshotId: baseSnapshotId,
               content: contentSnippet,
             },
             include: {
@@ -218,13 +218,13 @@ export class CommentsService {
             },
           });
 
-          // WebSocket 推送到“被通知用户”的房间
+          // WebSocket 推送到"被通知用户"的房间
           this.websocketGateway.emitUserNotification(parent.authorId, {
             id: notification.id,
             type: 'COMMENT_REPLY',
             commentId: comment.id,
             parentId,
-            snapshotId,
+            snapshotId: baseSnapshotId,
             commitSha: comment.commitSha,
             filePath: comment.filePath,
             lineStart: comment.lineStart,
@@ -300,7 +300,7 @@ export class CommentsService {
                 type: 'MENTION' as any,
                 commentId: comment.id,
                 parentId,
-                snapshotId,
+                snapshotId: baseSnapshotId,
                 content: contentSnippet,
               },
             });
@@ -309,7 +309,7 @@ export class CommentsService {
               type: 'MENTION',
               commentId: comment.id,
               parentId,
-              snapshotId,
+              snapshotId: baseSnapshotId,
               commitSha: comment.commitSha,
               filePath: comment.filePath,
               lineStart: comment.lineStart,
@@ -351,7 +351,7 @@ export class CommentsService {
       page = 1,
       limit = 10,
       snapshotId,
-      diffId,
+      diffId: _diffId,
       status,
       anchorType,
       authorId,
@@ -439,6 +439,14 @@ export class CommentsService {
             include: {
               author: {
                 select: { id: true, username: true, avatar: true },
+              },
+              parent: {
+                select: {
+                  id: true,
+                  author: {
+                    select: { id: true, username: true, avatar: true },
+                  },
+                },
               },
               _count: { select: { likes: true, replies: true } },
             },

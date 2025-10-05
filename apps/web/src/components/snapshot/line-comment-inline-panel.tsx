@@ -43,6 +43,7 @@ export interface LineCommentInlineData {
       createdAt: string;
       likes?: number;
       isLiked?: boolean;
+      parentAuthor?: string; // 被回复者的用户名
     }>;
   }>;
 }
@@ -994,7 +995,7 @@ export function LineCommentInlinePanel({
                                         ▶
                                       </span>
                                       <span className="text-[16px] font-semibold text-foreground">
-                                        {comment.author}
+                                        {reply.parentAuthor || comment.author}
                                       </span>
                                       <span className="text-muted-foreground/70">
                                         {formatTime(reply.createdAt)}
@@ -1032,7 +1033,7 @@ export function LineCommentInlinePanel({
                                         className={reactionButtonClass}
                                         onClick={() =>
                                           handleReplyTarget(
-                                            comment.id,
+                                            reply.id,
                                             reply.author,
                                             reply.id
                                           )

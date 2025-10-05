@@ -60,6 +60,7 @@ export interface AppState {
   updateLayout: (layout: Partial<AppState['layout']>) => void;
   updateFilters: (filters: Partial<AppState['filters']>) => void;
   resetFilters: () => void;
+  reset: () => void;
 }
 
 // 简化的默认配置（学习项目版本）
@@ -131,6 +132,17 @@ export const useAppStore = create<AppState>()(
       resetFilters: () => {
         set(state => {
           state.filters = defaultFilters;
+        });
+      },
+
+      // 重置应用状态（用于用户切换）
+      reset: () => {
+        console.log('[app-store] 重置应用状态');
+        set(state => {
+          state.currentRepository = null;
+          state.currentSnapshot = null;
+          state.filters = defaultFilters;
+          // 保留用户界面偏好设置（主题、布局等）
         });
       },
     })),
