@@ -25,6 +25,7 @@ interface CommentItemProps {
   isLiking: boolean;
   isDeletingIds: Set<string>;
   highlightCommentId?: string | null;
+  highlightedOnceRef?: React.MutableRefObject<string | null>;
 }
 
 function CommentItem({
@@ -35,6 +36,7 @@ function CommentItem({
   isLiking,
   isDeletingIds,
   highlightCommentId,
+  highlightedOnceRef,
 }: CommentItemProps) {
   const { user } = useAuth();
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -93,6 +95,11 @@ function CommentItem({
   // 处理评论高亮闪烁
   useEffect(() => {
     if (highlightCommentId) {
+      // 检查是否已经高亮过该评论（在当前会话中）
+      if (highlightedOnceRef?.current === highlightCommentId) {
+        return; // 已经高亮过，不再执行
+      }
+
       // 检查是否存在该评论ID（主评论或次评论）
       let targetCommentId: string | null = null;
       let isReply = false;
@@ -107,6 +114,11 @@ function CommentItem({
       }
 
       if (targetCommentId === comment.id) {
+        // 标记该评论已经高亮过
+        if (highlightedOnceRef) {
+          highlightedOnceRef.current = highlightCommentId;
+        }
+
         // 如果是次评论，需要先展开
         if (isReply) {
           setExpandedReplies(true);
@@ -127,14 +139,23 @@ function CommentItem({
         }, 100); // 稍微延迟确保DOM更新完成
 
         // 1秒后移除高亮
-        const timer = setTimeout(() => {
+        setTimeout(() => {
           setHighlightedCommentId(null);
+
+          // 清除 URL 中的 commentId 参数，防止刷新时重复高亮
+          if (
+            typeof window !== 'undefined' &&
+            window.location.search.includes('commentId')
+          ) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('commentId');
+            window.history.replaceState({}, '', url.toString());
+          }
         }, 1000);
-        return () => clearTimeout(timer);
       }
     }
     return undefined;
-  }, [highlightCommentId, comment.id, comment.replies]);
+  }, [highlightCommentId, comment.id]);
 
   return (
     <div
@@ -412,17 +433,25 @@ export function RepositoryComments({
   const [highlightCommentId, setHighlightCommentId] = useState<string | null>(
     null
   );
+  const highlightedOnceRef = useRef<string | null>(null);
 
   useEffect(() => {
     // 优先使用传入的参数，否则从URL获取
+    let newCommentId: string | null = null;
     if (propHighlightCommentId) {
-      setHighlightCommentId(propHighlightCommentId);
+      newCommentId = propHighlightCommentId;
     } else if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const commentId = params.get('commentId');
-      setHighlightCommentId(commentId);
+      newCommentId = params.get('commentId');
     }
-  }, [propHighlightCommentId]);
+
+    // 如果是新的评论ID，清除之前的高亮记录
+    if (newCommentId && newCommentId !== highlightCommentId) {
+      highlightedOnceRef.current = null;
+    }
+
+    setHighlightCommentId(newCommentId);
+  }, [propHighlightCommentId, highlightCommentId]);
 
   // 加载评论列表
   const loadComments = useCallback(
@@ -644,6 +673,7 @@ export function RepositoryComments({
                   isLiking={isLiking}
                   isDeletingIds={isDeletingIds}
                   highlightCommentId={highlightCommentId}
+                  highlightedOnceRef={highlightedOnceRef}
                 />
               ))}
 
