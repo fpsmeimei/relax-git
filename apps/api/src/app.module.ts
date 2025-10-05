@@ -11,6 +11,7 @@ import { SecurityHeadersMiddleware } from './common/middleware/security-headers.
 import { ConfigModule as AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 
+import { AiModule } from './ai/ai.module';
 import { ChatsModule } from './chats/chats.module';
 import { ChatFriendsModule } from './chats/friends/chat-friends.module';
 import { CommunityModule } from './community/community.module';
@@ -65,6 +66,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     AppConfigModule,
     ChatsModule,
     ChatFriendsModule,
+    AiModule,
   ],
   controllers: [],
   providers: [

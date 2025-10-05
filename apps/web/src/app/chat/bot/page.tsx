@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Github, Send, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
+import { apiClient } from '@/services/apiClient';
 
 interface Message {
   id: string;
@@ -46,35 +47,49 @@ export default function BotChatPage() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const userInput = inputValue;
     setInputValue('');
     setIsTyping(true);
 
-    // 模拟机器人回复
-    setTimeout(
-      () => {
-        const botResponses = [
-          '感谢你的消息！这是一个演示聊天功能的机器人。',
-          '很高兴与你聊天！你可以尝试添加真实好友来体验完整的聊天功能。',
-          '这个聊天界面支持实时消息、已读回执等功能。',
-          '你可以通过右上角的"添加好友"来寻找其他用户。',
-          '欢迎探索 Relax-Git 的更多功能！',
-        ];
+    try {
+      // 调用真实的 DeepSeek AI
+      const conversationHistory = messages
+        .slice(-10) // 只保留最近10条消息作为上下文
+        .map(msg => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.content,
+        }));
 
-        const randomResponse =
-          botResponses[Math.floor(Math.random() * botResponses.length)];
+      const response = await apiClient.post('/ai/chat', {
+        message: userInput,
+        conversationHistory,
+      });
 
-        const botMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: randomResponse,
-          sender: 'bot',
-          timestamp: new Date(),
-        };
+      const data = response.data;
 
-        setMessages(prev => [...prev, botMessage]);
-        setIsTyping(false);
-      },
-      1000 + Math.random() * 2000
-    );
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: data.reply || '抱歉，我暂时无法回答。',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('AI chat error:', error);
+
+      // 错误回退消息
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: '抱歉，我遇到了一些技术问题。请稍后再试，或联系管理员。',
+        sender: 'bot',
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

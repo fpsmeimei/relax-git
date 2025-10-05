@@ -74,12 +74,37 @@ export default function ChatroomPage() {
   const [keyword, setKeyword] = useState('');
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [aiMessages, setAiMessages] = useState<ChatMessage[]>([]);
 
   const chatInitialLoaded = useRef(new Set<string>());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 从 LocalStorage 加载 AI 消息历史
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ai-chat-history');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setAiMessages(parsed);
+      }
+    } catch (error) {
+      console.error('Failed to load AI chat history:', error);
+    }
+  }, []);
+
+  // 保存 AI 消息到 LocalStorage
+  useEffect(() => {
+    if (aiMessages.length > 0) {
+      try {
+        localStorage.setItem('ai-chat-history', JSON.stringify(aiMessages));
+      } catch (error) {
+        console.error('Failed to save AI chat history:', error);
+      }
+    }
+  }, [aiMessages]);
 
   useEffect(() => {
     void loadFriends();
@@ -116,10 +141,27 @@ export default function ChatroomPage() {
   }, [clearSearchResults, keyword, searchUsers]);
 
   const allFriends: FriendEntry[] = useMemo(() => {
-    return friends.map(f => ({
-      ...f,
+    // 创建虚拟的 AI 助手项（置顶）
+    const aiBot: FriendEntry = {
+      id: 'ai-assistant',
+      username: 'Relax-Git 助手',
+      avatar: 'https://octodex.github.com/images/nyantocat.gif',
+      chatId: 'ai-chat',
+      unreadCount: 0,
+      lastMessage: null,
+      createdAt: '2025-01-01T00:00:00.000Z', // 固定日期避免 Hydration 错误
+      isOnline: true, // AI 助手永久在线
       type: 'friend' as const,
-    }));
+    };
+
+    // AI 助手始终显示在第一位
+    return [
+      aiBot,
+      ...friends.map(f => ({
+        ...f,
+        type: 'friend' as const,
+      })),
+    ];
   }, [friends]);
 
   const filteredFriends = useMemo(() => {
@@ -160,8 +202,12 @@ export default function ChatroomPage() {
 
   const selectedChatMessages: ChatMessage[] = useMemo(() => {
     if (!selectedChatId) return [];
+    // AI 助手使用独立的本地消息数组
+    if (selectedChatId === 'ai-chat') {
+      return aiMessages;
+    }
     return messages[selectedChatId] ?? [];
-  }, [messages, selectedChatId]);
+  }, [messages, selectedChatId, aiMessages]);
 
   const scrollToBottom = useCallback((smooth = true) => {
     const node = messagesEndRef.current;
@@ -180,6 +226,13 @@ export default function ChatroomPage() {
 
   useEffect(() => {
     if (!selectedChatId) return;
+
+    // AI 助手不需要 WebSocket 加入/离开
+    if (selectedChatId === 'ai-chat') {
+      setCurrentChat(selectedChatId);
+      return;
+    }
+
     if (!isConnected) {
       setCurrentChat(selectedChatId);
       return;
@@ -197,6 +250,14 @@ export default function ChatroomPage() {
   useEffect(() => {
     if (!selectedChatId) return;
     if (chatInitialLoaded.current.has(selectedChatId)) return;
+
+    // AI 助手不需要加载消息历史
+    if (selectedChatId === 'ai-chat') {
+      chatInitialLoaded.current.add(selectedChatId);
+      scrollToBottom(false);
+      return;
+    }
+
     chatInitialLoaded.current.add(selectedChatId);
     void loadMoreMessages(selectedChatId).then(() => {
       void markRead(selectedChatId);
@@ -208,6 +269,12 @@ export default function ChatroomPage() {
     async (friend: FriendEntry) => {
       setSelectedFriend(friend);
       setMessageInput('');
+
+      // AI 助手使用虚拟 chatId，不需要创建真实聊天
+      if (friend.id === 'ai-assistant') {
+        setSelectedChatId('ai-chat');
+        return;
+      }
 
       if (friend.chatId) {
         setSelectedChatId(friend.chatId);
@@ -249,12 +316,80 @@ export default function ChatroomPage() {
     if (!selectedChatId) return;
     const text = messageInput.trim();
     if (!text || sending) return;
+
     try {
       setSending(true);
-      await sendMessage(selectedChatId, text);
-      setMessageInput('');
-      void markRead(selectedChatId);
-      scrollToBottom();
+
+      // 检查是否是 AI 助手
+      if (selectedFriend?.id === 'ai-assistant') {
+        // AI 对话完全在本地管理，不调用后端聊天 API
+        const userMessage: ChatMessage = {
+          id: `user-${Date.now()}`,
+          chatId: 'ai-chat',
+          content: text,
+          senderId: user?.id || '',
+          createdAt: new Date().toISOString(),
+          type: 'text',
+          isRead: true,
+          readAt: new Date().toISOString(),
+        };
+
+        // 添加用户消息到本地状态
+        setAiMessages(prev => [...prev, userMessage]);
+        setMessageInput('');
+        scrollToBottom();
+
+        // 获取对话历史
+        const conversationHistory = aiMessages.slice(-10).map(msg => ({
+          role: msg.senderId === user?.id ? 'user' : 'assistant',
+          content: msg.content,
+        }));
+
+        try {
+          // 调用 AI API
+          const response = await apiClient.post('/ai/chat', {
+            message: text,
+            conversationHistory,
+          });
+
+          // 添加 AI 回复到本地状态
+          const aiMessage: ChatMessage = {
+            id: `ai-${Date.now()}`,
+            chatId: 'ai-chat',
+            content: response.data.reply || '抱歉，我暂时无法回答。',
+            senderId: 'ai-assistant',
+            createdAt: new Date().toISOString(),
+            type: 'text',
+            isRead: true,
+            readAt: new Date().toISOString(),
+          };
+
+          setAiMessages(prev => [...prev, aiMessage]);
+          scrollToBottom();
+        } catch (aiError) {
+          console.error('AI response error:', aiError);
+
+          // 错误消息
+          const errorMessage: ChatMessage = {
+            id: `ai-error-${Date.now()}`,
+            chatId: 'ai-chat',
+            content: '抱歉，我遇到了一些技术问题。请稍后再试。',
+            senderId: 'ai-assistant',
+            createdAt: new Date().toISOString(),
+            type: 'text',
+            isRead: true,
+            readAt: new Date().toISOString(),
+          };
+
+          setAiMessages(prev => [...prev, errorMessage]);
+        }
+      } else {
+        // 发送给真实用户
+        await sendMessage(selectedChatId, text);
+        setMessageInput('');
+        void markRead(selectedChatId);
+        scrollToBottom();
+      }
     } catch (error: any) {
       toast({
         title: '消息发送失败',
@@ -265,13 +400,16 @@ export default function ChatroomPage() {
       setSending(false);
     }
   }, [
+    aiMessages,
     markRead,
     messageInput,
     scrollToBottom,
     selectedChatId,
+    selectedFriend,
     sendMessage,
     sending,
     toast,
+    user?.id,
   ]);
 
   const handleSend = useCallback(() => {
@@ -292,13 +430,26 @@ export default function ChatroomPage() {
     if (!selectedChatId) return;
     try {
       setClearing(true);
-      // 调用 API 删除数据库中的消息
-      await clearMessages(selectedChatId);
 
-      toast({
-        title: '清屏成功',
-        description: '聊天记录已清除',
-      });
+      // 检查是否是 AI 助手
+      if (selectedChatId === 'ai-chat') {
+        // 清除 AI 消息的本地存储
+        setAiMessages([]);
+        localStorage.removeItem('ai-chat-history');
+
+        toast({
+          title: '清屏成功',
+          description: 'AI 助手聊天记录已清除',
+        });
+      } else {
+        // 调用 API 删除数据库中的消息
+        await clearMessages(selectedChatId);
+
+        toast({
+          title: '清屏成功',
+          description: '聊天记录已清除',
+        });
+      }
     } catch (error: any) {
       toast({
         title: '清屏失败',

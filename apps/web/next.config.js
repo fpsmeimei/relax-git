@@ -39,6 +39,8 @@ const imageDomains = Array.from(
         'localhost',
         '127.0.0.1',
         'avatars.githubusercontent.com', // GitHub 头像域名
+        'github.githubassets.com', // GitHub 资源域名
+        'octodex.github.com', // GitHub Octodex 域名
         'api.dicebear.com',
         process.env.NEXT_PUBLIC_APP_URL,
         process.env.NEXT_PUBLIC_API_URL,
