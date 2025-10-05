@@ -50,7 +50,7 @@ export class JoinRequestsService {
     repoId: string,
     id: string,
     reviewerId: string,
-    reason?: string
+    _reason?: string
   ) {
     const result = await this.prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {

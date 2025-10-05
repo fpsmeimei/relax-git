@@ -231,9 +231,17 @@ export function LineCommentInlinePanel({
   useEffect(() => {
     setLocalData(data);
   }, [data]);
+  // 跟踪当前会话中已经高亮过的评论
+  const highlightedOnceRef = useRef<string | null>(null);
+
   // 处理评论高亮闪烁
   useEffect(() => {
     if (highlightCommentId && localData.comments.length > 0) {
+      // 检查是否已经高亮过该评论（在当前会话中）
+      if (highlightedOnceRef.current === highlightCommentId) {
+        return; // 已经高亮过，不再执行
+      }
+
       // 检查是否存在该评论ID（主评论或次评论）
       let targetCommentId: string | null = null;
       let isReply = false;
@@ -251,6 +259,9 @@ export function LineCommentInlinePanel({
       }
 
       if (targetCommentId) {
+        // 标记该评论已经高亮过
+        highlightedOnceRef.current = highlightCommentId;
+
         // 如果是次评论，需要先展开对应的主评论
         if (isReply) {
           setExpandedReplies(prev => new Set(prev).add(targetCommentId!));
@@ -271,14 +282,30 @@ export function LineCommentInlinePanel({
         }, 100); // 稍微延迟确保DOM更新完成
 
         // 1秒后移除高亮
-        const timer = setTimeout(() => {
+        setTimeout(() => {
           setHighlightedCommentId(null);
+
+          // 清除 URL 中的 commentId 参数，防止刷新时重复高亮
+          if (
+            typeof window !== 'undefined' &&
+            window.location.search.includes('commentId')
+          ) {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('commentId');
+            window.history.replaceState({}, '', url.toString());
+          }
         }, 1000);
-        return () => clearTimeout(timer);
       }
     }
     return undefined;
   }, [highlightCommentId, localData.comments]);
+
+  // 当 highlightCommentId 变化时，重置高亮记录
+  useEffect(() => {
+    if (highlightCommentId !== highlightedOnceRef.current) {
+      highlightedOnceRef.current = null;
+    }
+  }, [highlightCommentId]);
 
   useEffect(() => {
     if (pendingUpdateRef.current) {

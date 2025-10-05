@@ -27,12 +27,15 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-        <div className="container-responsive flex h-14 items-center justify-between">
-          <Link href="/" className="text-sm font-semibold">
+      <header className="border-b bg-background/95 backdrop-blur-sm">
+        <div className="container-responsive flex h-20 items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center px-6 py-3 text-lg font-bold text-foreground bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl shadow-sm hover:shadow-md hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
+          >
             Relax-Git
           </Link>
-          <nav className="flex items-center gap-5">
+          <nav className="flex items-center gap-8">
             {/* 导航：未登录点击跳登录 */}
             <Link
               href={
@@ -40,7 +43,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   ? '/community'
                   : '/auth/login?callbackUrl=%2Fcommunity'
               }
-              className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 py-1 transition-colors duration-200 hover:bg-accent"
+              className="inline-flex items-center justify-center px-8 py-2.5 text-base font-medium text-primary bg-primary/10 border border-primary/20 rounded-full hover:bg-primary/15 hover:border-primary/30 transition-all duration-200 hover:shadow-sm"
             >
               社区
             </Link>
@@ -50,7 +53,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   ? '/repositories/import'
                   : '/auth/login?callbackUrl=%2Frepositories%2Fimport'
               }
-              className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 py-1 transition-colors duration-200 hover:bg-accent"
+              className="text-base text-muted-foreground hover:text-foreground rounded-full px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium"
             >
               导入仓库
             </Link>
@@ -60,7 +63,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   ? '/repositories'
                   : '/auth/login?callbackUrl=%2Frepositories'
               }
-              className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 py-1 transition-colors duration-200 hover:bg-accent"
+              className="text-base text-muted-foreground hover:text-foreground rounded-full px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium"
             >
               我的仓库
             </Link>

@@ -13,6 +13,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import Prism from 'prismjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FeedbackBanner } from './feedback-banner';
@@ -1175,9 +1176,11 @@ export function SnapshotCodeViewer({
                           </Button>
                         </div>
 
-                        <img
+                        <Image
                           src={filePreviewUrl}
                           alt={selectedFile}
+                          width={800}
+                          height={600}
                           className="max-w-full h-auto select-none"
                           style={{
                             transform: `scale(${imgZoom})`,
@@ -1189,7 +1192,7 @@ export function SnapshotCodeViewer({
                         />
                       </div>
                     ) : (
-                      <div className="text-center text-sm text-muted-foreground">
+                      <div>
                         <p>该文件为二进制类型，暂不支持在线预览。</p>
                         <div className="mt-3">
                           <Button

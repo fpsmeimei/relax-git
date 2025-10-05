@@ -25,20 +25,16 @@ export function NavChatLink() {
   const displayCount = totalUnreadCount > 99 ? '99' : totalUnreadCount;
 
   return (
-    <Link href="/chatroom">
-      <Button variant="ghost" size="sm" className="relative">
-        <MessageSquare className="h-4 w-4 mr-2" />
-        <span className="mr-1">聊天室</span>
-        <div className="relative">
-          {totalUnreadCount > 0 ? (
-            <span className="inline-flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
-              {displayCount}
-            </span>
-          ) : (
-            <div className="w-2 h-2 rounded-full bg-muted-foreground/30"></div>
-          )}
-        </div>
-      </Button>
+    <Link href="/chatroom" className="relative">
+      <div className="flex items-center text-base font-medium text-muted-foreground hover:text-foreground rounded-full px-5 py-2 transition-colors duration-200 hover:bg-accent">
+        <MessageSquare className="h-5 w-5 mr-2" />
+        <span className="mr-2">聊天室</span>
+        {totalUnreadCount > 0 && (
+          <span className="inline-flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-destructive text-xs font-medium text-destructive-foreground">
+            {displayCount}
+          </span>
+        )}
+      </div>
     </Link>
   );
 }

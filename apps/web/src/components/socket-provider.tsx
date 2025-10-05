@@ -314,14 +314,15 @@ export function SocketProvider({ children }: SocketProviderProps) {
     setSocket(socketInstance);
 
     // 清理函数
+    const currentSubs = subscriptionsRef.current;
     return () => {
       try {
         socketInstance.disconnect();
       } catch {}
       // 清空订阅清单，避免下次登录重放
       try {
-        const subs = subscriptionsRef.current;
-        if (subs && typeof subs.clear === 'function') subs.clear();
+        if (currentSubs && typeof currentSubs.clear === 'function')
+          currentSubs.clear();
       } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -762,7 +762,7 @@ export default function ChatroomPage() {
       </nav>
 
       <div className="flex-1 py-4">
-        <div className="container-responsive max-w-6xl mx-auto h-[calc(100vh-10rem)] flex gap-6">
+        <div className="container-responsive max-w-6xl mx-auto h-[1200px] flex gap-6">
           <aside className="w-72 border border-border/40 bg-card/40 backdrop-blur-sm rounded-2xl flex flex-col overflow-hidden text-foreground">
             <div className="px-4 py-3 border-b">
               <div className="relative">

@@ -73,11 +73,11 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
 
   if (!isAuthenticated) {
     return (
-      <div className={cn('flex items-center gap-3', className)}>
+      <div className={cn('flex items-center gap-4', className)}>
         {/* 未登录状态的优雅头像 */}
-        <div className="h-8 w-8 rounded-full overflow-hidden border border-border/30 shadow-sm bg-gradient-to-br from-muted/80 to-muted flex items-center justify-center">
+        <div className="h-10 w-10 rounded-full overflow-hidden border border-border/30 shadow-sm bg-gradient-to-br from-muted/80 to-muted flex items-center justify-center">
           <svg
-            className="h-4 w-4 text-muted-foreground/70"
+            className="h-5 w-5 text-muted-foreground/70"
             fill="currentColor"
             viewBox="0 0 24 24"
           >
@@ -86,19 +86,16 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
         </div>
         <Link
           href="/auth/login"
-          className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+          className="rounded-full px-5 py-2 text-base font-medium text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
         >
           登录
         </Link>
         <Link
           href="/auth/register"
-          className="rounded-full px-3 py-1 text-sm text-primary transition-colors duration-200 hover:bg-primary/10"
+          className="rounded-full px-5 py-2 text-base font-medium text-primary transition-colors duration-200 hover:bg-primary/10"
         >
           注册
         </Link>
-        <Button variant="outline-subtle" size="sm" disabled aria-disabled>
-          退出登录
-        </Button>
       </div>
     );
   }
@@ -126,26 +123,26 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   };
 
   return (
-    <div className={cn('relative flex items-center gap-4', className)}>
+    <div className={cn('relative flex items-center gap-5', className)}>
       <Link
         href="/me"
         className="relative flex items-center justify-center transition-opacity duration-200 hover:opacity-80"
       >
         <div className="relative">
           {/* 圆形头像 - 比其他按钮稍大 */}
-          <div className="h-8 w-8 rounded-full overflow-hidden border border-border/20 shadow-md">
+          <div className="h-10 w-10 rounded-full overflow-hidden border border-border/20 shadow-md">
             {(currentAvatar || user?.avatar) && !avatarError ? (
               <Image
                 src={currentAvatar || user?.avatar || ''}
                 alt={user?.username || '用户头像'}
-                width={32}
-                height={32}
+                width={40}
+                height={40}
                 className="h-full w-full object-cover bg-gray-100 dark:bg-gray-800"
                 onError={() => setAvatarError(true)}
                 unoptimized={true}
               />
             ) : (
-              <div className="h-full w-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
+              <div className="h-full w-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-base font-semibold">
                 <span className="select-none">
                   {(user?.username || user?.displayName || '用户')
                     .charAt(0)
@@ -156,24 +153,24 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
           </div>
           {/* 未读通知角标 */}
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white ring-2 ring-background">
+            <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-medium text-white ring-2 ring-background">
               {unreadCount > 99 ? '99+' : unreadCount}
             </span>
           )}
         </div>
       </Link>
       {/* 登录和退出登录按钮 */}
-      <div className="flex items-center gap-2 ml-2">
+      <div className="flex items-center gap-3 ml-2">
         <Link
           href="/auth/login"
-          className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
+          className="rounded-full px-5 py-2 text-base font-medium text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground"
         >
           登录
         </Link>
         <button
           type="button"
           onClick={handleLogout}
-          className="rounded-full px-3 py-1 text-sm text-muted-foreground transition-colors duration-200 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+          className="rounded-full px-5 py-2 text-base font-medium text-muted-foreground transition-colors duration-200 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
         >
           退出登录
         </button>

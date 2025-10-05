@@ -6,7 +6,14 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
-import { AlertCircle, GitBranch, Loader2, Lock, Globe, Users } from 'lucide-react';
+import {
+  AlertCircle,
+  GitBranch,
+  Loader2,
+  Lock,
+  Globe,
+  Users,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -330,18 +337,15 @@ export function ImportRepositoryForm({
   };
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      <div className="glass-panel glass-panel-hero p-8 border-0">
+    <div className={`space-y-8 ${className}`}>
+      <div className="glass-panel glass-panel-hero p-10 border-0">
         {/* 表单内容 - 取消内层标题，避免与页面标题重复 */}
-        <form
-          onSubmit={handleSubmit}
-          className="glass-panel-body space-y-6"
-        >
+        <form onSubmit={handleSubmit} className="glass-panel-body space-y-8">
           {/* Git URL 输入 */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label
               htmlFor="gitUrl"
-              className="text-sm font-medium text-foreground/80"
+              className="text-base font-semibold text-foreground"
             >
               仓库 URL <span className="text-red-500">*</span>
             </Label>
@@ -377,11 +381,11 @@ export function ImportRepositoryForm({
           </div>
 
           {/* 基本信息：名称与主干分支（两列排版） */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-3">
               <Label
                 htmlFor="name"
-                className="text-sm font-medium text-foreground/80"
+                className="text-base font-semibold text-foreground"
               >
                 仓库名称 <span className="text-red-500">*</span>
               </Label>
@@ -407,10 +411,10 @@ export function ImportRepositoryForm({
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label
                 htmlFor="baseBranch"
-                className="text-sm font-medium text-foreground/80"
+                className="text-base font-semibold text-foreground"
               >
                 基线分支名
               </Label>
@@ -441,17 +445,22 @@ export function ImportRepositoryForm({
           </div>
 
           {/* 仓库可见性 */}
-          <div className="space-y-2">
+          <div className="space-y-4">
             <Label
               htmlFor="visibility"
-              className="text-sm font-medium text-foreground/80"
+              className="text-base font-semibold text-foreground"
             >
               仓库可见性
             </Label>
             {/* 保留隐藏字段以维持表单语义与 label 关联 */}
-            <input type="hidden" id="visibility" value={formData.visibility} readOnly />
+            <input
+              type="hidden"
+              id="visibility"
+              value={formData.visibility}
+              readOnly
+            />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* 私有 */}
               <button
                 type="button"
@@ -460,17 +469,19 @@ export function ImportRepositoryForm({
                 }
                 aria-pressed={formData.visibility === 'PRIVATE'}
                 className={
-                  `rounded-xl border px-4 py-3 text-left transition-colors ` +
+                  `rounded-xl border px-5 py-4 text-left transition-colors ` +
                   (formData.visibility === 'PRIVATE'
                     ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
                     : 'border-border hover:bg-accent/5')
                 }
               >
-                <div className="flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-foreground/80" />
-                  <div className="text-sm font-medium">私有</div>
+                <div className="flex items-center gap-3">
+                  <Lock className="h-5 w-5 text-foreground/80" />
+                  <div className="text-base font-medium">私有</div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">仅自己可访问</div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  仅自己可访问
+                </div>
               </button>
 
               {/* 公开 */}
@@ -481,17 +492,19 @@ export function ImportRepositoryForm({
                 }
                 aria-pressed={formData.visibility === 'PUBLIC'}
                 className={
-                  `rounded-xl border px-4 py-3 text-left transition-colors ` +
+                  `rounded-xl border px-5 py-4 text-left transition-colors ` +
                   (formData.visibility === 'PUBLIC'
                     ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
                     : 'border-border hover:bg-accent/5')
                 }
               >
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-foreground/80" />
-                  <div className="text-sm font-medium">公开</div>
+                <div className="flex items-center gap-3">
+                  <Globe className="h-5 w-5 text-foreground/80" />
+                  <div className="text-base font-medium">公开</div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">所有人可访问</div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  所有人可访问
+                </div>
               </button>
 
               {/* 内部 */}
@@ -502,26 +515,28 @@ export function ImportRepositoryForm({
                 }
                 aria-pressed={formData.visibility === 'INTERNAL'}
                 className={
-                  `rounded-xl border px-4 py-3 text-left transition-colors ` +
+                  `rounded-xl border px-5 py-4 text-left transition-colors ` +
                   (formData.visibility === 'INTERNAL'
                     ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
                     : 'border-border hover:bg-accent/5')
                 }
               >
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-foreground/80" />
-                  <div className="text-sm font-medium">内部</div>
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-foreground/80" />
+                  <div className="text-base font-medium">内部</div>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">组织成员可访问</div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  组织成员可访问
+                </div>
               </button>
             </div>
           </div>
 
           {/* 仓库描述 */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label
               htmlFor="description"
-              className="text-sm font-medium text-foreground/80"
+              className="text-base font-semibold text-foreground"
             >
               仓库描述（可选）
             </Label>
@@ -533,18 +548,18 @@ export function ImportRepositoryForm({
               }
               placeholder="简要描述这个仓库的用途..."
               disabled={loading}
-              rows={3}
-              className="glass-input w-full min-h-[116px] rounded-xl px-4 py-3 text-sm"
+              rows={4}
+              className="glass-input w-full min-h-[120px] rounded-xl px-5 py-4 text-base leading-relaxed"
             />
           </div>
 
-          <div className="glass-panel-footer sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:pt-4 flex-col gap-3 sm:flex-row">
+          <div className="glass-panel-footer sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:pt-6 flex-col gap-4 sm:flex-row">
             <Button
               type="button"
               variant="outline-subtle"
               onClick={() => router.back()}
               disabled={loading}
-              className="flex-1 border border-border bg-secondary text-foreground hover:bg-secondary/80"
+              className="flex-1 h-12 text-base border border-border bg-secondary text-foreground hover:bg-secondary/80"
             >
               取消
             </Button>
@@ -552,16 +567,16 @@ export function ImportRepositoryForm({
               variant="soft"
               type="submit"
               disabled={loading || validating}
-              className="flex-1"
+              className="flex-1 h-12 text-base"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   导入中...
                 </>
               ) : (
                 <>
-                  <GitBranch className="mr-2 h-4 w-4" />
+                  <GitBranch className="mr-2 h-5 w-5" />
                   导入
                 </>
               )}

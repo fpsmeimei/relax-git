@@ -7,7 +7,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
-import * as crypto from 'crypto';
+// import * as crypto from 'crypto';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -433,7 +433,10 @@ export class PerformanceOptimizerService {
   /**
    * 代码高亮（简化实现）
    */
-  private async highlightCode(code: string, filePath: string): Promise<string> {
+  private async highlightCode(
+    code: string,
+    _filePath: string
+  ): Promise<string> {
     // 实际应该使用 Prism.js 或类似库
     return `<pre class="highlighted">${code}</pre>`;
   }
@@ -563,9 +566,9 @@ export class PerformanceOptimizerService {
    * 计算差异
    */
   private async calculateDiff(
-    repoId: string,
-    fromCommit: string,
-    toCommit: string
+    _repoId: string,
+    _fromCommit: string,
+    _toCommit: string
   ): Promise<any> {
     // 简化实现
     return {
@@ -579,8 +582,8 @@ export class PerformanceOptimizerService {
   private async createIncrementalArtifact(
     repoId: string,
     commitSha: string,
-    basePath: string,
-    changedFiles: any[]
+    _basePath: string,
+    _changedFiles: any[]
   ): Promise<void> {
     // 简化实现
     this.logger.debug(`Creating incremental artifact for ${commitSha}`);

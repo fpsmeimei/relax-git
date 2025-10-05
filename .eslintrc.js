@@ -127,6 +127,7 @@ module.exports = {
         '@typescript-eslint/no-redundant-type-constituents': 'off', // 允许冗余类型
         '@typescript-eslint/ban-types': 'off', // 允许Function类型
         'no-case-declarations': 'off', // 允许case中的声明
+        '@typescript-eslint/no-var-requires': 'off', // 允许require语句
       },
     },
     {

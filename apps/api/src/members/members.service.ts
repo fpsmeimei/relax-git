@@ -14,7 +14,7 @@ export class MembersService {
   async add(
     repoId: string,
     dto: AddMemberDto,
-    operatorId: string
+    _operatorId: string
   ): Promise<void> {
     const role = dto.role ?? MemberRole.MEMBER;
     await this.prisma.member.upsert({
@@ -27,14 +27,14 @@ export class MembersService {
   async remove(
     repoId: string,
     userId: string,
-    operatorId: string
+    _operatorId: string
   ): Promise<void> {
     const [target, operator] = await Promise.all([
       this.prisma.member.findUnique({
         where: { repoId_userId: { repoId, userId } } as any,
       }),
       this.prisma.member.findUnique({
-        where: { repoId_userId: { repoId, userId: operatorId } } as any,
+        where: { repoId_userId: { repoId, userId: _operatorId } } as any,
       }),
     ]);
 
@@ -51,7 +51,7 @@ export class MembersService {
       });
     }
 
-    const isSelf = userId === operatorId;
+    const isSelf = userId === _operatorId;
 
     // 统计 OWNER 人数，用于保护最后一个 OWNER
     const ownerCount = await this.prisma.member.count({
@@ -104,7 +104,7 @@ export class MembersService {
   async changeRole(
     repoId: string,
     userId: string,
-    operatorId: string,
+    _operatorId: string,
     newRole: MemberRole
   ): Promise<void> {
     const [target, operator] = await Promise.all([
@@ -112,7 +112,7 @@ export class MembersService {
         where: { repoId_userId: { repoId, userId } } as any,
       }),
       this.prisma.member.findUnique({
-        where: { repoId_userId: { repoId, userId: operatorId } } as any,
+        where: { repoId_userId: { repoId, userId: _operatorId } } as any,
       }),
     ]);
 
@@ -133,7 +133,7 @@ export class MembersService {
       return;
     }
 
-    const isSelf = userId === operatorId;
+    const isSelf = userId === _operatorId;
     const ownerCount = await this.prisma.member.count({
       where: { repoId, role: MemberRole.OWNER },
     });

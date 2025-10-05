@@ -1,14 +1,23 @@
 'use client';
-
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/services/apiClient';
-import { Clock, ExternalLink, Heart, MessageCircle, Reply } from 'lucide-react';
+import { formatSmartTime } from '@/lib/utils/format-time';
+import {
+  Clock,
+  ExternalLink,
+  Heart,
+  MessageCircle,
+  Reply,
+  Search,
+} from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { apiClient } from '@/services/apiClient';
 
 interface Comment {
   id: string;
@@ -283,9 +292,11 @@ export default function MyCommentsPage() {
                   <div className="flex gap-4">
                     <div className="flex-shrink-0">
                       {comment.author?.avatar ? (
-                        <img
+                        <Image
                           src={comment.author.avatar}
                           alt={comment.author.username ?? 'avatar'}
+                          width={40}
+                          height={40}
                           className="h-10 w-10 rounded-full object-cover"
                           referrerPolicy="no-referrer"
                         />

@@ -155,7 +155,7 @@ function CommentItem({
       }
     }
     return undefined;
-  }, [highlightCommentId, comment.id]);
+  }, [highlightCommentId, comment.id, comment.replies, highlightedOnceRef]);
 
   return (
     <div

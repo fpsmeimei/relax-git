@@ -64,13 +64,13 @@ const DialogTrigger: React.FC<DialogTriggerProps> = ({
   ...props
 }) => {
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children, {
+    return React.cloneElement(children as React.ReactElement<any>, {
       ...props,
       ...(children.props || {}),
       onClick: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
         onClick?.(event);
-        if (typeof children.props?.onClick === 'function') {
-          children.props.onClick(event);
+        if (typeof (children as any).props?.onClick === 'function') {
+          (children as any).props.onClick(event);
         }
       },
     });

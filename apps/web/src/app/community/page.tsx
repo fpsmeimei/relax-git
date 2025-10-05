@@ -31,7 +31,6 @@ function CommunityPageContent() {
   const [hasMore, setHasMore] = useState(true);
   const [filters, setFilters] = useState<FilterType>({
     sort: 'latest',
-    tags: [],
   });
   const [error, setError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -91,11 +90,8 @@ function CommunityPageContent() {
     if (didInitFromUrl.current) return;
     didInitFromUrl.current = true;
     const sort = (searchParams.get('sort') as FilterType['sort']) || 'latest';
-    const language = searchParams.get('language') || undefined;
-    const tagsStr = searchParams.get('tags');
     const search = searchParams.get('search') || undefined;
-    const tags = tagsStr ? tagsStr.split(',').filter(Boolean) : [];
-    setFilters({ sort, language, tags, search });
+    setFilters({ sort, search });
     setNextCursor(null);
 
     // 处理仓库ID和评论ID参数
@@ -128,9 +124,7 @@ function CommunityPageContent() {
   const syncUrl = useCallback(
     (f: FilterType) => {
       const params = new URLSearchParams();
-      if (f.sort) params.set('sort', f.sort);
-      if (f.language) params.set('language', f.language);
-      if (f.tags && f.tags.length) params.set('tags', f.tags.join(','));
+      if (f.sort && f.sort !== 'latest') params.set('sort', f.sort);
       if (f.search) params.set('search', f.search);
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : '?', { scroll: false });
@@ -205,17 +199,17 @@ function CommunityPageContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container-responsive py-8">
+      <div className="container-responsive py-12 lg:py-16">
         {/* 页面标题 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">社区</h1>
-          <p className="text-muted-foreground">
+        <div className="mb-12">
+          <h1 className="text-3xl font-bold mb-4">社区</h1>
+          <p className="text-muted-foreground text-lg">
             发现优秀的开源项目，像刷视频一样学技术
           </p>
         </div>
 
         {/* 过滤器 */}
-        <div className="mb-8">
+        <div className="mb-12">
           <CommunityFilters
             filters={filters}
             onFiltersChange={handleFiltersChange}
@@ -224,7 +218,7 @@ function CommunityPageContent() {
 
           {/* 错误状态 */}
           {!!error && !loading && (
-            <div className="mb-6">
+            <div className="mb-8">
               <FeedbackBanner
                 variant="error"
                 message={<>社区列表加载失败：{error}</>}
@@ -253,7 +247,7 @@ function CommunityPageContent() {
         {/* 仓库卡片流 */}
         {!loading && (
           <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:gap-10">
               {repositories.map(repo => (
                 <RepositoryCard
                   key={repo.id}
@@ -267,7 +261,7 @@ function CommunityPageContent() {
 
             {/* 加载更多 */}
             {hasMore && repositories.length > 0 && (
-              <div className="flex justify-center mt-8">
+              <div className="flex justify-center mt-12">
                 <Button
                   variant="outline"
                   onClick={handleLoadMore}
@@ -287,26 +281,22 @@ function CommunityPageContent() {
 
             {/* 空状态提示 */}
             {repositories.length === 0 && (
-              <div className="text-center py-12">
-                <GitBranch className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">暂无项目</h3>
+              <div className="text-center py-16">
+                <GitBranch className="h-12 w-12 text-muted-foreground mx-auto mb-6" />
+                <h3 className="text-lg font-medium mb-4">暂无项目</h3>
                 <EmptyHint
-                  className="mb-4"
+                  className="mb-6"
                   message={
-                    filters.search ||
-                    filters.language ||
-                    filters.tags.length > 0
-                      ? '没有找到符合条件的项目，试试调整筛选条件'
+                    filters.search
+                      ? '没有找到符合条件的项目，试试调整搜索关键词'
                       : '还没有公开的项目，快去导入一个仓库并设为公开吧！'
                   }
                 />
-                {!filters.search &&
-                  !filters.language &&
-                  filters.tags.length === 0 && (
-                    <Button asChild variant="soft">
-                      <Link href="/repositories/import">导入仓库</Link>
-                    </Button>
-                  )}
+                {!filters.search && (
+                  <Button asChild variant="soft">
+                    <Link href="/repositories/import">导入仓库</Link>
+                  </Button>
+                )}
               </div>
             )}
           </>

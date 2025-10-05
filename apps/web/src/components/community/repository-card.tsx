@@ -138,9 +138,9 @@ export function RepositoryCard({
         onClick={handleCardClick}
         className="block"
       >
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-4">
           {/* 封面图片 */}
-          <div className="relative w-full h-32 bg-gradient-to-br from-primary/10 to-primary/5 rounded-md mb-3 flex items-center justify-center overflow-hidden">
+          <div className="relative w-full h-36 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
             {repository.coverImage ? (
               <Image
                 src={repository.coverImage}
@@ -153,44 +153,48 @@ export function RepositoryCard({
               <GitBranch className="h-8 w-8 text-primary/40" />
             )}
             {/* 可见性徽章 */}
-            <div className="absolute top-2 right-2">
+            <div className="absolute top-3 right-3">
               <VisibilityBadge visibility={repository.visibility} />
             </div>
           </div>
 
-          <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors">
+          <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors mb-3">
             {repository.name}
             <ExternalLink className="inline-block ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
           </CardTitle>
 
-          <CardDescription className="line-clamp-2">
+          <CardDescription className="line-clamp-2 text-base leading-relaxed">
             {repository.description || '暂无描述'}
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 space-y-4">
           {/* 标签 */}
-          <div className="flex flex-wrap gap-1 mb-3">
+          <div className="flex flex-wrap gap-2">
             {repository.language && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs px-2.5 py-1">
                 {repository.language}
               </Badge>
             )}
             {repository.tags.slice(0, 2).map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs">
+              <Badge
+                key={tag}
+                variant="outline"
+                className="text-xs px-2.5 py-1"
+              >
                 {tag}
               </Badge>
             ))}
             {repository.tags.length > 2 && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs px-2.5 py-1">
                 +{repository.tags.length - 2}
               </Badge>
             )}
           </div>
 
           {/* 作者信息 */}
-          <div className="flex items-center gap-2 mb-3">
-            <Avatar className="h-6 w-6">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-7 w-7">
               <AvatarImage src={repository.owner.avatar || undefined} />
               <AvatarFallback className="text-xs">
                 {repository.owner.username.charAt(0).toUpperCase()}

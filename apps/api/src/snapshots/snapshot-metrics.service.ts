@@ -471,7 +471,7 @@ export class SnapshotMetricsService {
   /**
    * 获取小时级别的分解数据
    */
-  private getHourlyBreakdown(start: Date, end: Date): any[] {
+  private getHourlyBreakdown(_start: Date, _end: Date): any[] {
     // 简化实现，实际应该聚合数据
     return [];
   }

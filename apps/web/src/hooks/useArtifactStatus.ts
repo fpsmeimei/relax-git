@@ -209,6 +209,7 @@ export function useArtifactStatus(
     if (autoStart && artifactId && !isPolling) {
       startPolling();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, artifactId]); // 注意：这里故意不包含 isPolling 和 startPolling
 
   // 清理

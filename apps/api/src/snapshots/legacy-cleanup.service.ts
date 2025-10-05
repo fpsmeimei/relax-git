@@ -500,7 +500,7 @@ export class LegacyCleanupService {
       bundlePath?: string;
     } = {}
   ): Promise<any> {
-    const { dryRun = true, worktreePath, bundlePath } = options;
+    const { dryRun = true, worktreePath, bundlePath: _bundlePath } = options;
 
     this.logger.log('Cleaning up orphan files...');
 
@@ -531,7 +531,6 @@ export class LegacyCleanupService {
           orphanFiles.push({
             path: fullPath,
             size: stats.size,
-            type: 'worktree',
           });
           totalSize += stats.size;
 

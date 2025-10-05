@@ -35,21 +35,19 @@ import { JoinRequestsService } from './join-requests.service';
 @Controller('api/repositories/:repoId/join-requests')
 export class JoinRequestsController {
   constructor(private readonly joinRequestsService: JoinRequestsService) {}
-
   @Post()
   @ApiOperation({ summary: '提交加入申请' })
   @ApiOkResponse({ type: CreateJoinRequestResponseDto })
-  async create(
+  async approveJoinRequest(
     @Param('repoId') repoId: string,
     @Body() dto: CreateJoinRequestDto,
     @CurrentUser('id') userId: string,
-    @CurrentUser('role') userRole: UserRole
+    @CurrentUser('role') _userRole: string
   ) {
     return this.joinRequestsService.create(repoId, userId, dto);
   }
 
   @Get('me')
-  @ApiOperation({ summary: '获取当前用户在该仓库的加入状态' })
   @ApiOkResponse({
     description: '返回 member/pending/rejected/approved/none 之一',
   })
@@ -71,8 +69,8 @@ export class JoinRequestsController {
   async list(
     @Param('repoId') repoId: string,
     @Query() query: QueryJoinRequestsDto,
-    @CurrentUser('id') userId: string,
-    @CurrentUser('role') userRole: UserRole
+    @CurrentUser('id') _userId: string,
+    @CurrentUser('role') _userRole: UserRole
   ) {
     return this.joinRequestsService.list(repoId, query);
   }
