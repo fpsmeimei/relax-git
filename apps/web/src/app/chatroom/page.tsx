@@ -174,7 +174,7 @@ export default function ChatroomPage() {
     // 创建虚拟的 AI 助手项（置顶）
     const aiBot: FriendEntry = {
       id: 'ai-assistant',
-      username: 'Relax-Git 助手',
+      username: '开发者顾问 ⭐',
       avatar: 'https://octodex.github.com/images/nyantocat.gif',
       chatId: 'ai-chat',
       unreadCount: 0,
@@ -391,6 +391,21 @@ export default function ChatroomPage() {
         setMessageInput('');
         scrollToBottom();
 
+        // 添加"思考中"状态消息
+        const thinkingMessage: ChatMessage = {
+          id: `thinking-${Date.now()}`,
+          chatId: 'ai-chat',
+          content: '思考中...',
+          senderId: 'ai-assistant',
+          createdAt: new Date().toISOString(),
+          type: 'text',
+          isRead: true,
+          readAt: new Date().toISOString(),
+        };
+
+        setAiMessages(prev => [...prev, thinkingMessage]);
+        scrollToBottom();
+
         // 获取对话历史
         const conversationHistory = aiMessages.slice(-10).map(msg => ({
           role: msg.senderId === user?.id ? 'user' : 'assistant',
@@ -404,36 +419,44 @@ export default function ChatroomPage() {
             conversationHistory,
           });
 
-          // 添加 AI 回复到本地状态
-          const aiMessage: ChatMessage = {
-            id: `ai-${Date.now()}`,
-            chatId: 'ai-chat',
-            content: response.data.reply || '抱歉，我暂时无法回答。',
-            senderId: 'ai-assistant',
-            createdAt: new Date().toISOString(),
-            type: 'text',
-            isRead: true,
-            readAt: new Date().toISOString(),
-          };
-
-          setAiMessages(prev => [...prev, aiMessage]);
+          // 移除"思考中"消息，添加 AI 回复
+          setAiMessages(prev => {
+            const withoutThinking = prev.filter(
+              msg => msg.id !== thinkingMessage.id
+            );
+            const aiMessage: ChatMessage = {
+              id: `ai-${Date.now()}`,
+              chatId: 'ai-chat',
+              content: response.data.reply || '抱歉，我暂时无法回答。',
+              senderId: 'ai-assistant',
+              createdAt: new Date().toISOString(),
+              type: 'text',
+              isRead: true,
+              readAt: new Date().toISOString(),
+            };
+            return [...withoutThinking, aiMessage];
+          });
           scrollToBottom();
         } catch (aiError) {
           console.error('AI response error:', aiError);
 
-          // 错误消息
-          const errorMessage: ChatMessage = {
-            id: `ai-error-${Date.now()}`,
-            chatId: 'ai-chat',
-            content: '抱歉，我遇到了一些技术问题。请稍后再试。',
-            senderId: 'ai-assistant',
-            createdAt: new Date().toISOString(),
-            type: 'text',
-            isRead: true,
-            readAt: new Date().toISOString(),
-          };
-
-          setAiMessages(prev => [...prev, errorMessage]);
+          // 移除"思考中"消息，添加错误消息
+          setAiMessages(prev => {
+            const withoutThinking = prev.filter(
+              msg => msg.id !== thinkingMessage.id
+            );
+            const errorMessage: ChatMessage = {
+              id: `ai-error-${Date.now()}`,
+              chatId: 'ai-chat',
+              content: '抱歉，我遇到了一些技术问题。请稍后再试。',
+              senderId: 'ai-assistant',
+              createdAt: new Date().toISOString(),
+              type: 'text',
+              isRead: true,
+              readAt: new Date().toISOString(),
+            };
+            return [...withoutThinking, errorMessage];
+          });
         }
       } else {
         // 发送给真实用户
@@ -527,6 +550,8 @@ export default function ChatroomPage() {
           })
         : '';
     const content = 'content' in message ? message.content : '';
+    const isThinking = message.id.startsWith('thinking-');
+
     return (
       <div
         className={cn(
@@ -555,10 +580,32 @@ export default function ChatroomPage() {
           <div
             className={cn(
               'rounded-2xl px-4 py-2 text-sm relative bg-muted',
-              isSelf && 'ml-auto'
+              isSelf && 'ml-auto',
+              isThinking &&
+                'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700'
             )}
           >
-            <div className="whitespace-pre-wrap leading-relaxed">{content}</div>
+            <div
+              className={cn(
+                'whitespace-pre-wrap leading-relaxed',
+                isThinking && 'flex items-center gap-2'
+              )}
+            >
+              {isThinking ? (
+                <>
+                  <div className="flex space-x-1">
+                    <div className="h-2 w-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="h-2 w-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="h-2 w-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce"></div>
+                  </div>
+                  <span className="text-slate-600 dark:text-slate-400">
+                    思考中...
+                  </span>
+                </>
+              ) : (
+                content
+              )}
+            </div>
           </div>
         </div>
         {isSelf && (
