@@ -777,8 +777,8 @@ export function RepositoryComments({
           </h3>
         </div>
 
-        {/* 评论列表区域 - 可滚动 */}
-        <div className="p-6 space-y-6 max-h-[620px] overflow-y-auto">
+        {/* 评论列表区域 - 固定高度 */}
+        <div className="p-6 space-y-6 h-[620px] overflow-y-auto">
           {sortedComments.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-20" />

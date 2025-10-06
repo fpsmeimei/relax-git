@@ -467,7 +467,7 @@ export function RepositoryDiscussion({
         </div>
       </div>
 
-      {/* 评论列表区域 - 可滚动 */}
+      {/* 评论列表区域 - 固定高度 */}
       <div className="p-6 space-y-6 h-[620px] overflow-y-auto">
         {/* 评论列表 */}
         {loading ? (
