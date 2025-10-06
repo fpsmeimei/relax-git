@@ -1,240 +1,360 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
-  Bell,
-  MessageCircle,
-  MessageSquare,
-  Search,
-  Shield,
-  Zap,
-} from 'lucide-react';
-import { useSession } from 'next-auth/react';
+  CommunityFilters,
+  CommunityFilters as FilterType,
+} from '@/components/community/community-filters';
+import { RepositoryCard } from '@/components/community/repository-card';
+import { RepositoryDetailModal } from '@/components/community/repository-detail-modal';
+import { Button } from '@/components/ui/button';
+import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
+import { GitBranch, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+
+import { EmptyHint } from '@/components/snapshot/empty-hint';
+import { FeedbackBanner } from '@/components/snapshot/feedback-banner';
+import { LoadingHint } from '@/components/snapshot/loading-hint';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 /**
- * 首页组件 - 营销展示页面
+ * 首页组件 - 社区页面
  *
- * 策略：
- * - 未登录用户 → 跳转到登录页
- * - 已登录用户 → 显示完整的营销展示页面
+ * 直接显示社区内容，让用户立即看到活跃的项目和讨论
  */
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
-  const { data: session, status } = useSession();
-  const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const didInitFromUrl = useRef(false);
+  const pendingRepoIdRef = useRef<string | null>(null);
 
+  const [repositories, setRepositories] = useState<CommunityFeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [filters, setFilters] = useState<FilterType>({
+    sort: 'latest',
+  });
+  const [error, setError] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [selectedRepository, setSelectedRepository] = useState<
+    CommunityFeedItem | undefined
+  >(undefined);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
+
+  // 加载社区feed
+  const loadFeed = useCallback(
+    async (reset = false) => {
+      try {
+        if (reset) {
+          setLoading(true);
+          setRepositories([]);
+        } else {
+          setLoadingMore(true);
+        }
+
+        const query = {
+          ...filters,
+          cursor: reset ? undefined : nextCursor || undefined,
+          limit: 12,
+        };
+
+        const response = await CommunityAPI.getFeed(query);
+
+        if (reset) {
+          setRepositories(response.items);
+        } else {
+          setRepositories(prev => [...prev, ...response.items]);
+        }
+
+        setNextCursor(response.nextCursor);
+        setHasMore(response.hasMore);
+        setError(null);
+      } catch (err) {
+        console.error('加载社区feed失败:', err);
+        const msg = (err as any)?.message || String(err);
+        setError(msg);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [filters, nextCursor]
+  );
+
+  // 初始加载
   useEffect(() => {
-    setMounted(true);
+    loadFeed(true);
+  }, [filters, loadFeed]);
+
+  // 从URL初始化一次筛选条件
+  useEffect(() => {
+    if (didInitFromUrl.current) return;
+    didInitFromUrl.current = true;
+    const sort = (searchParams.get('sort') as FilterType['sort']) || 'latest';
+    const search = searchParams.get('search') || undefined;
+    setFilters({ sort, search });
+    setNextCursor(null);
+
+    // 处理仓库ID和评论ID参数
+    const repoId = searchParams.get('repoId');
+    const commentId = searchParams.get('commentId');
+    if (repoId) {
+      setTargetCommentId(commentId);
+      pendingRepoIdRef.current = repoId;
+      // 如果数据已经加载出来，则尝试立即打开
+      const targetRepo = repositories.find(repo => repo.id === repoId);
+      if (targetRepo) {
+        setSelectedRepository(targetRepo);
+        setModalOpen(true);
+        pendingRepoIdRef.current = null;
+      }
+    }
+  }, [searchParams, repositories]);
+
+  // 当仓库列表更新且存在待打开的仓库时自动打开详情
+  useEffect(() => {
+    if (!pendingRepoIdRef.current) return;
+    const repo = repositories.find(r => r.id === pendingRepoIdRef.current);
+    if (!repo) return;
+    setSelectedRepository(repo);
+    setModalOpen(true);
+    pendingRepoIdRef.current = null;
+  }, [repositories]);
+
+  // 同步URL
+  const syncUrl = useCallback(
+    (f: FilterType) => {
+      const params = new URLSearchParams();
+      if (f.sort && f.sort !== 'latest') params.set('sort', f.sort);
+      if (f.search) params.set('search', f.search);
+      const qs = params.toString();
+      router.replace(qs ? `?${qs}` : '?', { scroll: false });
+    },
+    [router]
+  );
+
+  // 无限滚动
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || !hasMore || loading) return;
+    let pending = false;
+    const io = new IntersectionObserver(
+      entries => {
+        const first = entries[0];
+        if (first && first.isIntersecting && !pending && !loadingMore) {
+          pending = true;
+          Promise.resolve(loadFeed(false)).finally(() => {
+            pending = false;
+          });
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, loading, loadingMore, loadFeed]);
+
+  const handleFiltersChange = useCallback(
+    (newFilters: FilterType) => {
+      setFilters(newFilters);
+      setNextCursor(null);
+      syncUrl(newFilters);
+    },
+    [syncUrl]
+  );
+
+  // 处理点赞变化
+  const handleLikeChange = useCallback(
+    (repoId: string, newStars: number, isLiked: boolean) => {
+      setRepositories(prev =>
+        prev.map(repo =>
+          repo.id === repoId ? { ...repo, stars: newStars, isLiked } : repo
+        )
+      );
+    },
+    []
+  );
+
+  // 处理浏览记录
+  const handleView = useCallback((repoId: string) => {
+    setRepositories(prev =>
+      prev.map(repo =>
+        repo.id === repoId ? { ...repo, viewCount: repo.viewCount + 1 } : repo
+      )
+    );
   }, []);
 
-  // 🔥 不再强制跳转 - 允许未登录用户查看首页
-  // 认证状态加载中
-  if (status === 'loading' || !mounted) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-          <p className="text-sm text-foreground">
-            加载中... (状态: {status}, 挂载: {mounted ? '是' : '否'})
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const handleRepositoryClick = useCallback((repository: CommunityFeedItem) => {
+    setSelectedRepository(repository);
+    setModalOpen(true);
+  }, []);
 
-  // 已登录/未登录用户都可以查看首页
-  const isAuthenticated = !!session?.user;
+  // 加载更多
+  const handleLoadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      loadFeed(false);
+    }
+  }, [loadingMore, hasMore, loadFeed]);
+
+  const handleModalClose = useCallback(() => {
+    setModalOpen(false);
+    setSelectedRepository(undefined);
+    setTargetCommentId(null);
+    // 清理URL参数
+    const params = new URLSearchParams(window.location.search);
+    params.delete('repoId');
+    params.delete('commentId');
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : '?', { scroll: false });
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-background">
-      {/* 主要内容 */}
-      <main className="container-responsive">
-        {/* Hero 区域 - 更大气的布局 */}
-        <div className="text-center space-y-16 py-32 px-6">
-          <div className="space-y-8">
-            <h1 className="text-6xl md:text-7xl lg:text-8xl font-light tracking-tight leading-tight">
-              基于 Git Worktree 的
-              <span className="text-primary block mt-4 font-medium">
-                开发者代码社区
-              </span>
-            </h1>
-
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed font-light">
-              现代化的代码协作平台，让团队开发更高效、更智能
+      <div className="container-responsive py-8">
+        {/* 页面标题和操作区 */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">社区</h1>
+            <p className="text-muted-foreground mt-2">
+              发现优秀的开源项目，参与代码讨论
             </p>
           </div>
-
-          <div className="flex flex-wrap justify-center gap-6 text-lg">
-            <span className="px-6 py-3 bg-muted/20 rounded-full border border-muted/30 backdrop-blur-sm">
-              代码讨论
-            </span>
-            <span className="px-6 py-3 bg-muted/20 rounded-full border border-muted/30 backdrop-blur-sm">
-              社区互动
-            </span>
-            <span className="px-6 py-3 bg-muted/20 rounded-full border border-muted/30 backdrop-blur-sm">
-              知识分享
-            </span>
-          </div>
-
-          <div className="flex justify-center pt-8">
-            <Button
-              asChild
-              variant="soft"
-              size="lg"
-              className="text-2xl px-12 py-4 h-auto rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              <Link
-                href={
-                  isAuthenticated
-                    ? '/repositories/import'
-                    : '/auth/login?intent=login'
-                }
-              >
-                <span className="inline-flex items-center">
-                  <Zap className="mr-3 h-7 w-7" />
-                  开始使用
-                </span>
+          <div className="flex items-center gap-3">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/repositories/import">
+                <GitBranch className="h-4 w-4 mr-2" />
+                导入仓库
               </Link>
             </Button>
           </div>
         </div>
 
-        {/* 特性展示区域 - 更大气的布局 */}
-        <div className="py-24 px-6">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-light tracking-tight mb-6">
-              核心功能
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              为现代开发团队打造的全方位协作体验
-            </p>
-          </div>
+        {/* 过滤器 */}
+        <div className="mb-8">
+          <CommunityFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            loading={loading}
+          />
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {/* 实时代码浏览 */}
-            <div className="group card p-8 text-center space-y-6 hover-lift border-0 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                <Zap className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground">
-                快速代码浏览
-              </h3>
-              <p className="text-base text-muted-foreground leading-relaxed">
-                基于 Git Worktree 技术，无需分支切换即可浏览不同版本代码
-              </p>
+          {/* 错误状态 */}
+          {!!error && !loading && (
+            <div className="mb-8">
+              <FeedbackBanner
+                variant="error"
+                message={<>社区列表加载失败：{error}</>}
+                retryLabel="重试"
+                onRetry={() => void loadFeed(true)}
+              />
             </div>
-
-            {/* 实时通知 */}
-            <div className="group card p-8 text-center space-y-6 hover-lift border-0 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                <Bell className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground">
-                实时通知
-              </h3>
-              <p className="text-base text-muted-foreground leading-relaxed">
-                基于 WebSocket 的实时消息推送，及时获取评论回复等重要信息
-              </p>
-            </div>
-
-            {/* 行级评论 */}
-            <div className="group card p-8 text-center space-y-6 hover-lift border-0 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                <MessageSquare className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground">
-                代码行级评论
-              </h3>
-              <p className="text-base text-muted-foreground leading-relaxed">
-                支持在代码任意行添加评论，进行多层级回复讨论
-              </p>
-            </div>
-
-            {/* 即时聊天 */}
-            <div className="group card p-8 text-center space-y-6 hover-lift border-0 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                <MessageCircle className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground">
-                即时聊天
-              </h3>
-              <p className="text-base text-muted-foreground leading-relaxed">
-                内置聊天功能，支持私聊和群组讨论，方便团队实时沟通
-              </p>
-            </div>
-
-            {/* 代码搜索 */}
-            <div className="group card p-8 text-center space-y-6 hover-lift border-0 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                <Search className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground">
-                代码搜索
-              </h3>
-              <p className="text-base text-muted-foreground leading-relaxed">
-                支持全文搜索和正则表达式搜索，快速定位代码内容
-              </p>
-            </div>
-
-            {/* 成员与权限 */}
-            <div className="group card p-8 text-center space-y-6 hover-lift border-0 bg-card/30 backdrop-blur-sm hover:bg-card/50 transition-all duration-300">
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-semibold text-foreground">
-                权限管理
-              </h3>
-              <p className="text-base text-muted-foreground leading-relaxed">
-                支持仓库成员管理和角色权限控制，确保团队协作安全
-              </p>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* 技术栈展示区域 - 更大气的布局 */}
-        <div className="py-24 px-6">
-          <div className="text-center space-y-12">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-light tracking-tight mb-6">
-                技术架构
-              </h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                基于现代化技术栈构建，确保高性能与可扩展性
-              </p>
+        {/* 加载状态 */}
+        {loading && (
+          <div className="flex justify-center items-center py-12">
+            <LoadingHint
+              message={'加载中...'}
+              withSpinner
+              className="text-base"
+              iconClassName="h-5 w-5"
+            />
+          </div>
+        )}
+
+        {/* 无限滚动哨兵 */}
+        {hasMore && <div ref={loadMoreRef} className="h-px" />}
+
+        {/* 仓库卡片流 */}
+        {!loading && (
+          <>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:gap-10">
+              {repositories.map(repo => (
+                <RepositoryCard
+                  key={repo.id}
+                  repository={repo}
+                  onLikeChange={handleLikeChange}
+                  onView={handleView}
+                  onClick={() => handleRepositoryClick(repo)}
+                />
+              ))}
             </div>
 
-            <div className="flex flex-wrap justify-center gap-4 max-w-5xl mx-auto">
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                Next.js 15
+            {/* 加载更多 */}
+            {hasMore && repositories.length > 0 && (
+              <div className="flex justify-center mt-12">
+                <Button
+                  variant="outline"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      加载中...
+                    </>
+                  ) : (
+                    '加载更多'
+                  )}
+                </Button>
               </div>
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                React 19
+            )}
+
+            {/* 空状态提示 */}
+            {repositories.length === 0 && (
+              <div className="text-center py-16">
+                <GitBranch className="h-12 w-12 text-muted-foreground mx-auto mb-6" />
+                <h3 className="text-lg font-medium mb-4">暂无项目</h3>
+                <EmptyHint
+                  className="mb-6"
+                  message={
+                    filters.search
+                      ? '没有找到符合条件的项目，试试调整搜索关键词'
+                      : '还没有公开的项目，快去导入一个仓库并设为公开吧！'
+                  }
+                />
+                {!filters.search && (
+                  <Button asChild variant="soft">
+                    <Link href="/repositories/import">导入仓库</Link>
+                  </Button>
+                )}
               </div>
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                TypeScript
-              </div>
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                Tailwind CSS
-              </div>
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                NestJS
-              </div>
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                PostgreSQL
-              </div>
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                Redis
-              </div>
-              <div className="badge badge-secondary text-base py-3 px-6 rounded-full hover:scale-105 transition-transform duration-200">
-                Go Worker
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 仓库详情模态框 */}
+      <RepositoryDetailModal
+        repository={selectedRepository || null}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onLikeChange={handleLikeChange}
+        highlightCommentId={targetCommentId}
+      />
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center py-12">
+          <LoadingHint
+            message={'加载中...'}
+            withSpinner
+            className="text-base"
+            iconClassName="h-5 w-5"
+          />
+        </div>
+      }
+    >
+      <HomePageContent />
+    </Suspense>
   );
 }

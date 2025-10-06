@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { signIn } from 'next-auth/react';
 import { GitBranch, Loader2 } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -57,7 +57,7 @@ function LoginPageInner() {
 
     try {
       console.log('[Login] Attempting login with username:', formData.username);
-      
+
       const result = await signIn('credentials', {
         username: formData.username,
         password: formData.password,
@@ -68,7 +68,7 @@ function LoginPageInner() {
 
       if (result?.error) {
         console.error('[Login] SignIn error:', result.error);
-        
+
         toast({
           title: '登录失败',
           description: result.error || '用户名或密码错误',
@@ -80,24 +80,24 @@ function LoginPageInner() {
       // 🔥 关键修复：使用 NextAuth session 中的 token 设置浏览器 Cookie
       // 等待 NextAuth session 创建
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       try {
         console.log('[Login] Getting NextAuth session...');
         // 获取 NextAuth session（客户端）
         const { getSession } = await import('next-auth/react');
         const session = await getSession();
-        
+
         const user = session?.user as any;
         if (user?.accessToken) {
           console.log('[Login] Setting cookies with session token...');
           const cookieResp = await fetch('/api/_auth/set-cookie', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${user.accessToken}`,
+              Authorization: `Bearer ${user.accessToken}`,
             },
             credentials: 'include',
           });
-          
+
           if (!cookieResp.ok) {
             console.warn('[Login] Failed to set JWT cookies');
           } else {
@@ -145,7 +145,7 @@ function LoginPageInner() {
         {/* Logo */}
         <div className="text-center">
           <Link
-            href="/"
+            href="/about"
             className="flex items-center justify-center space-x-2 mb-6"
           >
             <GitBranch className="h-8 w-8 text-primary" />

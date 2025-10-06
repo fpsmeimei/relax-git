@@ -3,9 +3,9 @@
 import { NavChatLink } from '@/components/layout/nav-chat-link';
 import { NavPersonalLink } from '@/components/nav-personal-link';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -30,7 +30,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <header className="border-b bg-background/95 backdrop-blur-sm">
         <div className="container-responsive flex h-20 items-center justify-between">
           <Link
-            href="/"
+            href="/about"
             className="inline-flex items-center px-6 py-3 text-lg font-bold text-foreground bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl shadow-sm hover:shadow-md hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
           >
             Relax-Git
