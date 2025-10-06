@@ -30,22 +30,22 @@ export function AppLayout({ children }: AppLayoutProps) {
       <header className="border-b bg-background/95 backdrop-blur-sm">
         <div className="container-responsive flex h-20 items-center justify-between">
           <Link
-            href="/about"
-            className="inline-flex items-center px-6 py-3 text-lg font-bold text-foreground bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl shadow-sm hover:shadow-md hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
+            href={
+              isAuthenticated
+                ? '/community'
+                : '/auth/login?callbackUrl=%2Fcommunity'
+            }
+            className="inline-flex items-center justify-center px-8 py-2.5 text-base font-medium text-primary bg-primary/10 border border-primary/20 rounded-full hover:bg-primary/15 hover:border-primary/30 transition-all duration-200 hover:shadow-sm"
           >
-            Relax-Git
+            社区
           </Link>
           <nav className="flex items-center gap-8">
             {/* 导航：未登录点击跳登录 */}
             <Link
-              href={
-                isAuthenticated
-                  ? '/community'
-                  : '/auth/login?callbackUrl=%2Fcommunity'
-              }
-              className="inline-flex items-center justify-center px-8 py-2.5 text-base font-medium text-primary bg-primary/10 border border-primary/20 rounded-full hover:bg-primary/15 hover:border-primary/30 transition-all duration-200 hover:shadow-sm"
+              href="/about"
+              className="inline-flex items-center px-6 py-3 text-lg font-bold text-foreground bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl shadow-sm hover:shadow-md hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
             >
-              社区
+              Relax-Git
             </Link>
             <Link
               href={
