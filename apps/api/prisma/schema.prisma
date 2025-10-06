@@ -48,6 +48,7 @@ model User {
   ownedRepositories Repository[] @relation("RepositoryOwner")
 
   comments               Comment[]              @relation("CommentAuthor")
+  repliedComments        Comment[]              @relation("CommentReplyTo")
   timelineEvents         TimelineEvent[]        @relation("TimelineActor")
   sessions               UserSession[]
   searchHistory          SearchHistory[]        @relation("UserSearchHistory")
@@ -367,17 +368,19 @@ model Comment {
   lineStart Int? // 行级锚点开始
   lineEnd   Int? // 行级锚点结束
 
-  status     CommentStatus @default(PUBLISHED)
-  parentId   String? // 回复评论的父评论ID
-  isResolved Boolean       @default(false)
-  resolvedAt DateTime?
-  resolvedBy String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  status        CommentStatus @default(PUBLISHED)
+  parentId      String? // 回复评论的父评论ID
+  replyToUserId String? // 被回复的用户ID（用于正确显示回复关系）
+  isResolved    Boolean       @default(false)
+  resolvedAt    DateTime?
+  resolvedBy    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   // 关联关系
   snapshot       BaseSnapshot    @relation("BaseSnapshotComments", fields: [snapshotId], references: [id], onDelete: Cascade)
   author         User            @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  replyToUser    User?           @relation("CommentReplyTo", fields: [replyToUserId], references: [id], onDelete: SetNull)
   parent         Comment?        @relation("CommentReplies", fields: [parentId], references: [id])
   replies        Comment[]       @relation("CommentReplies")
   timelineEvents TimelineEvent[] @relation("CommentTimeline")

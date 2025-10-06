@@ -20,7 +20,7 @@ interface RepositoryCommentsProps {
 interface CommentItemProps {
   comment: RepositoryCommentDto;
   onLike: (commentId: string) => void;
-  onReply: (parentId: string, content: string) => void;
+  onReply: (parentId: string, content: string, replyToUserId: string) => void;
   onDelete: (commentId: string) => void;
   isLiking: boolean;
   isDeletingIds: Set<string>;
@@ -42,6 +42,7 @@ function CommentItem({
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [replyToUserId, setReplyToUserId] = useState<string>('');
   const [expandedReplies, setExpandedReplies] = useState(false);
   const [highlightedCommentId, setHighlightedCommentId] = useState<
     string | null
@@ -53,9 +54,10 @@ function CommentItem({
 
     setIsSubmittingReply(true);
     try {
-      await onReply(comment.id, replyContent.trim());
+      await onReply(comment.id, replyContent.trim(), replyToUserId);
       setReplyContent('');
       setShowReplyForm(false);
+      setReplyToUserId('');
       toast.success('回复成功');
     } catch (error) {
       toast.error('回复失败，请重试');
@@ -215,7 +217,12 @@ function CommentItem({
           <button
             type="button"
             className={reactionButtonClass}
-            onClick={() => setShowReplyForm(!showReplyForm)}
+            onClick={() => {
+              setShowReplyForm(!showReplyForm);
+              if (!showReplyForm) {
+                setReplyToUserId(comment.author.id);
+              }
+            }}
             aria-label={
               showReplyForm ? '收起回复框' : `回复 ${comment.author.username}`
             }
@@ -258,6 +265,7 @@ function CommentItem({
                 onClick={() => {
                   setReplyContent('');
                   setShowReplyForm(false);
+                  setReplyToUserId('');
                 }}
               >
                 取消
@@ -320,7 +328,8 @@ function CommentItem({
                           </span>
                           <span className="text-muted-foreground">▶</span>
                           <span className="text-[16px] font-semibold text-foreground">
-                            {reply.parent?.author?.username ||
+                            {reply.replyToUser?.username ||
+                              reply.parent?.author?.username ||
                               comment.author.username}
                           </span>
                           <span className="text-muted-foreground/70">
@@ -355,7 +364,12 @@ function CommentItem({
                           <button
                             type="button"
                             className={reactionButtonClass}
-                            onClick={() => setShowReplyForm(!showReplyForm)}
+                            onClick={() => {
+                              setShowReplyForm(!showReplyForm);
+                              if (!showReplyForm) {
+                                setReplyToUserId(reply.author.id);
+                              }
+                            }}
                             aria-label={`回复 ${reply.author.username}`}
                           >
                             <MessageCircle className="h-4 w-4" />
@@ -556,10 +570,15 @@ export function RepositoryComments({
   };
 
   // 处理回复
-  const handleReply = async (parentId: string, content: string) => {
+  const handleReply = async (
+    parentId: string,
+    content: string,
+    replyToUserId: string
+  ) => {
     const reply = await CommunityAPI.createRepositoryComment(repositoryId, {
       content,
       parentId,
+      replyToUserId,
     });
 
     // 更新评论列表，将回复添加到对应的父评论

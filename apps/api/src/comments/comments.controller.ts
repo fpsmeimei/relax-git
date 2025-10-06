@@ -70,6 +70,25 @@ export class CommentsController {
           avatar: comment.author.avatar,
         },
       }),
+      ...(comment.replyToUser && {
+        replyToUser: {
+          id: comment.replyToUser.id,
+          username: comment.replyToUser.username,
+          avatar: comment.replyToUser.avatar,
+        },
+      }),
+      ...(comment.parent && {
+        parent: {
+          id: comment.parent.id,
+          ...(comment.parent.author && {
+            author: {
+              id: comment.parent.author.id,
+              username: comment.parent.author.username,
+              avatar: comment.parent.author.avatar,
+            },
+          }),
+        },
+      }),
       ...(comment._count?.replies !== undefined && {
         repliesCount: comment._count.replies,
       }),

@@ -13,6 +13,7 @@ import {
   Prisma,
 } from '@relax-git/shared/generated/prisma-client';
 import { PrismaService } from '../database/prisma.service';
+import { WebSocketGateway } from '../websocket/websocket.gateway';
 import {
   CreateRepositoryCommentDto,
   RepositoryCommentQueryDto,
@@ -61,7 +62,8 @@ export class CommunityService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly websocketGateway: WebSocketGateway
   ) {}
 
   /**
@@ -564,6 +566,7 @@ export class CommunityService {
         content: dto.content,
         anchorType: CommentAnchorType.PROJECT,
         parentId: dto.parentId,
+        replyToUserId: dto.replyToUserId,
         status: CommentStatus.ACTIVE,
       },
       include: {
@@ -572,6 +575,25 @@ export class CommunityService {
             id: true,
             username: true,
             avatar: true,
+          },
+        },
+        replyToUser: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+          },
+        },
+        parent: {
+          select: {
+            id: true,
+            author: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+              },
+            },
           },
         },
         _count: {
@@ -587,6 +609,46 @@ export class CommunityService {
       `User ${userId} created repository comment ${comment.id} for repository ${repoId}`
     );
 
+    // 如果是回复评论，创建通知
+    if (dto.parentId && dto.replyToUserId && dto.replyToUserId !== userId) {
+      try {
+        const contentSnippet = `${comment.author.username}: ${comment.content.substring(0, 80)}${comment.content.length > 80 ? '...' : ''}`;
+        const notification = await this.prisma.notification.create({
+          data: {
+            userId: dto.replyToUserId,
+            actorId: userId,
+            type: 'COMMENT_REPLY' as any,
+            commentId: comment.id,
+            parentId: dto.parentId,
+            repoId,
+            content: contentSnippet,
+          },
+          include: {
+            user: { select: { id: true } },
+          },
+        });
+
+        // WebSocket 推送到"被通知用户"的房间
+        this.websocketGateway.emitUserNotification(dto.replyToUserId, {
+          id: notification.id,
+          type: 'COMMENT_REPLY',
+          commentId: comment.id,
+          parentId: dto.parentId,
+          repoId,
+          content: contentSnippet,
+          actor: {
+            id: comment.author.id,
+            username: comment.author.username,
+            avatar: comment.author.avatar,
+          },
+          createdAt:
+            notification.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        });
+      } catch (err) {
+        this.logger.warn('Failed to create or emit reply notification:', err);
+      }
+    }
+
     // 返回前端友好的 DTO
     return {
       id: comment.id,
@@ -597,6 +659,8 @@ export class CommunityService {
       updatedAt: comment.updatedAt,
       author: comment.author,
       parentId: comment.parentId ?? null,
+      replyToUser: comment.replyToUser ?? null,
+      parent: comment.parent ?? null,
       replies: [],
     };
   }
@@ -716,6 +780,25 @@ export class CommunityService {
                 avatar: true,
               },
             },
+            replyToUser: {
+              select: {
+                id: true,
+                username: true,
+                avatar: true,
+              },
+            },
+            parent: {
+              select: {
+                id: true,
+                author: {
+                  select: {
+                    id: true,
+                    username: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
             _count: {
               select: {
                 likes: true,
@@ -809,6 +892,8 @@ export class CommunityService {
         updatedAt: r.updatedAt,
         author: r.author,
         parentId: r.parentId ?? null,
+        replyToUser: r.replyToUser ?? null,
+        parent: r.parent ?? null,
       })),
     }));
 

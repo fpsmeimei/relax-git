@@ -136,6 +136,21 @@ export class CommentResponseDto {
   author?: CommentAuthorDto;
 
   @ApiPropertyOptional({
+    description: '父评论信息',
+    type: () => Object,
+  })
+  parent?: {
+    id: string;
+    author?: CommentAuthorDto;
+  };
+
+  @ApiPropertyOptional({
+    description: '被回复的用户信息',
+    type: CommentAuthorDto,
+  })
+  replyToUser?: CommentAuthorDto;
+
+  @ApiPropertyOptional({
     description: '回复数量',
     example: 3,
   })

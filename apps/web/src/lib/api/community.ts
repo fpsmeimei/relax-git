@@ -82,6 +82,7 @@ export interface RepositoryComment {
 export interface CreateRepositoryCommentDto {
   content: string;
   parentId?: string;
+  replyToUserId?: string;
 }
 
 export interface RepositoryCommentDto {
@@ -104,6 +105,11 @@ export interface RepositoryCommentDto {
       username: string;
       avatar: string | null;
     };
+  } | null;
+  replyToUser?: {
+    id: string;
+    username: string;
+    avatar: string | null;
   } | null;
   replies?: RepositoryCommentDto[];
 }

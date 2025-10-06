@@ -112,6 +112,14 @@ export class CreateCommentDto {
   parentId?: string;
 
   @ApiPropertyOptional({
+    description: '被回复的用户ID（回复评论时推荐传递，用于正确显示回复关系）',
+    example: 'clm0987654321user',
+  })
+  @IsOptional()
+  @IsString()
+  replyToUserId?: string;
+
+  @ApiPropertyOptional({
     description: '幂等键（可选，防重复提交，建议UUID或短随机串）',
     example: 'e7b6a1b2-3c4d-5e6f-7890-abcdef123456',
     maxLength: 64,

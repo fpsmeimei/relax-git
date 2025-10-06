@@ -440,6 +440,9 @@ export class CommentsService {
               author: {
                 select: { id: true, username: true, avatar: true },
               },
+              replyToUser: {
+                select: { id: true, username: true, avatar: true },
+              },
               parent: {
                 select: {
                   id: true,

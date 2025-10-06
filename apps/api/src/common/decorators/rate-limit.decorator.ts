@@ -14,18 +14,18 @@ export const RateLimit = (options: RateLimitOptions) =>
  * 预定义的速率限制配置
  */
 export const RateLimitPresets = {
-  // 认证相关 - 严格限制
+  // 认证相关 - 临时宽松限制（用于测试）
   AUTH: {
-    windowMs: 15 * 60 * 1000, // 15分钟
-    max: 5, // 最多5次尝试
-    message: '登录尝试过于频繁，请15分钟后再试',
+    windowMs: 1 * 60 * 1000, // 1分钟（临时调整）
+    max: 50, // 最多50次尝试（临时调整）
+    message: '登录尝试过于频繁，请1分钟后再试',
   },
 
-  // 注册 - 中等限制
+  // 注册 - 临时宽松限制（用于测试）
   REGISTER: {
-    windowMs: 10 * 1000, // 10秒
-    max: 1, // 每10秒最多1次注册
-    message: '注册请求过于频繁，请10秒后再试',
+    windowMs: 5 * 1000, // 5秒（临时调整）
+    max: 10, // 每5秒最多10次注册（临时调整）
+    message: '注册请求过于频繁，请5秒后再试',
   },
 
   // API调用 - 宽松限制

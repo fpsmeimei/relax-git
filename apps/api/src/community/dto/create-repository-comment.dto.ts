@@ -24,6 +24,14 @@ export class CreateRepositoryCommentDto {
   @IsOptional()
   @IsString()
   parentId?: string;
+
+  @ApiPropertyOptional({
+    description: '被回复的用户ID（用于正确显示回复关系）',
+    example: 'clm1234567890abcdef',
+  })
+  @IsOptional()
+  @IsString()
+  replyToUserId?: string;
 }
 
 /**

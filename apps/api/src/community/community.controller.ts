@@ -19,6 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import {
   CommunityFeedItem,
@@ -43,6 +44,7 @@ export class CommunityController {
    * 获取社区feed流
    */
   @Get('feed')
+  @Public() // 允许匿名访问
   @UseGuards(OptionalJwtAuthGuard) // 可选认证：匿名可访问，登录有状态
   @ApiOperation({
     summary: '获取社区feed流',
@@ -149,6 +151,7 @@ export class CommunityController {
    * 获取仓库详情
    */
   @Get('repositories/:id')
+  @Public() // 允许匿名访问
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary: '获取仓库详情',
@@ -170,6 +173,7 @@ export class CommunityController {
    * 记录仓库浏览
    */
   @Post('repositories/:id/view')
+  @Public() // 允许匿名访问
   @UseGuards(OptionalJwtAuthGuard) // 支持匿名访问
   @ApiOperation({
     summary: '记录仓库浏览',
@@ -269,6 +273,7 @@ export class CommunityController {
    * 获取仓库评论列表
    */
   @Get('repositories/:id/comments')
+  @Public() // 允许匿名访问
   @UseGuards(OptionalJwtAuthGuard) // 支持匿名访问
   @ApiOperation({
     summary: '获取仓库评论列表',
