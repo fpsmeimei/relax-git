@@ -43,7 +43,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* 导航：未登录点击跳登录 */}
             <Link
               href="/about"
-              className="inline-flex items-center justify-center px-8 py-2.5 text-base font-medium text-primary bg-primary/10 border border-primary/20 rounded-full hover:bg-primary/15 hover:border-primary/30 transition-all duration-200 hover:shadow-sm"
+              className="text-base text-muted-foreground hover:text-foreground rounded-full px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium"
             >
               Relax-Git
             </Link>
