@@ -29,6 +29,7 @@ interface NotificationDto {
   content?: string | null; // 格式："{actor}: {snippet}"
   actor?: { id: string; username: string; avatar?: string };
   createdAt: string;
+  isRead?: boolean;
   comment?: {
     id: string;
     snapshotId: string;
@@ -178,8 +179,11 @@ export default function MePage() {
       if (readIds.has(id)) return;
       setReadIds(prev => new Set(prev).add(id));
       setUnreadCount(Math.max(0, (unreadCount || 0) - 1));
-      await apiClient.patch(`/notifications/${id}/read`);
-    } catch {
+      console.log('标记通知为已读:', id);
+      const response = await apiClient.patch(`/notifications/${id}/read`);
+      console.log('标记成功:', response);
+    } catch (error) {
+      console.error('标记通知为已读失败:', error);
       // 忽略失败（不回滚），刷新列表时会以服务端为准
     }
   };
@@ -389,7 +393,15 @@ export default function MePage() {
                 return (
                   <li
                     key={n.id}
-                    className="group relative border border-border rounded-lg p-4 flex items-start gap-4 hover:bg-accent/20 hover:border-accent/50 hover:shadow-sm transition-all duration-200"
+                    className="group relative border border-border rounded-lg p-4 flex items-start gap-4 hover:bg-accent/20 hover:border-accent/50 hover:shadow-sm transition-all duration-200 cursor-pointer"
+                    onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      // 点击通知卡片只标记为已读，不跳转
+                      if (!n.isRead && !readIds.has(n.id)) {
+                        void markOneRead(n.id);
+                      }
+                    }}
                   >
                     {/* 头像区域 */}
                     <div className="relative shrink-0">
@@ -421,7 +433,7 @@ export default function MePage() {
                         <span className="text-xs text-muted-foreground">
                           回复了你
                         </span>
-                        {!readIds.has(n.id) && (
+                        {!n.isRead && !readIds.has(n.id) && (
                           <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
                         )}
                       </div>
@@ -448,7 +460,10 @@ export default function MePage() {
                         <Link
                           href={href}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/90 text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all"
-                          onClick={() => void markOneRead(n.id)}
+                          onClick={e => {
+                            e.stopPropagation(); // 阻止事件冒泡到通知卡片
+                            void markOneRead(n.id);
+                          }}
                         >
                           <Sparkles className="h-3 w-3" />
                           查看详情

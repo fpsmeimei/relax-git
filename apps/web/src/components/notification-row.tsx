@@ -185,6 +185,10 @@ export function NotificationRow({
                 aria-label={`查看通知：${title}`}
                 className="inline-flex items-center gap-1 rounded-md bg-primary/90 px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 onClick={e => {
+                  // 查看详情：标记为已读 + 跳转
+                  if (!n?.isRead) {
+                    onMarkRead?.(n);
+                  }
                   onNavigate?.();
                 }}
               >
@@ -192,22 +196,6 @@ export function NotificationRow({
               </Link>
             </Dialog.Close>
           </span>
-        )}
-        {!n?.isRead && (
-          <button
-            type="button"
-            onClick={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              onMarkRead?.(n);
-            }}
-            disabled={!!pending}
-            aria-label={`设为已读：${title}`}
-            className="pointer-events-auto inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground shadow-sm hover:bg-accent hover:text-foreground disabled:opacity-60 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            {pending && <Loader2 className="h-3 w-3 animate-spin" />}
-            {!pending && '标记已读'}
-          </button>
         )}
         {n?.isRead && pending && (
           <Loader2 className="pointer-events-auto h-3 w-3 text-muted-foreground animate-spin" />
@@ -218,21 +206,19 @@ export function NotificationRow({
 
   return (
     <div className="group relative" role="group">
-      {href ? (
-        <Dialog.Close asChild>
-          <Link
-            href={href}
-            className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            onClick={e => {
-              onNavigate?.();
-            }}
-          >
-            {rowMain}
-          </Link>
-        </Dialog.Close>
-      ) : (
-        rowMain
-      )}
+      <div
+        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer"
+        onClick={e => {
+          e.preventDefault();
+          e.stopPropagation();
+          // 点击通知卡片只标记为已读，不跳转
+          if (!n?.isRead) {
+            onMarkRead?.(n);
+          }
+        }}
+      >
+        {rowMain}
+      </div>
       {actions}
     </div>
   );
