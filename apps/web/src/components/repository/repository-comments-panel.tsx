@@ -1,11 +1,12 @@
 'use client';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/use-auth';
+import { useAvatarSync } from '@/hooks/use-avatar-sync';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
-import { useAuth } from '@/hooks/use-auth';
 import { Loader2, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -36,6 +37,9 @@ export function RepositoryCommentsPanel({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 使用头像同步 hook 获取最新头像
+  const { currentAvatar, fetchLatestAvatar } = useAvatarSync(user?.avatar);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -65,6 +69,13 @@ export function RepositoryCommentsPanel({
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 获取最新头像
+  useEffect(() => {
+    if (user) {
+      fetchLatestAvatar();
+    }
+  }, [user, fetchLatestAvatar]);
 
   const formatTime = useCallback((s: string) => {
     const d = new Date(s);
@@ -175,6 +186,12 @@ export function RepositoryCommentsPanel({
         <div className="border-t border-border pt-4">
           <div className="flex gap-3">
             <Avatar className="h-8 w-8 border border-border bg-accent/5 backdrop-blur">
+              {(currentAvatar || user?.avatar) && (
+                <AvatarImage
+                  src={currentAvatar || user?.avatar || ''}
+                  alt={user?.username || 'avatar'}
+                />
+              )}
               <AvatarFallback className="text-[10px] font-medium text-foreground/85">
                 {user?.username?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>

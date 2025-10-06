@@ -482,6 +482,7 @@ export default function RepositoryDetailPage() {
   const [repository, setRepository] = useState<Repository | null>(null);
   const [loading, setLoading] = useState(true);
   const [repoError, setRepoError] = useState<string | null>(null);
+  const [commentsCount, setCommentsCount] = useState<number>(0);
 
   // 从URL参数获取默认标签页
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -571,6 +572,44 @@ export default function RepositoryDetailPage() {
         createdAt: repo.createdAt,
         updatedAt: repo.updatedAt,
       });
+
+      // 获取项目评论数量（SNAPSHOT类型）
+      try {
+        // 获取默认分支信息
+        const branchesRes = await apiClient.get(
+          `/repositories/${repositoryId}/branches`
+        );
+        const defaultBranchInfo = branchesRes.data.branches.find(
+          (b: any) => b.name === repo.defaultBranch || b.isDefault
+        );
+
+        if (defaultBranchInfo?.id) {
+          // 通过默认分支获取快照ID
+          const snapshotRes = await apiClient.get(
+            `/artifacts/by-branch/${repositoryId}/${defaultBranchInfo.id}`
+          );
+
+          if (snapshotRes.data?.id) {
+            // 获取该快照的评论数量
+            const commentsResponse = await apiClient.get('/comments', {
+              params: {
+                snapshotId: snapshotRes.data.id,
+                anchorType: 'SNAPSHOT',
+                page: 1,
+                limit: 1, // 只需要获取总数，不需要具体评论内容
+              },
+            });
+            setCommentsCount(commentsResponse.data.total || 0);
+          } else {
+            setCommentsCount(0);
+          }
+        } else {
+          setCommentsCount(0);
+        }
+      } catch (error) {
+        // 如果获取评论数量失败，设置为0
+        setCommentsCount(0);
+      }
     } catch (error: any) {
       if (error?.response?.status === 403) {
         setAccessDenied(true);
@@ -1013,7 +1052,12 @@ export default function RepositoryDetailPage() {
                     }`}
                   >
                     <Icon className="h-4 w-4" />
-                    <span>{tab.label}</span>
+                    <span>
+                      {tab.label}
+                      {tab.id === 'discussion' && commentsCount > 0 && (
+                        <span className="ml-1">({commentsCount})</span>
+                      )}
+                    </span>
                   </button>
                 );
               })}

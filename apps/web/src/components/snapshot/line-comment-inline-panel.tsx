@@ -916,14 +916,11 @@ export function LineCommentInlinePanel({
                       type="button"
                       className={reactionButtonClass}
                       onClick={() =>
-                        handleReplyTarget(
-                          comment.id,
-                          comment.author,
-                          comment.id
-                        )
+                        handleReplyTarget(comment.id, comment.author, null)
                       }
                       aria-label={
-                        replyingTo?.commentId === comment.id
+                        replyingTo?.commentId === comment.id &&
+                        !replyingTo?.targetId
                           ? '收起回复框'
                           : `回复 ${comment.author}`
                       }
@@ -943,6 +940,56 @@ export function LineCommentInlinePanel({
                       </button>
                     )}
                   </div>
+
+                  {/* 主评论的回复框 */}
+                  {replyingTo?.commentId === comment.id &&
+                    !replyingTo?.targetId && (
+                      <div className="mt-4 ml-2 rounded-[20px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+                        <Textarea
+                          ref={replyRef}
+                          value={replyText}
+                          onChange={e => setReplyText(e.target.value)}
+                          placeholder={`回复 @${replyingTo?.targetAuthor || comment.author}:`}
+                          className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                          style={{
+                            fontFamily:
+                              '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                          }}
+                          onKeyDown={e => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                              e.preventDefault();
+                              void handleReplySubmit();
+                            }
+                          }}
+                        />
+                        <div className="mt-3 flex items-center justify-end gap-4">
+                          <button
+                            type="button"
+                            className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => {
+                              setReplyText('');
+                              setReplyingTo(null);
+                            }}
+                          >
+                            取消
+                          </button>
+                          <Button
+                            size="sm"
+                            onClick={() => void handleReplySubmit()}
+                            disabled={
+                              !replyText.trim() ||
+                              submittingReply === comment.id
+                            }
+                            className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                          >
+                            {submittingReply === comment.id && (
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            )}
+                            发布
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                   {(pendingReplies[comment.id] || []).length > 0 && (
                     <div className="mt-4 space-y-3 border-l border-border pl-6">
@@ -1060,7 +1107,7 @@ export function LineCommentInlinePanel({
                                         className={reactionButtonClass}
                                         onClick={() =>
                                           handleReplyTarget(
-                                            reply.id,
+                                            comment.id,
                                             reply.author,
                                             reply.id
                                           )
@@ -1087,6 +1134,64 @@ export function LineCommentInlinePanel({
                                         </button>
                                       )}
                                     </div>
+
+                                    {/* 次评论的回复框 */}
+                                    {replyingTo?.commentId === comment.id &&
+                                      replyingTo?.targetId === reply.id && (
+                                        <div className="mt-4 ml-2 rounded-[20px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+                                          <Textarea
+                                            ref={replyRef}
+                                            value={replyText}
+                                            onChange={e =>
+                                              setReplyText(e.target.value)
+                                            }
+                                            placeholder={`回复 @${replyingTo?.targetAuthor || reply.author}:`}
+                                            className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                                            style={{
+                                              fontFamily:
+                                                '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+                                            }}
+                                            onKeyDown={e => {
+                                              if (
+                                                (e.ctrlKey || e.metaKey) &&
+                                                e.key === 'Enter'
+                                              ) {
+                                                e.preventDefault();
+                                                void handleReplySubmit();
+                                              }
+                                            }}
+                                          />
+                                          <div className="mt-3 flex items-center justify-end gap-4">
+                                            <button
+                                              type="button"
+                                              className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                                              onClick={() => {
+                                                setReplyText('');
+                                                setReplyingTo(null);
+                                              }}
+                                            >
+                                              取消
+                                            </button>
+                                            <Button
+                                              size="sm"
+                                              onClick={() =>
+                                                void handleReplySubmit()
+                                              }
+                                              disabled={
+                                                !replyText.trim() ||
+                                                submittingReply === comment.id
+                                              }
+                                              className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                                            >
+                                              {submittingReply ===
+                                                comment.id && (
+                                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                              )}
+                                              发布
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
                                   </div>
                                 </div>
                               ))}
@@ -1114,53 +1219,6 @@ export function LineCommentInlinePanel({
                         })()}
                       </div>
                     )}
-
-                  {replyingTo?.commentId === comment.id && (
-                    <div className="mt-4 ml-2 rounded-[20px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
-                      <Textarea
-                        ref={replyRef}
-                        value={replyText}
-                        onChange={e => setReplyText(e.target.value)}
-                        placeholder={`回复 @${replyingTo?.targetAuthor || comment.author}:`}
-                        className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                        style={{
-                          fontFamily:
-                            '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-                        }}
-                        onKeyDown={e => {
-                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                            e.preventDefault();
-                            void handleReplySubmit();
-                          }
-                        }}
-                      />
-                      <div className="mt-3 flex items-center justify-end gap-4">
-                        <button
-                          type="button"
-                          className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
-                          onClick={() => {
-                            setReplyText('');
-                            setReplyingTo(null);
-                          }}
-                        >
-                          取消
-                        </button>
-                        <Button
-                          size="sm"
-                          onClick={() => void handleReplySubmit()}
-                          disabled={
-                            !replyText.trim() || submittingReply === comment.id
-                          }
-                          className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-                        >
-                          {submittingReply === comment.id && (
-                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          )}
-                          发布
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}

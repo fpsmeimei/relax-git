@@ -8,9 +8,9 @@ import { ConfigService } from '@nestjs/config';
 import {
   CommentAnchorType,
   CommentStatus,
+  Prisma,
   RepositoryVisibility,
   UserRole,
-  Prisma,
 } from '@relax-git/shared/generated/prisma-client';
 import { PrismaService } from '../database/prisma.service';
 import { WebSocketGateway } from '../websocket/websocket.gateway';
@@ -213,26 +213,79 @@ export class CommunityService {
 
     const hasMore = repositories.length > limit;
     const items = repositories.slice(0, limit);
-    // 计算各仓库评论数（仅统计顶级、项目级、ACTIVE）
+    // 计算各仓库评论数（匹配前端显示逻辑：主评论 + 每个主评论的前3个回复）
     const commentsCountMap = new Map<string, number>();
     try {
       const repoIds = items.map((r: any) => r.id);
       if (repoIds.length > 0) {
-        const rows = (await this.prisma.$queryRaw(
-          Prisma.sql`
-            SELECT s."repoId" AS "repoId", COUNT(*)::bigint AS count
-            FROM "Comment" c
-            JOIN "BaseSnapshot" s ON c."snapshotId" = s."id"
-            WHERE c."anchorType" = ${CommentAnchorType.PROJECT}
-              AND c."status" = ${CommentStatus.ACTIVE}
-              AND c."parentId" IS NULL
-              AND s."repoId" IN (${Prisma.join(repoIds)})
-            GROUP BY s."repoId"
-          `
-        )) as Array<{ repoId: string; count: bigint }>;
-        rows.forEach((r: { repoId: string; count: bigint }) =>
-          commentsCountMap.set(r.repoId, Number(r.count))
-        );
+        // 获取每个仓库的主评论数量
+        const mainCommentCounts = await this.prisma.comment.groupBy({
+          by: ['snapshotId'],
+          where: {
+            snapshot: { repoId: { in: repoIds } },
+            anchorType: CommentAnchorType.PROJECT,
+            status: CommentStatus.ACTIVE,
+            parentId: null, // 只统计主评论
+          },
+          _count: {
+            id: true,
+          },
+        });
+
+        // 获取 snapshotId 到 repoId 的映射
+        const snapshots = await this.prisma.baseSnapshot.findMany({
+          where: { repoId: { in: repoIds } },
+          select: { id: true, repoId: true },
+        });
+
+        const snapshotToRepoMap = new Map<string, string>();
+        snapshots.forEach((s: any) => snapshotToRepoMap.set(s.id, s.repoId));
+
+        // 计算每个仓库的主评论数
+        const repoMainCountMap = new Map<string, number>();
+        mainCommentCounts.forEach(({ snapshotId, _count }: any) => {
+          const repoId = snapshotToRepoMap.get(snapshotId);
+          if (repoId) {
+            const currentCount = repoMainCountMap.get(repoId) || 0;
+            repoMainCountMap.set(repoId, currentCount + _count.id);
+          }
+        });
+
+        // 计算每个仓库的回复数（每个主评论最多3个回复）
+        for (const repoId of repoIds) {
+          const mainCommentCount = repoMainCountMap.get(repoId) || 0;
+
+          if (mainCommentCount > 0) {
+            // 获取该仓库的所有主评论
+            const mainComments = await this.prisma.comment.findMany({
+              where: {
+                snapshot: { repoId },
+                anchorType: CommentAnchorType.PROJECT,
+                status: CommentStatus.ACTIVE,
+                parentId: null,
+              },
+              select: { id: true },
+            });
+
+            // 计算每个主评论的前3个回复数量
+            let totalRepliesCount = 0;
+            for (const mainComment of mainComments) {
+              const repliesCount = await this.prisma.comment.count({
+                where: {
+                  parentId: mainComment.id,
+                  status: CommentStatus.ACTIVE,
+                },
+                take: 3, // 最多3个回复
+              });
+              totalRepliesCount += Math.min(repliesCount, 3);
+            }
+
+            // 总数 = 主评论数 + 回复数（每个主评论最多3个）
+            commentsCountMap.set(repoId, mainCommentCount + totalRepliesCount);
+          } else {
+            commentsCountMap.set(repoId, 0);
+          }
+        }
       }
     } catch (e) {
       this.logger.warn(`Failed to aggregate comments count: ${e}`);
@@ -413,15 +466,51 @@ export class CommunityService {
       isCollected = !!collection;
     }
 
-    // 统计顶级项目级评论总数（ACTIVE）
-    const commentsCount = await this.prisma.comment.count({
-      where: {
-        snapshot: { repoId },
-        anchorType: CommentAnchorType.PROJECT,
-        status: CommentStatus.ACTIVE,
-        parentId: null,
-      },
-    });
+    // 统计项目级评论总数（匹配前端显示逻辑：主评论 + 每个主评论的前3个回复）
+    let commentsCount = 0;
+    try {
+      // 获取主评论数量
+      const mainCommentCount = await this.prisma.comment.count({
+        where: {
+          snapshot: { repoId },
+          anchorType: CommentAnchorType.PROJECT,
+          status: CommentStatus.ACTIVE,
+          parentId: null,
+        },
+      });
+
+      if (mainCommentCount > 0) {
+        // 获取所有主评论
+        const mainComments = await this.prisma.comment.findMany({
+          where: {
+            snapshot: { repoId },
+            anchorType: CommentAnchorType.PROJECT,
+            status: CommentStatus.ACTIVE,
+            parentId: null,
+          },
+          select: { id: true },
+        });
+
+        // 计算每个主评论的前3个回复数量
+        let totalRepliesCount = 0;
+        for (const mainComment of mainComments) {
+          const repliesCount = await this.prisma.comment.count({
+            where: {
+              parentId: mainComment.id,
+              status: CommentStatus.ACTIVE,
+            },
+            take: 3, // 最多3个回复
+          });
+          totalRepliesCount += Math.min(repliesCount, 3);
+        }
+
+        commentsCount = mainCommentCount + totalRepliesCount;
+      }
+    } catch (e) {
+      this.logger.warn(
+        `Failed to calculate comments count for repo ${repoId}: ${e}`
+      );
+    }
 
     return {
       ...repository,
@@ -845,15 +934,51 @@ export class CommunityService {
       }
     }
 
-    // 统计总数（用于前端展示/分页信息）
-    const total = await this.prisma.comment.count({
-      where: {
-        snapshot: { repoId },
-        anchorType: CommentAnchorType.PROJECT,
-        status: CommentStatus.ACTIVE,
-        parentId: null, // 仅统计顶级评论以匹配列表
-      },
-    });
+    // 统计总数（匹配前端显示逻辑：主评论 + 每个主评论的前3个回复）
+    let total = 0;
+    try {
+      // 获取主评论数量
+      const mainCommentCount = await this.prisma.comment.count({
+        where: {
+          snapshot: { repoId },
+          anchorType: CommentAnchorType.PROJECT,
+          status: CommentStatus.ACTIVE,
+          parentId: null,
+        },
+      });
+
+      if (mainCommentCount > 0) {
+        // 获取所有主评论
+        const mainComments = await this.prisma.comment.findMany({
+          where: {
+            snapshot: { repoId },
+            anchorType: CommentAnchorType.PROJECT,
+            status: CommentStatus.ACTIVE,
+            parentId: null,
+          },
+          select: { id: true },
+        });
+
+        // 计算每个主评论的前3个回复数量
+        let totalRepliesCount = 0;
+        for (const mainComment of mainComments) {
+          const repliesCount = await this.prisma.comment.count({
+            where: {
+              parentId: mainComment.id,
+              status: CommentStatus.ACTIVE,
+            },
+            take: 3, // 最多3个回复
+          });
+          totalRepliesCount += Math.min(repliesCount, 3);
+        }
+
+        total = mainCommentCount + totalRepliesCount;
+      }
+    } catch (e) {
+      this.logger.warn(
+        `Failed to calculate total comments count for repo ${repoId}: ${e}`
+      );
+    }
 
     // 计算当前用户点赞集合（含回复）
     let likedSet: Set<string> = new Set();

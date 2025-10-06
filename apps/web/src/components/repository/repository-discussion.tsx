@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
+import { useAvatarSync } from '@/hooks/use-avatar-sync';
 import { formatSmartTime } from '@/lib/utils/format-time';
 import { apiClient } from '@/services/apiClient';
 import { Heart, Loader2, MessageCircle, Send, Trash2 } from 'lucide-react';
@@ -77,6 +78,9 @@ export function RepositoryDiscussion({
   const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
+
+  // 使用头像同步 hook 获取最新头像
+  const { currentAvatar, fetchLatestAvatar } = useAvatarSync(user?.avatar);
   const highlightedOnceRef = useRef<string | null>(null);
 
   // 获取默认快照ID
@@ -113,6 +117,13 @@ export function RepositoryDiscussion({
 
     fetchDefaultSnapshot();
   }, [repositoryId, providedSnapshotId]);
+
+  // 获取最新头像
+  useEffect(() => {
+    if (user) {
+      fetchLatestAvatar();
+    }
+  }, [user, fetchLatestAvatar]);
 
   // 加载评论列表
   const loadComments = useCallback(async () => {
@@ -765,8 +776,11 @@ export function RepositoryDiscussion({
       <div className="border-t border-border px-6 py-4">
         <div className="flex gap-3">
           <Avatar className="h-10 w-10 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
-            {user?.avatar && (
-              <AvatarImage src={user.avatar} alt={user?.username || 'avatar'} />
+            {(currentAvatar || user?.avatar) && (
+              <AvatarImage
+                src={currentAvatar || user?.avatar || ''}
+                alt={user?.username || 'avatar'}
+              />
             )}
             <AvatarFallback className="text-[13px] font-semibold text-foreground/90">
               {user?.username?.charAt(0).toUpperCase() || 'U'}

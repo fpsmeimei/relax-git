@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/use-auth';
+import { useAvatarSync } from '@/hooks/use-avatar-sync';
 import { CommunityAPI, RepositoryCommentDto } from '@/lib/api/community';
 import { formatSmartTime } from '@/lib/utils/format-time';
 import { apiClient } from '@/services/apiClient';
@@ -15,6 +16,7 @@ interface RepositoryCommentsProps {
   repositoryId: string;
   className?: string;
   highlightCommentId?: string | null | undefined;
+  onCommentsChange?: (comments: RepositoryCommentDto[]) => void;
 }
 
 interface CommentItemProps {
@@ -49,6 +51,12 @@ function CommentItem({
   >(null);
   const commentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+  // 为每个次评论单独管理回复框状态
+  const [replyingToReply, setReplyingToReply] = useState<string | null>(null);
+  const [replyToReplyContent, setReplyToReplyContent] = useState('');
+  const [isSubmittingReplyToReply, setIsSubmittingReplyToReply] =
+    useState(false);
+
   const handleReplySubmit = async () => {
     if (!replyContent.trim()) return;
 
@@ -63,6 +71,31 @@ function CommentItem({
       toast.error('回复失败，请重试');
     } finally {
       setIsSubmittingReply(false);
+    }
+  };
+
+  // 处理次评论的回复
+  const handleReplyToReplySubmit = async () => {
+    if (!replyToReplyContent.trim() || !replyingToReply) return;
+
+    // 找到对应的次评论，获取其作者ID
+    const targetReply = comment.replies?.find(r => r.id === replyingToReply);
+    if (!targetReply) return;
+
+    setIsSubmittingReplyToReply(true);
+    try {
+      await onReply(
+        comment.id,
+        replyToReplyContent.trim(),
+        targetReply.author.id
+      );
+      setReplyToReplyContent('');
+      setReplyingToReply(null);
+      toast.success('回复成功');
+    } catch (error) {
+      toast.error('回复失败，请重试');
+    } finally {
+      setIsSubmittingReplyToReply(false);
     }
   };
 
@@ -365,9 +398,12 @@ function CommentItem({
                             type="button"
                             className={reactionButtonClass}
                             onClick={() => {
-                              setShowReplyForm(!showReplyForm);
-                              if (!showReplyForm) {
-                                setReplyToUserId(reply.author.id);
+                              if (replyingToReply === reply.id) {
+                                setReplyingToReply(null);
+                                setReplyToReplyContent('');
+                              } else {
+                                setReplyingToReply(reply.id);
+                                setReplyToReplyContent('');
                               }
                             }}
                             aria-label={`回复 ${reply.author.username}`}
@@ -390,6 +426,56 @@ function CommentItem({
                             </button>
                           )}
                         </div>
+
+                        {/* 次评论的回复框 */}
+                        {replyingToReply === reply.id && (
+                          <div className="mt-4 ml-2 rounded-[20px] border border-border bg-accent/5 px-5 py-4 shadow-sm">
+                            <Textarea
+                              value={replyToReplyContent}
+                              onChange={e =>
+                                setReplyToReplyContent(e.target.value)
+                              }
+                              placeholder={`回复 @${reply.author.username}:`}
+                              className="min-h-[76px] resize-none border-none bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                              maxLength={2000}
+                              onKeyDown={e => {
+                                if (
+                                  (e.ctrlKey || e.metaKey) &&
+                                  e.key === 'Enter'
+                                ) {
+                                  e.preventDefault();
+                                  handleReplyToReplySubmit();
+                                }
+                              }}
+                            />
+                            <div className="mt-3 flex items-center justify-end gap-4">
+                              <button
+                                type="button"
+                                className="text-[12px] text-muted-foreground hover:text-foreground transition-colors"
+                                onClick={() => {
+                                  setReplyToReplyContent('');
+                                  setReplyingToReply(null);
+                                }}
+                              >
+                                取消
+                              </button>
+                              <Button
+                                size="sm"
+                                onClick={handleReplyToReplySubmit}
+                                disabled={
+                                  !replyToReplyContent.trim() ||
+                                  isSubmittingReplyToReply
+                                }
+                                className="h-9 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                              >
+                                {isSubmittingReplyToReply && (
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                )}
+                                发布
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -424,10 +510,16 @@ export function RepositoryComments({
   repositoryId,
   className,
   highlightCommentId: propHighlightCommentId,
+  onCommentsChange,
 }: RepositoryCommentsProps) {
   const { user } = useAuth();
   const [comments, setComments] = useState<RepositoryCommentDto[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 通知父组件评论数据变化
+  useEffect(() => {
+    onCommentsChange?.(comments);
+  }, [comments, onCommentsChange]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -435,6 +527,9 @@ export function RepositoryComments({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isDeletingIds, setIsDeletingIds] = useState<Set<string>>(new Set());
+
+  // 使用头像同步 hook 获取最新头像
+  const { currentAvatar, fetchLatestAvatar } = useAvatarSync(user?.avatar);
 
   // 主评论排序：先按点赞数降序，如果点赞数相同则按创建时间升序
   const sortedComments = [...comments].sort((a, b) => {
@@ -501,6 +596,13 @@ export function RepositoryComments({
     };
     init();
   }, [loadComments]);
+
+  // 获取最新头像
+  useEffect(() => {
+    if (user) {
+      fetchLatestAvatar();
+    }
+  }, [user, fetchLatestAvatar]);
 
   // 加载更多
   const handleLoadMore = async () => {
@@ -666,7 +768,12 @@ export function RepositoryComments({
         {/* 头部标题 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h3 className="text-[15px] font-semibold tracking-wide">
-            讨论 ({comments.length})
+            讨论 (
+            {comments.reduce(
+              (total, comment) => total + 1 + (comment.replies?.length || 0),
+              0
+            )}
+            )
           </h3>
         </div>
 
@@ -718,9 +825,9 @@ export function RepositoryComments({
         <div className="border-t border-border px-6 py-4">
           <div className="flex gap-3">
             <Avatar className="h-10 w-10 shrink-0 rounded-full ring-2 ring-border bg-accent/10">
-              {user?.avatar && (
+              {(currentAvatar || user?.avatar) && (
                 <AvatarImage
-                  src={user.avatar}
+                  src={currentAvatar || user?.avatar || ''}
                   alt={user?.username || 'avatar'}
                 />
               )}

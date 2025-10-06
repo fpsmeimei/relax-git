@@ -1,12 +1,13 @@
 'use client';
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
+import { useAvatarSync } from '@/hooks/use-avatar-sync';
+import { useToast } from '@/hooks/use-toast';
 import { formatSmartTime } from '@/lib/utils/format-time';
+import { apiClient } from '@/services/apiClient';
 import { Heart, Loader2, Reply, Send } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -68,6 +69,9 @@ export function FileCommentsPanel({
 
   const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // 使用头像同步 hook 获取最新头像
+  const { currentAvatar, fetchLatestAvatar } = useAvatarSync(user?.avatar);
+
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const load = useCallback(async () => {
@@ -124,6 +128,13 @@ export function FileCommentsPanel({
     if (!filePath) return;
     void load();
   }, [filePath, load]);
+
+  // 获取最新头像
+  useEffect(() => {
+    if (user) {
+      fetchLatestAvatar();
+    }
+  }, [user, fetchLatestAvatar]);
 
   const formatTime = useCallback((s: string) => {
     return formatSmartTime(s);
@@ -698,6 +709,12 @@ export function FileCommentsPanel({
         <div className="border-t border-border pt-4">
           <div className="flex gap-3">
             <Avatar className="h-9 w-9 ring-2 ring-ring">
+              {(currentAvatar || user?.avatar) && (
+                <AvatarImage
+                  src={currentAvatar || user?.avatar || ''}
+                  alt={user?.username || 'avatar'}
+                />
+              )}
               <AvatarFallback className="bg-accent/10 text-[10px] font-semibold text-foreground">
                 {user?.username?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>

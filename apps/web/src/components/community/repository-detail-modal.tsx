@@ -10,18 +10,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
-import {
-  Calendar,
-  ExternalLink,
-  Eye,
-  GitBranch,
-  Heart,
-  Loader2,
-  MessageCircle,
-} from 'lucide-react';
+import { Eye, GitBranch, Heart, Loader2, MessageCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { RepositoryComments } from './repository-comments';
 
@@ -45,6 +37,13 @@ export function RepositoryDetailModal({
   const [repositoryDetail, setRepositoryDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+
+  // 计算评论总数（主评论 + 次评论）
+  const totalCommentsCount = comments.reduce(
+    (total, comment) => total + 1 + (comment.replies?.length || 0),
+    0
+  );
 
   // 加载仓库详情
   useEffect(() => {
@@ -191,14 +190,7 @@ export function RepositoryDetailModal({
                   </div>
                   <div className="flex items-center space-x-1">
                     <MessageCircle className="h-4 w-4" />
-                    <span>
-                      {(
-                        repositoryDetail?.commentsCount ??
-                        repository.commentsCount ??
-                        0
-                      ).toLocaleString()}{' '}
-                      评论
-                    </span>
+                    <span>{totalCommentsCount.toLocaleString()} 评论</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <GitBranch className="h-4 w-4" />
@@ -213,6 +205,7 @@ export function RepositoryDetailModal({
               <RepositoryComments
                 repositoryId={repository.id}
                 highlightCommentId={highlightCommentId}
+                onCommentsChange={setComments}
               />
             </div>
           </div>
