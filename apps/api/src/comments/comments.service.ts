@@ -338,7 +338,7 @@ export class CommentsService {
    * 获取评论列表
    */
   async findAll(
-    userId: string,
+    userId: string | undefined,
     userRole: UserRole,
     queryDto: CommentQueryDto
   ): Promise<{
@@ -485,7 +485,8 @@ export class CommentsService {
       ...comments.map((c: any) => c.id),
       ...comments.flatMap((c: any) => (c.replies || []).map((r: any) => r.id)),
     ];
-    if (ids.length > 0) {
+    if (ids.length > 0 && userId) {
+      // 只有在用户已登录时才查询点赞状态
       const liked = await this.prisma.commentLike.findMany({
         where: { commentId: { in: ids }, userId },
         select: { commentId: true },
@@ -496,6 +497,16 @@ export class CommentsService {
         if (Array.isArray((c as any).replies)) {
           for (const r of (c as any).replies as any[]) {
             (r as any).liked = likedSet.has((r as any).id);
+          }
+        }
+      }
+    } else {
+      // 未登录用户，所有评论的点赞状态都是 false
+      for (const c of comments as any[]) {
+        (c as any).liked = false;
+        if (Array.isArray((c as any).replies)) {
+          for (const r of (c as any).replies as any[]) {
+            (r as any).liked = false;
           }
         }
       }
@@ -514,7 +525,7 @@ export class CommentsService {
    */
   async findOne(
     id: string,
-    userId: string,
+    userId: string | undefined,
     userRole: UserRole
   ): Promise<Comment> {
     const comment = await this.prisma.comment.findUnique({
@@ -579,14 +590,21 @@ export class CommentsService {
 
     // 标记 liked
     const targetIds = [comment.id, ...comment.replies.map((r: any) => r.id)];
-    const liked = await this.prisma.commentLike.findMany({
-      where: { commentId: { in: targetIds }, userId },
-      select: { commentId: true },
-    });
-    const likedSet = new Set(liked.map((x: any) => x.commentId));
-    (comment as any).liked = likedSet.has((comment as any).id);
-    for (const r of comment.replies as any[])
-      (r as any).liked = likedSet.has((r as any).id);
+    if (userId) {
+      // 只有在用户已登录时才查询点赞状态
+      const liked = await this.prisma.commentLike.findMany({
+        where: { commentId: { in: targetIds }, userId },
+        select: { commentId: true },
+      });
+      const likedSet = new Set(liked.map((x: any) => x.commentId));
+      (comment as any).liked = likedSet.has((comment as any).id);
+      for (const r of comment.replies as any[])
+        (r as any).liked = likedSet.has((r as any).id);
+    } else {
+      // 未登录用户，所有评论的点赞状态都是 false
+      (comment as any).liked = false;
+      for (const r of comment.replies as any[]) (r as any).liked = false;
+    }
 
     return comment;
   }
@@ -860,7 +878,7 @@ export class CommentsService {
    */
   async getSnapshotComments(
     snapshotId: string,
-    userId: string,
+    userId: string | undefined,
     userRole: UserRole,
     queryDto: Partial<CommentQueryDto> = {}
   ): Promise<{
@@ -918,7 +936,8 @@ export class CommentsService {
 
     // 标记 liked（对自己是否点赞意义不大，但保持一致）
     const ids = items.map((c: any) => c.id);
-    if (ids.length) {
+    if (ids.length && userId) {
+      // 只有在用户已登录时才查询点赞状态
       const liked = await this.prisma.commentLike.findMany({
         where: { commentId: { in: ids }, userId },
         select: { commentId: true },
@@ -926,6 +945,9 @@ export class CommentsService {
       const likedSet = new Set(liked.map((x: any) => x.commentId));
       for (const c of items as any[])
         (c as any).liked = likedSet.has((c as any).id);
+    } else {
+      // 未登录用户，所有评论的点赞状态都是 false
+      for (const c of items as any[]) (c as any).liked = false;
     }
 
     return { items, total, page, limit };
@@ -956,7 +978,7 @@ export class CommentsService {
 
   private async validateSnapshotAccess(
     snapshotId: string,
-    userId: string,
+    userId: string | undefined,
     userRole: UserRole
   ): Promise<BaseSnapshot & { repository: Repository }> {
     const baseSnapshotId = await this.normalizeBaseSnapshotId(snapshotId);
@@ -988,16 +1010,16 @@ export class CommentsService {
    */
   private checkSnapshotAccess(
     snapshot: BaseSnapshot & { repository: Repository },
-    userId: string,
+    userId: string | undefined,
     userRole: UserRole
   ): void {
     // 管理员可以访问所有快照
-    if (userRole === UserRole.ADMIN) {
+    if (userId && userRole === UserRole.ADMIN) {
       return;
     }
 
     // 仓库所有者可以访问
-    if (snapshot.repository.ownerId === userId) {
+    if (userId && snapshot.repository.ownerId === userId) {
       return;
     }
 
@@ -1017,7 +1039,7 @@ export class CommentsService {
    */
   private async checkCommentAccess(
     comment: Comment & { snapshot: BaseSnapshot & { repository: Repository } },
-    userId: string,
+    userId: string | undefined,
     userRole: UserRole
   ): Promise<void> {
     // 检查快照访问权限

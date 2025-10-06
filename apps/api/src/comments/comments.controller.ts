@@ -171,8 +171,8 @@ export class CommentsController {
   @UseGuards(RepoAccessGuard)
   @RepoAccess('read')
   async getSnapshotComments(
-    @CurrentUser('id') userId: string,
-    @CurrentUser('role') userRole: UserRole,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('role') userRole: UserRole | undefined,
     @Param('snapshotId') snapshotId: string,
     @Query() queryDto: Partial<CommentQueryDto>
   ): Promise<{
@@ -185,7 +185,7 @@ export class CommentsController {
     const result = await this.commentsService.getSnapshotComments(
       snapshotId,
       userId,
-      userRole,
+      userRole || UserRole.USER,
       queryDto
     );
 
@@ -420,8 +420,8 @@ export class CommentsController {
   @UseGuards(RepoAccessGuard)
   @RepoAccess('read')
   async findAll(
-    @CurrentUser('id') userId: string,
-    @CurrentUser('role') userRole: UserRole,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('role') userRole: UserRole | undefined,
     @Query() queryDto: CommentQueryDto
   ): Promise<{
     comments: CommentResponseDto[];
@@ -431,7 +431,7 @@ export class CommentsController {
   }> {
     const result = await this.commentsService.findAll(
       userId,
-      userRole,
+      userRole || UserRole.USER,
       queryDto
     );
 
@@ -464,11 +464,15 @@ export class CommentsController {
   @UseGuards(RepoAccessGuard)
   @RepoAccess('read')
   async findOne(
-    @CurrentUser('id') userId: string,
-    @CurrentUser('role') userRole: UserRole,
+    @CurrentUser('id') userId: string | undefined,
+    @CurrentUser('role') userRole: UserRole | undefined,
     @Param('id') id: string
   ): Promise<CommentResponseDto> {
-    const comment = await this.commentsService.findOne(id, userId, userRole);
+    const comment = await this.commentsService.findOne(
+      id,
+      userId,
+      userRole || UserRole.USER
+    );
     return this.toCommentResponseDto(comment);
   }
 
