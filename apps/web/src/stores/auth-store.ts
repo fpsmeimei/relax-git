@@ -81,7 +81,7 @@ export const useAuthStore = create<AuthState>()(
 
       // 登出
       logout: () => {
-        console.log('[auth-store] 用户退出登录，开始清理所有状态...');
+        console.log('[auth-store] 用户退出登录，开始清理状态...');
 
         set(state => {
           state.user = null;
@@ -89,7 +89,7 @@ export const useAuthStore = create<AuthState>()(
           state.isLoading = false;
         });
 
-        // 清空所有相关的 store 状态，确保用户间完全隔离
+        // 清空所有相关的 store 状态
         try {
           useChatStore.getState().reset();
           useChatFriendsStore.getState().reset();
@@ -97,57 +97,14 @@ export const useAuthStore = create<AuthState>()(
           useAppStore.getState().reset();
           useSearchStore.getState().reset();
 
-          // 清理 localStorage 中的持久化数据
+          // 广播登出事件
           if (typeof window !== 'undefined') {
-            // 保留主题和布局偏好，清理用户相关数据
-            const keysToRemove = [
-              'notifications-store', // 通知数据
-              // 注意：不清理 'app-storage' 和 'auth-storage'，因为它们包含用户偏好设置
-            ];
-
-            keysToRemove.forEach(key => {
-              try {
-                localStorage.removeItem(key);
-                console.log(`[auth-store] 已清理 localStorage: ${key}`);
-              } catch (e) {
-                console.warn(`[auth-store] 清理 localStorage 失败: ${key}`, e);
-              }
-            });
-
-            // 🚨 安全修复：清理所有用户的AI聊天记录，防止信息泄露
-            try {
-              const allKeys = Object.keys(localStorage);
-              const aiChatKeys = allKeys.filter(key =>
-                key.startsWith('ai-chat-history-')
-              );
-
-              aiChatKeys.forEach(key => {
-                localStorage.removeItem(key);
-                console.log(`[auth-store] 🔒 已清理AI聊天记录: ${key}`);
-              });
-
-              // 也清理旧的全局AI聊天记录（如果存在）
-              if (localStorage.getItem('ai-chat-history')) {
-                localStorage.removeItem('ai-chat-history');
-                console.log(
-                  `[auth-store] 🔒 已清理旧的AI聊天记录: ai-chat-history`
-                );
-              }
-
-              console.log(
-                `[auth-store] 🔒 安全清理完成：已清理 ${aiChatKeys.length} 个AI聊天记录`
-              );
-            } catch (e) {
-              console.warn(`[auth-store] 清理AI聊天记录失败:`, e);
-            }
-
-            // 广播全局登出事件，供其他提供者清理缓存/断开连接
             try {
               window.dispatchEvent(new Event('RG_LOGOUT'));
             } catch {}
           }
 
-          console.log('[auth-store] 所有状态清理完成');
+          console.log('[auth-store] 状态清理完成');
         } catch (error) {
           console.error('[auth-store] 状态清理时出错:', error);
         }

@@ -5,7 +5,6 @@ import {
   CommunityFilters as FilterType,
 } from '@/components/community/community-filters';
 import { RepositoryCard } from '@/components/community/repository-card';
-import { RepositoryDetailModal } from '@/components/community/repository-detail-modal';
 import { Button } from '@/components/ui/button';
 import { CommunityAPI, CommunityFeedItem } from '@/lib/api/community';
 import { GitBranch, Loader2 } from 'lucide-react';
@@ -23,7 +22,6 @@ function CommunityPageContent() {
   const searchParams = useSearchParams();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const didInitFromUrl = useRef(false);
-  const pendingRepoIdRef = useRef<string | null>(null);
 
   const [repositories, setRepositories] = useState<CommunityFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,11 +32,6 @@ function CommunityPageContent() {
   });
   const [error, setError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [selectedRepository, setSelectedRepository] = useState<
-    CommunityFeedItem | undefined
-  >(undefined);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [targetCommentId, setTargetCommentId] = useState<string | null>(null);
 
   // 加载社区feed
   const loadFeed = useCallback(
@@ -82,8 +75,9 @@ function CommunityPageContent() {
 
   // 初始加载
   useEffect(() => {
-    loadFeed(true);
-  }, [filters, loadFeed]);
+    void loadFeed(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   // 从URL初始化一次筛选条件
   useEffect(() => {
@@ -93,45 +87,9 @@ function CommunityPageContent() {
     const search = searchParams.get('search') || undefined;
     setFilters({ sort, search });
     setNextCursor(null);
+  }, [searchParams]);
 
-    // 处理仓库ID和评论ID参数
-    const repoId = searchParams.get('repoId');
-    const commentId = searchParams.get('commentId');
-    if (repoId) {
-      setTargetCommentId(commentId);
-      pendingRepoIdRef.current = repoId;
-      // 如果数据已经加载出来，则尝试立即打开
-      const targetRepo = repositories.find(repo => repo.id === repoId);
-      if (targetRepo) {
-        setSelectedRepository(targetRepo);
-        setModalOpen(true);
-        pendingRepoIdRef.current = null;
-      }
-    }
-  }, [searchParams, repositories]);
-
-  // 当仓库列表更新且存在待打开的仓库时自动打开详情
-  useEffect(() => {
-    if (!pendingRepoIdRef.current) return;
-    const repo = repositories.find(r => r.id === pendingRepoIdRef.current);
-    if (!repo) return;
-    setSelectedRepository(repo);
-    setModalOpen(true);
-    pendingRepoIdRef.current = null;
-  }, [repositories]);
-
-  // 同步URL
-  const syncUrl = useCallback(
-    (f: FilterType) => {
-      const params = new URLSearchParams();
-      if (f.sort && f.sort !== 'latest') params.set('sort', f.sort);
-      if (f.search) params.set('search', f.search);
-      const qs = params.toString();
-      router.replace(qs ? `?${qs}` : '?', { scroll: false });
-    },
-    [router]
-  );
-  //
+  // 无限滚动
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el || !hasMore || loading) return;
@@ -159,6 +117,18 @@ function CommunityPageContent() {
     syncUrl(newFilters);
   };
 
+  // 同步URL
+  const syncUrl = useCallback(
+    (f: FilterType) => {
+      const params = new URLSearchParams();
+      if (f.sort && f.sort !== 'latest') params.set('sort', f.sort);
+      if (f.search) params.set('search', f.search);
+      const qs = params.toString();
+      router.replace(qs ? `?${qs}` : '?', { scroll: false });
+    },
+    [router]
+  );
+
   // 处理点赞变化
   const handleLikeChange = (
     repoId: string,
@@ -179,22 +149,6 @@ function CommunityPageContent() {
         repo.id === repoId ? { ...repo, viewCount: repo.viewCount + 1 } : repo
       )
     );
-  };
-
-  // 处理仓库卡片点击
-  const handleRepositoryClick = (repository: CommunityFeedItem) => {
-    setSelectedRepository(repository);
-    setModalOpen(true);
-  };
-
-  // 处理收藏状态变化
-  // 已移除收藏功能的入口（保留注释以便未来恢复时参考）
-
-  // 加载更多
-  const handleLoadMore = () => {
-    if (!loadingMore && hasMore) {
-      loadFeed(false);
-    }
   };
 
   return (
@@ -241,41 +195,29 @@ function CommunityPageContent() {
           </div>
         )}
 
-        {/* 无限滚动哨兵 */}
-        {hasMore && <div ref={loadMoreRef} className="h-px" />}
-
         {/* 仓库卡片流 */}
         {!loading && (
           <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 xl:gap-8">
+            <div className="grid gap-6 grid-cols-2 lg:grid-cols-3">
               {repositories.map(repo => (
                 <RepositoryCard
                   key={repo.id}
                   repository={repo}
                   onLikeChange={handleLikeChange}
                   onView={handleView}
-                  onClick={() => handleRepositoryClick(repo)}
                 />
               ))}
             </div>
 
-            {/* 加载更多 */}
+            {/* 无限滚动哨兵 - 放在列表底部 */}
             {hasMore && repositories.length > 0 && (
+              <div ref={loadMoreRef} className="h-px mt-12" />
+            )}
+
+            {/* 加载更多指示器 */}
+            {loadingMore && (
               <div className="flex justify-center mt-12">
-                <Button
-                  variant="outline"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      加载中...
-                    </>
-                  ) : (
-                    '加载更多'
-                  )}
-                </Button>
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             )}
 
@@ -302,15 +244,6 @@ function CommunityPageContent() {
           </>
         )}
       </div>
-
-      {/* 仓库详情模态框 */}
-      <RepositoryDetailModal
-        repository={selectedRepository || null}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onLikeChange={handleLikeChange}
-        highlightCommentId={targetCommentId}
-      />
     </div>
   );
 }

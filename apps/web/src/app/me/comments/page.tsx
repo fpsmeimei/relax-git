@@ -337,7 +337,7 @@ export default function MyCommentsPage() {
 
                       {/* 评论内容 */}
                       <div className="mb-3">
-                        <div className="text-sm whitespace-pre-wrap">
+                        <div className="text-lg whitespace-pre-wrap leading-relaxed">
                           {comment.content}
                         </div>
                       </div>
@@ -395,8 +395,8 @@ export default function MyCommentsPage() {
                               ) {
                                 return `/repositories/${comment.snapshot.repository.id}?tab=discussion&commentId=${comment.id}`;
                               }
-                              // 社区评论跳转到社区页面
-                              return `/community?repoId=${comment.snapshot.repository.id}&commentId=${comment.id}`;
+                              // 社区评论跳转到社区详情页面
+                              return `/community/${comment.snapshot.repository.id}?commentId=${comment.id}`;
                             })()}
                           >
                             <ExternalLink className="h-4 w-4 mr-1" />

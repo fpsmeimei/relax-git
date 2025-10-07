@@ -100,10 +100,7 @@ export class UsersController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: '获取用户统计信息' })
-  @ApiResponse({
-    status: 200,
-    description: '用户统计信息获取成功',
-  })
+  @ApiResponse({ status: 200, description: '用户统计信息' })
   async getStats() {
     return await this.usersService.getStats();
   }

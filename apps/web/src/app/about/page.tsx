@@ -50,7 +50,7 @@ export default function AboutPage() {
       {/* 主要内容 */}
       <main className="container-responsive">
         {/* Hero 区域 - 更大气的布局 */}
-        <div className="text-center space-y-16 py-32 px-6">
+        <div className="text-center space-y-16 py-24 px-6">
           <div className="space-y-8">
             <h1 className="text-6xl md:text-7xl lg:text-8xl font-light tracking-tight leading-tight">
               基于 Git Worktree 的
@@ -100,8 +100,8 @@ export default function AboutPage() {
         </div>
 
         {/* 特性展示区域 - 更大气的布局 */}
-        <div className="py-24 px-6">
-          <div className="text-center mb-20">
+        <div className="py-16 px-6">
+          <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-light tracking-tight mb-6">
               核心功能
             </h2>
@@ -192,7 +192,7 @@ export default function AboutPage() {
         </div>
 
         {/* 技术栈展示区域 - 更大气的布局 */}
-        <div className="py-24 px-6">
+        <div className="py-16 px-6">
           <div className="text-center space-y-12">
             <div>
               <h2 className="text-4xl md:text-5xl font-light tracking-tight mb-6">

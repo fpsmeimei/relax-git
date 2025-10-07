@@ -76,7 +76,12 @@ function HomePageContent() {
       } catch (err) {
         console.error('加载社区feed失败:', err);
         const msg = (err as any)?.message || String(err);
-        setError(msg);
+
+        if (reset) {
+          setError(`加载失败: ${msg}`);
+        } else {
+          setError(msg);
+        }
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -87,8 +92,9 @@ function HomePageContent() {
 
   // 初始加载
   useEffect(() => {
-    loadFeed(true);
-  }, [filters, loadFeed]);
+    void loadFeed(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   // 从URL初始化一次筛选条件
   useEffect(() => {
@@ -266,13 +272,10 @@ function HomePageContent() {
           </div>
         )}
 
-        {/* 无限滚动哨兵 */}
-        {hasMore && <div ref={loadMoreRef} className="h-px" />}
-
         {/* 仓库卡片流 */}
         {!loading && (
           <>
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:gap-10">
+            <div className="grid gap-6 grid-cols-2 lg:grid-cols-3">
               {repositories.map(repo => (
                 <RepositoryCard
                   key={repo.id}
@@ -284,23 +287,15 @@ function HomePageContent() {
               ))}
             </div>
 
-            {/* 加载更多 */}
+            {/* 无限滚动哨兵 - 放在列表底部 */}
             {hasMore && repositories.length > 0 && (
+              <div ref={loadMoreRef} className="h-px mt-12" />
+            )}
+
+            {/* 加载更多指示器 */}
+            {loadingMore && (
               <div className="flex justify-center mt-12">
-                <Button
-                  variant="outline"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      加载中...
-                    </>
-                  ) : (
-                    '加载更多'
-                  )}
-                </Button>
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             )}
 

@@ -42,9 +42,9 @@ const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
         className="fixed inset-0 bg-background/60 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
-      {/* Content */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        {children}
+      {/* Content - 使用 flex 居中 */}
+      <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div className="pointer-events-auto">{children}</div>
       </div>
     </div>
   );

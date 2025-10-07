@@ -1,10 +1,10 @@
-import { formatDistanceToNow, format, differenceInHours } from 'date-fns';
+import { format, differenceInMinutes, differenceInHours } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 /**
  * 智能时间格式化
  * - 24小时内：显示相对时间（如"3小时前"）
- * - 超过24小时：显示具体时间（如"2025-01-15 14:30"）
+ * - 超过24小时：显示年月日（如"2025-01-15"）
  */
 export function formatSmartTime(date: Date | string): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -14,18 +14,23 @@ export function formatSmartTime(date: Date | string): string {
     return '无效日期';
   }
 
-  const hoursAgo = differenceInHours(new Date(), dateObj);
+  const now = new Date();
+  const minutesAgo = differenceInMinutes(now, dateObj);
+  const hoursAgo = differenceInHours(now, dateObj);
 
-  // 24小时内显示相对时间
+  // 24小时内显示相对时间（不带"大约"）
   if (hoursAgo < 24) {
-    return formatDistanceToNow(dateObj, {
-      addSuffix: true,
-      locale: zhCN,
-    });
+    if (minutesAgo < 1) {
+      return '刚刚';
+    } else if (minutesAgo < 60) {
+      return `${minutesAgo}分钟前`;
+    } else {
+      return `${hoursAgo}小时前`;
+    }
   }
 
-  // 超过24小时显示具体时间
-  return format(dateObj, 'yyyy-MM-dd HH:mm', { locale: zhCN });
+  // 超过24小时只显示年月日
+  return format(dateObj, 'yyyy-MM-dd', { locale: zhCN });
 }
 
 /**

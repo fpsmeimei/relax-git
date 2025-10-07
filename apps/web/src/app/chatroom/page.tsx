@@ -579,7 +579,7 @@ export default function ChatroomPage() {
         <div className="flex flex-col max-w-[70%]">
           <div
             className={cn(
-              'rounded-2xl px-4 py-2 text-sm relative bg-muted',
+              'rounded-2xl px-4 py-2 text-lg relative bg-muted',
               isSelf && 'ml-auto',
               isThinking &&
                 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700'
@@ -667,7 +667,7 @@ export default function ChatroomPage() {
               <div className="text-base font-semibold">
                 {selectedFriend.username}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-base text-muted-foreground">
                 {selectedFriend.isOnline ? '在线' : '离线'}
               </div>
             </div>
@@ -723,7 +723,7 @@ export default function ChatroomPage() {
               onKeyDown={onTextareaKeyDown}
               rows={4}
               placeholder="输入消息，按 Enter 发送，Shift+Enter 换行"
-              className="flex-1 resize-none rounded-md border bg-background px-3 py-3 text-sm"
+              className="flex-1 resize-none rounded-md border bg-background px-3 py-3 text-lg"
               disabled={sending}
             />
             <Button
@@ -830,7 +830,7 @@ export default function ChatroomPage() {
                                   </span>
                                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                     {friend.lastMessage?.createdAt && (
-                                      <span className="text-[10px] text-muted-foreground">
+                                      <span className="text-xs text-muted-foreground">
                                         {new Date(
                                           friend.lastMessage.createdAt
                                         ).toLocaleTimeString([], {
@@ -848,7 +848,7 @@ export default function ChatroomPage() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
+                                <div className="text-base text-muted-foreground truncate leading-tight mt-0.5">
                                   {friend.lastMessage?.content ?? '暂无消息'}
                                 </div>
                               </div>

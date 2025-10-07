@@ -171,7 +171,7 @@ function CommentItem({
               inline: 'nearest',
             });
           }
-        }, 100); // 稍微延迟确保DOM更新完成
+        }, 300); // 增加延迟确保DOM完全更新和渲染完成
 
         // 1秒后移除高亮
         setTimeout(() => {
@@ -223,7 +223,7 @@ function CommentItem({
           </span>
         </div>
         <div
-          className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90"
+          className="mt-2 text-[20px] leading-relaxed tracking-wide text-foreground/90"
           style={{
             fontFamily:
               '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
@@ -370,7 +370,7 @@ function CommentItem({
                           </span>
                         </div>
                         <div
-                          className="mt-2 text-[15px] leading-relaxed tracking-wide text-foreground/90"
+                          className="mt-2 text-[17px] leading-relaxed tracking-wide text-foreground/90"
                           style={{
                             fontFamily:
                               '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',

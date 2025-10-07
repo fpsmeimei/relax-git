@@ -74,7 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </nav>
         </div>
       </header>
-      <div className="flex-1">{children}</div>
+      <div className="flex-1 bg-background">{children}</div>
     </div>
   );
 }

@@ -39,7 +39,7 @@ export default function ImportRepositoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
       {/* 页面头部区域 */}
       <div className="border-b bg-background/95 backdrop-blur-sm">
         <div className="container-responsive py-8">
@@ -69,7 +69,7 @@ export default function ImportRepositoryPage() {
       </div>
 
       {/* 主要内容 */}
-      <main className="container-responsive py-12">
+      <main className="container-responsive py-12 pb-16">
         <div className="max-w-4xl mx-auto">
           <ImportRepositoryForm onSuccess={handleSuccess} />
         </div>

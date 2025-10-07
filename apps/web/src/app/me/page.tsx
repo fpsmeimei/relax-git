@@ -345,10 +345,10 @@ export default function MePage() {
                   const anchorType = n.comment?.anchorType;
 
                   if (anchorType === 'PROJECT') {
-                    // 项目级评论：跳转到社区页面
+                    // 项目级评论：跳转到社区详情页面
                     const repoId = n.comment?.snapshot?.repository?.id;
                     if (repoId) {
-                      return `/community?repoId=${repoId}&commentId=${n.commentId}`;
+                      return `/community/${repoId}?commentId=${n.commentId}`;
                     }
                   } else if (
                     anchorType === 'SNAPSHOT' &&
@@ -514,10 +514,10 @@ export default function MePage() {
                     ? `/snapshots/${c.snapshotId}${hash}`
                     : undefined;
                 } else {
-                  // 社区评论：跳转到社区页面并打开对应仓库
+                  // 社区评论：跳转到社区详情页面
                   const repoId = (c as any).repoId;
                   href = repoId
-                    ? `/community?repoId=${repoId}&commentId=${c.id}`
+                    ? `/community/${repoId}?commentId=${c.id}`
                     : undefined;
                 }
                 return (
