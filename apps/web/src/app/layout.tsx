@@ -1,6 +1,7 @@
 import { ConnectionStatus } from '@/components/connection-status';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { NetworkStatus } from '@/components/network-status';
+import { PageLockButton } from '@/components/page-lock-button';
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/toaster';
 import { AppLayout } from '@/components/app-layout';
@@ -102,6 +103,7 @@ export default function RootLayout({
               {children}
               <ConnectionStatus />
               <Toaster />
+              <PageLockButton />
             </AppLayout>
           </Providers>
         </ErrorBoundary>

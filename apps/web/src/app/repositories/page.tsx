@@ -1,5 +1,6 @@
 'use client';
 
+import RepositorySettingsDialog from '@/components/repository/repository-settings-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,6 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import RepositorySettingsDialog from '@/components/repository/repository-settings-dialog';
 
 interface Repository {
   id: string;
@@ -375,155 +375,46 @@ export default function RepositoriesPage() {
             </div>
           </div>
 
-          {/* 仓库列表 */}
-          {loading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="card p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full skeleton" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 skeleton rounded w-1/3" />
-                      <div className="h-3 skeleton rounded w-1/2" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : repositories.length === 0 ? (
-            <div className="empty-state">
-              <GitBranch className="empty-state-icon" />
-              <h3 className="empty-state-title">
-                {searchQuery ? '未找到匹配的仓库' : '还没有仓库'}
-              </h3>
-              <p className="empty-state-desc mb-6">
-                {searchQuery
-                  ? '尝试调整搜索条件或清空搜索框'
-                  : '导入您的第一个 Git 仓库开始使用 Relax-Git'}
-              </p>
-              {!searchQuery && (
-                <Button asChild variant="soft">
-                  <Link href="/repositories/import">
-                    <Plus className="h-4 w-4 mr-2" />
-                    导入仓库
-                  </Link>
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {restrictedRepoId && (
-                <div className="card p-6 border-dashed border-muted-foreground/30">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted">
-                        <Lock className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="text-lg font-semibold text-muted-foreground">
-                            私有仓库
-                          </h3>
-                          <Badge
-                            variant="outline-subtle"
-                            className="flex items-center space-x-1"
-                          >
-                            <Lock className="h-3 w-3" />
-                            <span>受限访问</span>
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          您无权访问此仓库的详细信息
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          仓库ID: {restrictedRepoId}
-                        </p>
+          {/* 仓库列表 - 可滚动容器 */}
+          <div className="h-[900px] overflow-y-auto border border-border rounded-lg p-4 bg-background">
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="card p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full skeleton" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 skeleton rounded w-1/3" />
+                        <div className="h-3 skeleton rounded w-1/2" />
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {isJoinNeeded({
-                        visibility: 'PRIVATE',
-                        myRole: undefined,
-                        isAuthenticated,
-                        joinStatus: joinStatuses[restrictedRepoId],
-                      }) &&
-                        (!isAuthenticated ? (
-                          <Button
-                            asChild
-                            size="sm"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <Link
-                              href={`/auth/login?intent=login&redirect=${encodeURIComponent(`/repositories/${restrictedRepoId}`)}`}
-                            >
-                              登录后申请加入
-                            </Link>
-                          </Button>
-                        ) : joinStatuses[restrictedRepoId] === 'pending' ? (
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">已申请，等待审核</Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={e => {
-                                e.stopPropagation();
-                                void handleCancelJoin(restrictedRepoId);
-                              }}
-                              disabled={cancellingRepoId === restrictedRepoId}
-                            >
-                              {cancellingRepoId === restrictedRepoId && (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              )}
-                              撤回申请
-                            </Button>
-                          </div>
-                        ) : joinStatuses[restrictedRepoId] === 'approved' ? (
-                          <Badge variant="default">已通过</Badge>
-                        ) : joinStatuses[restrictedRepoId] === 'rejected' ? (
-                          <Badge variant="destructive">已驳回</Badge>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={e => {
-                              e.stopPropagation();
-                              void handleApplyToJoin(restrictedRepoId);
-                            }}
-                            disabled={applyingRepoId === restrictedRepoId}
-                          >
-                            {applyingRepoId === restrictedRepoId && (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            )}
-                            {String(
-                              joinStatuses[restrictedRepoId] ?? 'none'
-                            ) === 'rejected'
-                              ? '重新申请加入'
-                              : '申请加入'}
-                          </Button>
-                        ))}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="关闭"
-                        onClick={() => setRestrictedRepoId(null)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
                   </div>
-                </div>
-              )}
-              {repositories.map(repository => (
-                <div
-                  key={repository.id}
-                  className={`card p-6 transition-shadow ${
-                    repository.isRestricted
-                      ? 'border-dashed border-muted-foreground/30'
-                      : 'hover-lift cursor-pointer'
-                  }`}
-                  onClick={() => handleRepositoryClick(repository)}
-                >
-                  {repository.isRestricted ? (
-                    // 受限仓库卡片
+                ))}
+              </div>
+            ) : repositories.length === 0 ? (
+              <div className="empty-state">
+                <GitBranch className="empty-state-icon" />
+                <h3 className="empty-state-title">
+                  {searchQuery ? '未找到匹配的仓库' : '还没有仓库'}
+                </h3>
+                <p className="empty-state-desc mb-6">
+                  {searchQuery
+                    ? '尝试调整搜索条件或清空搜索框'
+                    : '导入您的第一个 Git 仓库开始使用 Relax-Git'}
+                </p>
+                {!searchQuery && (
+                  <Button asChild variant="soft">
+                    <Link href="/repositories/import">
+                      <Plus className="h-4 w-4 mr-2" />
+                      导入仓库
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                {restrictedRepoId && (
+                  <div className="card p-6 border-dashed border-muted-foreground/30 mb-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted">
@@ -543,22 +434,33 @@ export default function RepositoriesPage() {
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {repository.restrictionReason ||
-                              '您无权访问此仓库的详细信息'}
+                            您无权访问此仓库的详细信息
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            仓库ID: {repository.id}
+                            仓库ID: {restrictedRepoId}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         {isJoinNeeded({
-                          visibility: repository.visibility,
+                          visibility: 'PRIVATE',
                           myRole: undefined,
                           isAuthenticated,
-                          joinStatus: joinStatuses[repository.id],
+                          joinStatus: joinStatuses[restrictedRepoId],
                         }) &&
-                          (joinStatuses[repository.id] === 'pending' ? (
+                          (!isAuthenticated ? (
+                            <Button
+                              asChild
+                              size="sm"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <Link
+                                href={`/auth/login?intent=login&redirect=${encodeURIComponent(`/repositories/${restrictedRepoId}`)}`}
+                              >
+                                登录后申请加入
+                              </Link>
+                            </Button>
+                          ) : joinStatuses[restrictedRepoId] === 'pending' ? (
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary">
                                 已申请，等待审核
@@ -568,106 +470,162 @@ export default function RepositoriesPage() {
                                 size="sm"
                                 onClick={e => {
                                   e.stopPropagation();
-                                  void handleCancelJoin(repository.id);
+                                  void handleCancelJoin(restrictedRepoId);
                                 }}
-                                disabled={cancellingRepoId === repository.id}
+                                disabled={cancellingRepoId === restrictedRepoId}
                               >
-                                {cancellingRepoId === repository.id && (
+                                {cancellingRepoId === restrictedRepoId && (
                                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                 )}
                                 撤回申请
                               </Button>
                             </div>
-                          ) : joinStatuses[repository.id] === 'approved' ? (
+                          ) : joinStatuses[restrictedRepoId] === 'approved' ? (
                             <Badge variant="default">已通过</Badge>
-                          ) : joinStatuses[repository.id] === 'rejected' ? (
+                          ) : joinStatuses[restrictedRepoId] === 'rejected' ? (
                             <Badge variant="destructive">已驳回</Badge>
                           ) : (
                             <Button
                               size="sm"
                               onClick={e => {
                                 e.stopPropagation();
-                                handleApplyToJoin(repository.id);
+                                void handleApplyToJoin(restrictedRepoId);
                               }}
-                              disabled={applyingRepoId === repository.id}
+                              disabled={applyingRepoId === restrictedRepoId}
                             >
-                              {applyingRepoId === repository.id && (
+                              {applyingRepoId === restrictedRepoId && (
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                               )}
-                              {String(joinStatuses[repository.id] ?? 'none') ===
-                              'rejected'
+                              {String(
+                                joinStatuses[restrictedRepoId] ?? 'none'
+                              ) === 'rejected'
                                 ? '重新申请加入'
                                 : '申请加入'}
                             </Button>
                           ))}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="关闭"
+                          onClick={() => setRestrictedRepoId(null)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-                  ) : (
-                    // 正常仓库卡片
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold hover:text-primary">
-                            {repository.name}
+                  </div>
+                )}
+
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {repositories.map(repository => (
+                    <div
+                      key={repository.id}
+                      className={`card p-5 transition-shadow flex flex-col ${
+                        repository.isRestricted
+                          ? 'border-dashed border-muted-foreground/30'
+                          : 'hover-lift cursor-pointer'
+                      }`}
+                      onClick={() => handleRepositoryClick(repository)}
+                    >
+                      {repository.isRestricted ? (
+                        // 受限仓库卡片
+                        <div className="flex flex-col items-center text-center py-4">
+                          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted mb-3">
+                            <Lock className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-base font-semibold text-muted-foreground mb-1">
+                            私有仓库
                           </h3>
-                          <Badge
-                            variant="outline-subtle"
-                            className="flex items-center space-x-1"
-                          >
-                            {getVisibilityIcon(repository.visibility)}
-                            <span>
-                              {getVisibilityText(repository.visibility)}
-                            </span>
+                          <Badge variant="outline-subtle" className="mb-2">
+                            受限访问
                           </Badge>
-                        </div>
-
-                        {repository.description && (
-                          <p className="text-muted-foreground mb-3">
-                            {repository.description}
+                          <p className="text-xs text-muted-foreground">
+                            {repository.restrictionReason || '您无权访问此仓库'}
                           </p>
-                        )}
-
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <div className="flex items-center space-x-1">
-                            <GitBranch className="h-4 w-4" />
-                            <span>{repository.defaultBranch}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-4 w-4" />
-                            <span>
-                              {new Date(
-                                repository.createdAt
-                              ).toLocaleDateString('zh-CN')}
-                            </span>
-                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        // 正常仓库卡片
+                        <>
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-xl font-semibold hover:text-primary line-clamp-1 mb-2">
+                                {repository.name}
+                              </h3>
+                              <Badge
+                                variant="outline-subtle"
+                                className="flex items-center space-x-1 w-fit text-sm"
+                              >
+                                {getVisibilityIcon(repository.visibility)}
+                                <span>
+                                  {getVisibilityText(repository.visibility)}
+                                </span>
+                              </Badge>
+                            </div>
+                            {user?.id === repository.owner.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 shrink-0"
+                                aria-label="设置"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  openSettings(repository);
+                                }}
+                                title="设置"
+                              >
+                                <Settings className="h-5 w-5" />
+                              </Button>
+                            )}
+                          </div>
 
-                      <div className="flex items-center gap-2 text-right">
-                        <p className="text-sm text-muted-foreground mr-1">
-                          所有者: {repository.owner.username}
-                        </p>
-                        {user?.id === repository.owner.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="设置"
-                            onClick={e => {
-                              e.stopPropagation();
-                              openSettings(repository);
-                            }}
-                            title="设置"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
+                          {repository.description && (
+                            <p className="text-base text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+                              {repository.description}
+                            </p>
+                          )}
+
+                          <div className="mt-auto space-y-3">
+                            <div className="flex items-center gap-5 text-base text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <GitBranch className="h-4 w-4" />
+                                <span className="truncate">
+                                  {repository.defaultBranch}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                <span>
+                                  {new Date(
+                                    repository.createdAt
+                                  ).toLocaleDateString('zh-CN')}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-base">
+                              <span className="text-muted-foreground truncate">
+                                所有者: {repository.owner.username}
+                              </span>
+                              {repository.updatedAt && (
+                                <span className="text-sm text-muted-foreground shrink-0">
+                                  更新于{' '}
+                                  {new Date(
+                                    repository.updatedAt
+                                  ).toLocaleDateString('zh-CN', {
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                  })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              </>
+            )}
+          </div>
 
           {/* 分页 */}
           {totalPages > 1 && (

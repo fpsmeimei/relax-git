@@ -199,9 +199,9 @@ function CommunityPageContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container-responsive py-12 lg:py-16">
+      <div className="container-responsive py-8 lg:py-12">
         {/* 页面标题 */}
-        <div className="mb-12">
+        <div className="mb-8">
           <h1 className="text-3xl font-bold mb-4">社区</h1>
           <p className="text-muted-foreground text-lg">
             发现优秀的开源项目，像刷视频一样学技术
@@ -209,7 +209,7 @@ function CommunityPageContent() {
         </div>
 
         {/* 过滤器 */}
-        <div className="mb-12">
+        <div className="mb-8">
           <CommunityFilters
             filters={filters}
             onFiltersChange={handleFiltersChange}
@@ -247,7 +247,7 @@ function CommunityPageContent() {
         {/* 仓库卡片流 */}
         {!loading && (
           <>
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 xl:gap-10">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 xl:gap-8">
               {repositories.map(repo => (
                 <RepositoryCard
                   key={repo.id}
