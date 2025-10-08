@@ -1,4 +1,9 @@
 // PM2 配置文件 - 用于 Railway 部署
+console.log('🔍 PM2 Environment Variables Debug:');
+console.log('PORT:', process.env.PORT);
+console.log('DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50), '...');
+console.log('REDIS_URL:', process.env.REDIS_URL?.substring(0, 30), '...');
+
 module.exports = {
   apps: [
     {
