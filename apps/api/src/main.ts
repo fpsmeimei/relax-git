@@ -154,8 +154,11 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  // 启动服务器
-  const port = parseInt(process.env['API_PORT'] ?? '3001', 10);
+  // 启动服务器 - 优先使用 PORT，回退到 API_PORT
+  const port = parseInt(
+    process.env['PORT'] ?? process.env['API_PORT'] ?? '3001',
+    10
+  );
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Relax-Git API Server is running on http://localhost:${port}`);

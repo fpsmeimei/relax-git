@@ -36,7 +36,7 @@ interface AuthenticatedSocket extends Socket {
  * 应届生学习项目版本：简化实现，重点学习WebSocket基础
  */
 @WSGateway({
-  port: parseInt(process.env['API_PORT'] ?? '3001', 10),
+  port: parseInt(process.env['PORT'] ?? process.env['API_PORT'] ?? '3001', 10),
   cors: {
     origin: process.env['CORS_ORIGIN'] ?? 'http://localhost:3000',
     credentials: true,
