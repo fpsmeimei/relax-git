@@ -38,8 +38,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       console.error('❌ Redis connection error:', error);
     });
 
-    // 等待连接建立
-    await this.client.ping();
+    // 尝试连接，但不阻塞应用启动
+    try {
+      await this.client.ping();
+      console.log('✅ Redis connection established');
+    } catch (error) {
+      console.warn(
+        '⚠️ Redis connection failed, continuing without Redis:',
+        error instanceof Error ? error.message : String(error)
+      );
+      // 不抛出错误，允许应用继续启动
+    }
   }
 
   async onModuleDestroy() {
