@@ -60,17 +60,8 @@ export interface RedisConfig {
   lazyConnect?: boolean;
 }
 
-export const getRedisConfig = (): RedisConfig => {
-  return {
-    host: process.env['REDIS_HOST'] ?? 'localhost',
-    port: parseInt(process.env['REDIS_PORT'] ?? '6379', 10),
-    password: process.env['REDIS_PASSWORD'] ?? undefined,
-    db: parseInt(process.env['REDIS_DB'] ?? '0', 10),
-    maxRetriesPerRequest: 3,
-    retryDelayOnFailover: 100,
-    lazyConnect: true,
-  };
-};
+// 重新导出修复后的 Redis 配置
+export { getRedisConfig } from './config/redis.config';
 
 export const REDIS_KEYS = {
   SNAPSHOT_QUEUE: 'snapshot:queue',
