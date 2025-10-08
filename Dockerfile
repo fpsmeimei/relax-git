@@ -43,6 +43,9 @@ COPY --from=deps /app/libs/shared/node_modules ./libs/shared/node_modules
 # 复制源代码
 COPY . .
 
+# 强制缓存失效 - 确保 API 代码重新编译
+RUN echo "Build timestamp: $(date)" > /tmp/build-timestamp
+
 # 生成 Prisma 客户端
 RUN pnpm db:generate
 
