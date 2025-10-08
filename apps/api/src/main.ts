@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
+import fastifyCookie from '@fastify/cookie';
 import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { mkdir } from 'fs/promises';
