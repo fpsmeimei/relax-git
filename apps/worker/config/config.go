@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -112,13 +114,23 @@ func setDefaults() {
 
 // getDefaultConfig 获取默认配置
 func getDefaultConfig() *Config {
+	// 优先使用 REDIS_URL 环境变量
+	redisConfig := RedisConfig{
+		Host:     getEnv("REDIS_HOST", "localhost"),
+		Port:     getEnvInt("REDIS_PORT", 6379),
+		Password: getEnv("REDIS_PASSWORD", ""),
+		DB:       getEnvInt("REDIS_DB", 0),
+	}
+	
+	// 如果设置了 REDIS_URL，解析并覆盖默认配置
+	if redisURL := getEnv("REDIS_URL", ""); redisURL != "" {
+		if parsed := parseRedisURL(redisURL); parsed != nil {
+			redisConfig = *parsed
+		}
+	}
+	
 	return &Config{
-		Redis: RedisConfig{
-			Host:     getEnv("REDIS_HOST", "localhost"),
-			Port:     getEnvInt("REDIS_PORT", 6379),
-			Password: getEnv("REDIS_PASSWORD", ""),
-			DB:       getEnvInt("REDIS_DB", 0),
-		},
+		Redis: redisConfig,
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnvInt("DB_PORT", 5432),
@@ -186,4 +198,42 @@ func getEnvInt64(key string, defaultValue int64) int64 {
 		}
 	}
 	return defaultValue
+}
+
+// parseRedisURL 解析 Redis URL
+// 支持格式: redis://[username:password@]host:port[/db]
+func parseRedisURL(redisURL string) *RedisConfig {
+	u, err := url.Parse(redisURL)
+	if err != nil {
+		fmt.Printf("Failed to parse REDIS_URL: %v\n", err)
+		return nil
+	}
+
+	config := &RedisConfig{
+		Host: u.Hostname(),
+		Port: 6379, // 默认端口
+		DB:   0,    // 默认数据库
+	}
+
+	// 解析端口
+	if u.Port() != "" {
+		if port, err := strconv.Atoi(u.Port()); err == nil {
+			config.Port = port
+		}
+	}
+
+	// 解析密码
+	if u.User != nil {
+		config.Password, _ = u.User.Password()
+	}
+
+	// 解析数据库编号
+	if u.Path != "" && len(u.Path) > 1 {
+		if db, err := strconv.Atoi(strings.TrimPrefix(u.Path, "/")); err == nil {
+			config.DB = db
+		}
+	}
+
+	fmt.Printf("Parsed REDIS_URL: host=%s, port=%d, db=%d\n", config.Host, config.Port, config.DB)
+	return config
 }
