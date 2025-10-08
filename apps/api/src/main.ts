@@ -168,6 +168,12 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
+  // 注意：反向代理功能将通过 PM2 和 Web 服务的内置代理处理
+  // Web 服务运行在端口 8080，API 服务运行在端口 3000
+  // Next.js 的 rewrites 配置会处理 API 请求的代理
+  console.log('🔄 Web service will run on port 8080, API on port 3000');
+  console.log('📝 Next.js rewrites will handle API proxying');
+
   // 启动服务器 - 优先使用 PORT，回退到 API_PORT
   const port = parseInt(
     process.env['PORT'] ?? process.env['API_PORT'] ?? '3001',

@@ -1,0 +1,40 @@
+# Relax-Git Worker 生产环境配置文件 (Railway)
+
+# Redis 配置 - 使用环境变量
+redis:
+  url: ${REDIS_URL}
+
+# 数据库配置 - 使用环境变量
+database:
+  url: ${DATABASE_URL}
+
+# Worker 配置
+worker:
+  # 并发处理数量
+  concurrency: 2
+  # 队列名称（必须与 API 推送一致）
+  queue_name: 'snapshot:queue'
+  # 工作目录 - Linux 路径
+  work_dir: '/tmp/relax-git-worker'
+
+# Git 配置
+git:
+  # 临时目录 - Linux 路径
+  temp_dir: '/tmp/relax-git-repos'
+  # Bundle 存储目录
+  bundle_dir: '/tmp/relax-git-bundles'
+  # 最大仓库大小（字节）
+  max_repo_size: 1073741824 # 1GB
+  # 生产环境不使用代理
+  # http_proxy: ''
+  # https_proxy: ''
+
+# 日志配置
+log:
+  # 生产环境使用 info 级别
+  level: info
+
+# 服务器配置
+server:
+  port: 3002
+  host: "0.0.0.0"

@@ -1,4 +1,4 @@
-# 多阶段构建 Dockerfile for Next.js Web App (Railway 优化版)
+# Railway Web App Dockerfile - 从仓库根目录构建
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
@@ -69,10 +69,10 @@ RUN mkdir -p logs
 # 设置环境变量
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
+ENV PORT=8080
 
 # 暴露端口
-EXPOSE 3000
+EXPOSE 8080
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

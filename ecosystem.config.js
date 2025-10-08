@@ -28,28 +28,29 @@ module.exports = {
       log_file: './logs/api-combined.log',
       time: true,
     },
-    // 注释掉 web 服务，因为 Railway 只能暴露一个端口
-    // {
-    //   name: 'relax-git-web',
-    //   cwd: './apps/web',
-    //   script: 'pnpm',
-    //   args: 'start',
-    //   env: {
-    //     NODE_ENV: 'production',
-    //     PORT: process.env.WEB_PORT || 3000,
-    //     NEXT_PUBLIC_API_URL:
-    //       process.env.NEXT_PUBLIC_API_URL ||
-    //       `http://localhost:${process.env.API_PORT || 3001}`,
-    //     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
-    //     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-    //   },
-    //   instances: 1,
-    //   exec_mode: 'fork',
-    //   max_memory_restart: '512M',
-    //   error_file: './logs/web-error.log',
-    //   out_file: './logs/web-out.log',
-    //   log_file: './logs/web-combined.log',
-    //   time: true,
-    // },
+    // Web 服务 - 运行在内部端口 8080
+    {
+      name: 'relax-git-web',
+      cwd: './apps/web',
+      script: 'pnpm',
+      args: 'start',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 8080, // 内部端口
+        NEXT_PUBLIC_API_URL: '/api', // 通过 API 代理
+        NEXTAUTH_URL:
+          process.env.NEXTAUTH_URL ||
+          `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+        AUTH_SECRET: process.env.NEXTAUTH_SECRET,
+      },
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '512M',
+      error_file: './logs/web-error.log',
+      out_file: './logs/web-out.log',
+      log_file: './logs/web-combined.log',
+      time: true,
+    },
   ],
 };

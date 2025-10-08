@@ -133,6 +133,10 @@ const nextConfig = {
   // 重写规则：将前端 /api/* 代理到后端 API 服务，便于本地联调
   // 🔥 关键修复：排除 NextAuth 路由 /api/auth/[...nextauth]
   async rewrites() {
+    // 根据环境变量确定 API 基础 URL
+    // 在全栈部署中，API 服务运行在同一容器的端口 3000
+    const apiBaseUrl = process.env.API_URL || 'http://localhost:3000';
+
     return {
       beforeFiles: [
         // NextAuth 路由优先，不代理
@@ -141,26 +145,26 @@ const nextConfig = {
         // Socket.IO 代理（确保同源 /api/socket.io -> 后端 /socket.io）
         {
           source: '/api/socket.io',
-          destination: 'http://localhost:3001/socket.io',
+          destination: `${apiBaseUrl}/socket.io`,
         },
         {
           source: '/api/socket.io/:path*',
-          destination: 'http://localhost:3001/socket.io/:path*',
+          destination: `${apiBaseUrl}/socket.io/:path*`,
         },
         // 认证专用代理（避免与 NextAuth /api/auth 冲突）
         {
           source: '/api/_auth/:path*',
-          destination: 'http://localhost:3001/auth/:path*',
+          destination: `${apiBaseUrl}/auth/:path*`,
         },
         // 只代理非 auth 的 API 请求到后端（保留 /api 前缀）
         {
           source: '/api/:path((?!auth).*)',
-          destination: 'http://localhost:3001/api/:path*',
+          destination: `${apiBaseUrl}/api/:path*`,
         },
         // 静态上传资源代理
         {
           source: '/uploads/:path*',
-          destination: 'http://localhost:3001/uploads/:path*',
+          destination: `${apiBaseUrl}/uploads/:path*`,
         },
       ],
       fallback: [],
