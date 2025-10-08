@@ -13,7 +13,7 @@ module.exports = {
       args: 'start',
       env: {
         NODE_ENV: 'production',
-        PORT: process.env.PORT || 3000, // Railway 主端口
+        PORT: process.env.PORT || 3000, // 强制使用 Railway 主端口
         NEXT_PUBLIC_API_URL: 'http://localhost:4000', // 指向内部 API 端口
         NEXTAUTH_URL:
           process.env.NEXTAUTH_URL ||

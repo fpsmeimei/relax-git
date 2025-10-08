@@ -28,7 +28,18 @@ cd /app
 # 创建日志目录
 mkdir -p logs
 
-# 启动应用（无守护进程模式，Railway 需要前台进程）
-echo "🎯 Starting application with PM2..."
-echo "📋 PM2 will start Web first (port $PORT), then API (port 4000)"
-pm2 start ecosystem.config.js --no-daemon
+# 启动应用（分步启动确保端口优先级）
+echo "🎯 Starting Web service first..."
+pm2 start ecosystem.config.js --only relax-git-web
+
+# 等待 Web 服务完全启动
+echo "⏳ Waiting for Web service to fully start..."
+sleep 10
+
+# 启动 API 服务
+echo "🎯 Starting API service..."
+pm2 start ecosystem.config.js --only relax-git-api
+
+# 显示状态并保持前台运行
+echo "📋 All services started, switching to no-daemon mode..."
+pm2 logs --no-daemon
