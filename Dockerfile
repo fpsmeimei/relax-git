@@ -173,7 +173,8 @@ COPY apps/web/next.config.js ./apps/web/
 # 复制启动脚本和 PM2 配置文件
 COPY ecosystem.config.js ./
 COPY start.sh ./
-RUN chmod +x start.sh
+COPY healthcheck.js ./
+RUN chmod +x start.sh healthcheck.js
 
 # 创建日志目录
 RUN mkdir -p logs
@@ -183,6 +184,10 @@ ENV NODE_ENV=production
 
 # 暴露端口
 EXPOSE 3000
+
+# 添加健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+  CMD node healthcheck.js
 
 # 使用启动脚本
 CMD ["./start.sh"]
