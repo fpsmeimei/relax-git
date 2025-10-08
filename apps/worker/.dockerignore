@@ -1,0 +1,34 @@
+# Worker 服务 .dockerignore
+# 排除不需要的文件和目录
+
+# 开发文件
+*.md
+README.md
+Makefile
+start-worker.ps1
+
+# 构建产物
+worker.exe
+*.exe
+
+# 配置文件（除了生产配置）
+config.yaml
+config.example.yaml
+
+# Git 相关
+.git
+.gitignore
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+tmp/
+temp/
