@@ -1,0 +1,20 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+
+# 全栈服务配置（默认）
+[[services]]
+name = "relax-git-fullstack"
+source = "."
+dockerfile = "Dockerfile"
+
+# Worker 服务配置
+[[services]]
+name = "relax-git-worker"
+source = "apps/worker"
+dockerfile = "apps/worker/Dockerfile"
