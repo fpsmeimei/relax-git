@@ -174,9 +174,9 @@ async function bootstrap() {
   console.log('🔄 Web service will run on port 8080, API on port 3000');
   console.log('📝 Next.js rewrites will handle API proxying');
 
-  // 启动服务器 - 优先使用 PORT，回退到 API_PORT
+  // 启动服务器 - 使用固定的内部端口，不使用 Railway 的 PORT
   const port = parseInt(
-    process.env['PORT'] ?? process.env['API_PORT'] ?? '3001',
+    process.env['API_PORT'] ?? '4000',
     10
   );
   await app.listen(port, '0.0.0.0');
