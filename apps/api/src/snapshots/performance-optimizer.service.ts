@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import * as AWS from 'aws-sdk';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as zlib from 'zlib';
@@ -19,7 +23,7 @@ const gunzip = promisify(zlib.gunzip);
 @Injectable()
 export class PerformanceOptimizerService {
   private readonly logger = new Logger(PerformanceOptimizerService.name);
-  private s3: AWS.S3 | null = null;
+  private s3: S3Client | null = null;
   private readonly cachePrefix = 'artifact:cache:';
   private readonly syntaxCachePrefix = 'syntax:cache:';
 
@@ -37,11 +41,13 @@ export class PerformanceOptimizerService {
   private initializeS3(): void {
     const s3Config = this.configService.get('s3');
     if (s3Config && s3Config.enabled) {
-      this.s3 = new AWS.S3({
-        accessKeyId: s3Config.accessKeyId,
-        secretAccessKey: s3Config.secretAccessKey,
+      this.s3 = new S3Client({
+        credentials: {
+          accessKeyId: s3Config.accessKeyId,
+          secretAccessKey: s3Config.secretAccessKey,
+        },
         endpoint: s3Config.endpoint,
-        s3ForcePathStyle: s3Config.forcePathStyle || true,
+        forcePathStyle: s3Config.forcePathStyle || true,
         region: s3Config.region || 'us-east-1',
       });
       this.logger.log('S3 client initialized');
@@ -80,10 +86,11 @@ export class PerformanceOptimizerService {
         },
       };
 
-      const result = await this.s3.upload(uploadParams).promise();
+      const command = new PutObjectCommand(uploadParams);
+      await this.s3.send(command);
 
       this.logger.log(
-        `Artifact ${artifactId} uploaded to S3: ${result.Location}`
+        `Artifact ${artifactId} uploaded to S3: ${bucket}/${key}`
       );
 
       // 更新数据库记录
@@ -91,7 +98,7 @@ export class PerformanceOptimizerService {
         where: { id: artifactId },
         data: {
           metadata: {
-            s3Location: result.Location,
+            s3Location: `${bucket}/${key}`,
             s3Bucket: bucket,
             s3Key: key,
             compressionRatio:
@@ -100,7 +107,7 @@ export class PerformanceOptimizerService {
         },
       });
 
-      return result.Location;
+      return `${bucket}/${key}`;
     } catch (error) {
       this.logger.error(
         `Failed to upload artifact ${artifactId} to S3:`,
@@ -141,10 +148,15 @@ export class PerformanceOptimizerService {
         Key: metadata.s3Key,
       };
 
-      const data = await this.s3.getObject(downloadParams).promise();
+      const command = new GetObjectCommand(downloadParams);
+      const data = await this.s3.send(command);
 
       // 解压缩到目标路径
-      await this.decompressToDirectory(data.Body as Buffer, targetPath);
+      if (!data.Body) {
+        throw new Error('S3 object body is empty');
+      }
+      const bodyBuffer = Buffer.from(await data.Body.transformToByteArray());
+      await this.decompressToDirectory(bodyBuffer, targetPath);
 
       this.logger.log(
         `Artifact ${artifactId} downloaded from S3 to ${targetPath}`

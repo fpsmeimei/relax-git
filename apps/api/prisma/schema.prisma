@@ -4,8 +4,9 @@
 // 最后更新：2025-01-11 - 新增代码差异对比功能
 
 generator client {
-  provider = "prisma-client-js"
-  output   = "../../../libs/shared/src/generated/prisma-client"
+  provider      = "prisma-client-js"
+  output        = "../../../libs/shared/src/generated/prisma-client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 // 评论点赞表（长期保留点赞数据，按用户+评论唯一）
