@@ -49,6 +49,9 @@ RUN pnpm db:generate
 # 构建共享库
 RUN pnpm -C libs/shared build
 
+# 手动复制 Prisma 客户端到 shared 库的 dist 目录
+RUN mkdir -p libs/shared/dist/generated && cp -r libs/shared/src/generated/prisma-client libs/shared/dist/generated/
+
 # 构建 API 服务
 RUN pnpm -C apps/api build
 
@@ -156,6 +159,9 @@ COPY --from=builder /app/apps/web/.next ./apps/web/.next
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/libs/shared/dist ./libs/shared/dist
 COPY --from=builder /app/libs/shared/src/generated ./libs/shared/src/generated
+
+# 确保 Prisma 客户端在正确位置
+COPY --from=builder /app/libs/shared/src/generated/prisma-client ./libs/shared/dist/generated/prisma-client
 
 # 复制配置文件
 COPY apps/api/prisma ./apps/api/prisma
