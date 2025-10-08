@@ -82,6 +82,14 @@ func LoadConfig() *Config {
 		return getDefaultConfig()
 	}
 
+	// 检查 REDIS_URL 环境变量，如果存在则覆盖配置文件中的 Redis 设置
+	if redisURL := getEnv("REDIS_URL", ""); redisURL != "" {
+		fmt.Printf("Found REDIS_URL environment variable, parsing...\n")
+		if parsed := parseRedisURL(redisURL); parsed != nil {
+			config.Redis = *parsed
+		}
+	}
+
 	return &config
 }
 
