@@ -130,12 +130,13 @@ const nextConfig = {
     ];
   },
 
-  // 重写规则：将前端 /api/* 代理到后端 API 服务，便于本地联调
-  // 🔥 关键修复：排除 NextAuth 路由 /api/auth/[...nextauth]
+  // 重写规则：将前端 /api/* 代理到后端 API 服务
+  // 🔥 全栈部署架构：Web 服务在主端口，API 服务在内部端口
   async rewrites() {
     // 根据环境变量确定 API 基础 URL
-    // 在全栈部署中，API 服务运行在同一容器的端口 3000
-    const apiBaseUrl = process.env.API_URL || 'http://localhost:3000';
+    // 全栈部署：API 服务运行在内部端口 3001
+    const apiBaseUrl =
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
     return {
       beforeFiles: [
