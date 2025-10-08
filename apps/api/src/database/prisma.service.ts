@@ -10,14 +10,27 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   private client: PrismaClient;
 
   constructor() {
-    const host = process.env['DATABASE_HOST'] ?? 'localhost';
-    const port = parseInt(process.env['DATABASE_PORT'] ?? '5432', 10);
-    const database = process.env['DATABASE_NAME'] ?? 'relax_git_dev';
-    const username = process.env['DATABASE_USER'] ?? 'postgres';
-    const password = process.env['DATABASE_PASSWORD'] ?? 'postgres';
-    const ssl = process.env['DATABASE_SSL'] === 'true';
-    const sslParam = ssl ? '?sslmode=require' : '';
-    const url = `postgresql://${username}:${password}@${host}:${port}/${database}${sslParam}`;
+    // 优先使用 DATABASE_URL，回退到单独的环境变量
+    let url = process.env['DATABASE_URL'];
+
+    if (!url) {
+      const host = process.env['DATABASE_HOST'] ?? 'localhost';
+      const port = parseInt(process.env['DATABASE_PORT'] ?? '5432', 10);
+      const database = process.env['DATABASE_NAME'] ?? 'relax_git_dev';
+      const username = process.env['DATABASE_USER'] ?? 'postgres';
+      const password = process.env['DATABASE_PASSWORD'] ?? 'postgres';
+      const ssl = process.env['DATABASE_SSL'] === 'true';
+      const sslParam = ssl ? '?sslmode=require' : '';
+      url = `postgresql://${username}:${password}@${host}:${port}/${database}${sslParam}`;
+    }
+
+    console.log('🔍 Prisma Config Debug:');
+    console.log(
+      'DATABASE_URL:',
+      process.env['DATABASE_URL']?.substring(0, 50),
+      '...'
+    );
+    console.log('Using URL:', url?.substring(0, 50), '...');
 
     this.client = new PrismaClient({
       datasources: {

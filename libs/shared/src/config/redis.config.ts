@@ -13,10 +13,13 @@ export interface RedisConfig {
 export const getRedisConfig = (): RedisConfig => {
   // 如果有 REDIS_URL，优先使用
   const redisUrl = process.env['REDIS_URL'];
+  console.log('🔍 Redis Config Debug:');
+  console.log('REDIS_URL:', redisUrl);
+
   if (redisUrl) {
     try {
       const url = new URL(redisUrl);
-      return {
+      const config = {
         host: url.hostname,
         port: parseInt(url.port || '6379', 10),
         password: url.password || undefined,
@@ -25,6 +28,11 @@ export const getRedisConfig = (): RedisConfig => {
         retryDelayOnFailover: 100,
         lazyConnect: true,
       };
+      console.log('Parsed Redis config:', {
+        host: config.host,
+        port: config.port,
+      });
+      return config;
     } catch (error) {
       console.warn('Invalid REDIS_URL, falling back to individual env vars');
     }
