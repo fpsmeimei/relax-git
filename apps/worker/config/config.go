@@ -90,6 +90,14 @@ func LoadConfig() *Config {
 		}
 	}
 
+	// 检查 DATABASE_URL 环境变量，如果存在则覆盖配置文件中的数据库设置
+	if databaseURL := getEnv("DATABASE_URL", ""); databaseURL != "" {
+		fmt.Printf("Found DATABASE_URL environment variable, parsing...\n")
+		if parsed := parseDatabaseURL(databaseURL); parsed != nil {
+			config.Database = *parsed
+		}
+	}
+
 	return &config
 }
 
@@ -243,5 +251,51 @@ func parseRedisURL(redisURL string) *RedisConfig {
 	}
 
 	fmt.Printf("Parsed REDIS_URL: host=%s, port=%d, db=%d\n", config.Host, config.Port, config.DB)
+	return config
+}
+
+// parseDatabaseURL 解析数据库 URL
+// 支持格式: postgresql://[username:password@]host:port/database[?sslmode=...]
+func parseDatabaseURL(databaseURL string) *DatabaseConfig {
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		fmt.Printf("Failed to parse DATABASE_URL: %v\n", err)
+		return nil
+	}
+
+	config := &DatabaseConfig{
+		Host:    u.Hostname(),
+		Port:    5432, // 默认端口
+		User:    "postgres", // 默认用户
+		SSLMode: "disable", // 默认 SSL 模式
+	}
+
+	// 解析端口
+	if u.Port() != "" {
+		if port, err := strconv.Atoi(u.Port()); err == nil {
+			config.Port = port
+		}
+	}
+
+	// 解析用户名和密码
+	if u.User != nil {
+		config.User = u.User.Username()
+		if password, ok := u.User.Password(); ok {
+			config.Password = password
+		}
+	}
+
+	// 解析数据库名称
+	if u.Path != "" && len(u.Path) > 1 {
+		config.DBName = strings.TrimPrefix(u.Path, "/")
+	}
+
+	// 解析查询参数
+	if sslMode := u.Query().Get("sslmode"); sslMode != "" {
+		config.SSLMode = sslMode
+	}
+
+	fmt.Printf("Parsed DATABASE_URL: host=%s, port=%d, user=%s, db=%s, sslmode=%s\n", 
+		config.Host, config.Port, config.User, config.DBName, config.SSLMode)
 	return config
 }
