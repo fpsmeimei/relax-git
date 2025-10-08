@@ -149,7 +149,9 @@ async function bootstrap() {
   }
 
   // Swagger 文档配置
-  if (process.env['NODE_ENV'] !== 'production') {
+  // 在生产环境中也启用 Swagger 文档
+  const enableSwagger = true;
+  if (enableSwagger) {
     const config = new DocumentBuilder()
       .setTitle('Relax-Git API')
       .setDescription(
