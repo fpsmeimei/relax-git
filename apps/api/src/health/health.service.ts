@@ -24,7 +24,8 @@ export class HealthService {
     ]);
 
     const responseTime = Date.now() - startTime;
-    const isHealthy = databaseHealth.healthy && redisHealth.healthy;
+    // 只要数据库健康就认为服务健康，Redis 失败不影响整体健康状态
+    const isHealthy = databaseHealth.healthy;
 
     return {
       status: isHealthy ? 'healthy' : 'unhealthy',
