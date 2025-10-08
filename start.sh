@@ -30,5 +30,5 @@ mkdir -p logs
 
 # 启动应用（无守护进程模式，Railway 需要前台进程）
 echo "🎯 Starting application with PM2..."
-echo "📋 PM2 will start API first (port 3001), then Web (port $PORT)"
+echo "📋 PM2 will start Web first (port $PORT), then API (port 3001)"
 pm2 start ecosystem.config.js --no-daemon

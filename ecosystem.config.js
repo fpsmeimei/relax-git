@@ -5,32 +5,7 @@ console.log('REDIS_URL:', process.env.REDIS_URL?.substring(0, 30), '...');
 
 module.exports = {
   apps: [
-    // API 服务 - 先启动，运行在内部端口
-    {
-      name: 'relax-git-api',
-      cwd: './apps/api',
-      script: 'pnpm',
-      args: 'start',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 3001, // 固定内部端口
-        DATABASE_URL: process.env.DATABASE_URL,
-        REDIS_URL: process.env.REDIS_URL,
-        JWT_SECRET: process.env.JWT_SECRET,
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-        CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
-      },
-      instances: 1,
-      exec_mode: 'fork',
-      max_memory_restart: '512M',
-      error_file: './logs/api-error.log',
-      out_file: './logs/api-out.log',
-      log_file: './logs/api-combined.log',
-      time: true,
-      wait_ready: true,
-      listen_timeout: 8000,
-    },
-    // Web 服务 - 后启动，运行在主端口（Railway 对外暴露）
+    // Web 服务 - 优先启动，占用主端口（Railway 对外暴露）
     {
       name: 'relax-git-web',
       cwd: './apps/web',
@@ -56,6 +31,31 @@ module.exports = {
       time: true,
       wait_ready: true,
       listen_timeout: 15000, // 给 Web 服务更多启动时间
+    },
+    // API 服务 - 后启动，运行在内部端口
+    {
+      name: 'relax-git-api',
+      cwd: './apps/api',
+      script: 'pnpm',
+      args: 'start',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3001, // 固定内部端口
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
+        JWT_SECRET: process.env.JWT_SECRET,
+        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+        CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
+      },
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '512M',
+      error_file: './logs/api-error.log',
+      out_file: './logs/api-out.log',
+      log_file: './logs/api-combined.log',
+      time: true,
+      wait_ready: true,
+      listen_timeout: 8000,
     },
   ],
 };
