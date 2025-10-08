@@ -9,21 +9,32 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
-import fastifyCookie from '@fastify/cookie';
 import { join } from 'path';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { mkdir } from 'fs/promises';
 
 async function bootstrap() {
-  // 创建 Fastify 应用
+  //  调试：打印环境变量
+  console.log('  Environment Variables Debug (from Node.js):');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('PORT:', process.env.PORT);
+  console.log(
+    'DATABASE_URL:',
+    process.env.DATABASE_URL?.substring(0, 50),
+    '...'
+  );
+  console.log('REDIS_URL:', process.env.REDIS_URL?.substring(0, 30), '...');
+  console.log('JWT_SECRET:', process.env.JWT_SECRET?.substring(0, 10), '...');
+  console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
       logger: {
         level: process.env['LOG_LEVEL'] ?? 'info',
       },
-      // 信任代理：用于获取真实客户端 IP（X-Forwarded-For）
-      // 对应 Express 的 app.set('trust proxy', 1)
+      //  代理：用于获取真实客户端 IP（X-Forwarded-For）
+      //  Express 的 app.set('trust proxy', 1)
       trustProxy: true,
     })
   );
