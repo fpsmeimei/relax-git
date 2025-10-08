@@ -4,6 +4,15 @@
 
 echo "🚀 Starting Relax-Git Application..."
 
+# 调试：打印环境变量
+echo "🔍 Environment Variables Debug:"
+echo "NODE_ENV: $NODE_ENV"
+echo "PORT: $PORT"
+echo "DATABASE_URL: ${DATABASE_URL:0:50}..." 
+echo "REDIS_URL: ${REDIS_URL:0:30}..."
+echo "JWT_SECRET: ${JWT_SECRET:0:10}..."
+echo "CORS_ORIGIN: $CORS_ORIGIN"
+
 # 等待数据库连接
 echo "⏳ Waiting for database connection..."
 sleep 5
