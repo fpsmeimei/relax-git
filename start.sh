@@ -20,7 +20,7 @@ sleep 5
 # 运行数据库迁移
 echo "🔄 Running database migrations..."
 cd /app/apps/api
-pnpm prisma db push --accept-data-loss || echo "⚠️ Database migration failed, continuing..."
+npx prisma db push --accept-data-loss || echo "⚠️ Database migration failed, continuing..."
 
 # 返回根目录
 cd /app
