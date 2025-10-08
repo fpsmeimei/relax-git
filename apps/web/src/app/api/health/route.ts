@@ -6,8 +6,8 @@ export async function GET() {
       status: 'ok',
       timestamp: new Date().toISOString(),
       service: 'relax-git-web',
-      version: process.env.npm_package_version || '0.1.0',
-      environment: process.env.NODE_ENV || 'development',
+      version: process.env['npm_package_version'] || '0.1.0',
+      environment: process.env['NODE_ENV'] || 'development',
     });
   } catch (error) {
     return NextResponse.json(
