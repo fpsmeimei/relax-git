@@ -178,10 +178,8 @@ RUN chmod +x start.sh
 # 创建日志目录
 RUN mkdir -p logs
 
-# 设置环境变量
+# 设置默认环境变量（可被 Railway 覆盖）
 ENV NODE_ENV=production
-ENV PORT=3000
-ENV API_PORT=3001
 
 # 暴露端口
 EXPOSE 3000
