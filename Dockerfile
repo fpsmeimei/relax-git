@@ -153,8 +153,8 @@ COPY libs/shared/package.json ./libs/shared/
 # 安装生产依赖（跳过 prepare 脚本避免 husky 错误）
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# 重新构建原生模块（特别是 bcrypt）
-RUN pnpm rebuild bcrypt --silent
+# 复制构建阶段的已编译 bcrypt 模块
+COPY --from=builder /app/node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt/lib ./node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt/lib
 
 # 复制构建产物
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
