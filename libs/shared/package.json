@@ -16,7 +16,8 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-prisma",
+    "copy-prisma": "node -e \"const fs=require('fs-extra'); fs.ensureDirSync('dist/generated'); fs.copySync('src/generated/prisma-client', 'dist/generated/prisma-client');\"",
     "dev": "tsc --watch",
     "lint": "eslint \"src/**/*.ts\" --fix",
     "type-check": "tsc --noEmit",
@@ -27,6 +28,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "fs-extra": "^11.0.4",
     "prisma": "^5.8.0",
     "rimraf": "^5.0.5",
     "typescript": "^5.3.0"
