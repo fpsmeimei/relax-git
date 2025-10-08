@@ -41,6 +41,9 @@ WORKDIR /app
 # 从构建阶段复制二进制文件
 COPY --from=builder /app/bin/relax-git-worker-linux /app/relax-git-worker
 
+# 复制生产配置文件
+COPY --from=builder /app/config.production.yaml /app/config.yaml
+
 # 设置权限
 RUN chown -R relax-git:relax-git /app
 
