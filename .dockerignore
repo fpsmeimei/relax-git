@@ -32,9 +32,10 @@ Thumbs.db
 .git/
 .gitignore
 
-# Documentation
-*.md
+# Documentation (保留部署文档)
 docs/
+!RAILWAY_DEPLOY.md
+!README.md
 
 # Tests
 coverage/
@@ -58,10 +59,11 @@ apps/worker/vendor/
 apps/worker/coverage.out
 apps/worker/coverage.html
 
-# Docker
-Dockerfile*
+# Docker (保留必要的 Docker 文件)
 docker-compose*.yml
 .dockerignore
+!Dockerfile
+!apps/*/Dockerfile
 
 # CI/CD
 .github/
