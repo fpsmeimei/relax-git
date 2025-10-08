@@ -133,6 +133,9 @@ CMD ["pnpm", "-C", "apps/web", "start"]
 # ============================================
 FROM node:20-alpine AS fullstack
 
+# 安装系统依赖和工具
+RUN apk add --no-cache openssl curl
+
 # 安装 pnpm 和 PM2
 RUN npm install -g pnpm@8.15.0 pm2
 
@@ -144,8 +147,8 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY libs/shared/package.json ./libs/shared/
 
-# 安装生产依赖
-RUN pnpm install --frozen-lockfile --prod
+# 安装生产依赖（跳过 prepare 脚本避免 husky 错误）
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # 复制构建产物
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
@@ -158,8 +161,13 @@ COPY --from=builder /app/libs/shared/src/generated ./libs/shared/src/generated
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/web/next.config.js ./apps/web/
 
-# 创建 PM2 配置文件
+# 复制启动脚本和 PM2 配置文件
 COPY ecosystem.config.js ./
+COPY start.sh ./
+RUN chmod +x start.sh
+
+# 创建日志目录
+RUN mkdir -p logs
 
 # 设置环境变量
 ENV NODE_ENV=production
@@ -169,5 +177,5 @@ ENV API_PORT=3001
 # 暴露端口
 EXPOSE 3000
 
-# 使用 PM2 启动多个服务
-CMD ["pm2-runtime", "start", "ecosystem.config.js"]
+# 使用启动脚本
+CMD ["./start.sh"]
