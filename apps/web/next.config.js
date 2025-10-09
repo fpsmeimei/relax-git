@@ -42,6 +42,7 @@ const imageDomains = Array.from(
         'github.githubassets.com', // GitHub 资源域名
         'octodex.github.com', // GitHub Octodex 域名
         'api.dicebear.com',
+        'res.cloudinary.com', // Cloudinary 图片域名
         process.env.NEXT_PUBLIC_APP_URL,
         process.env.NEXT_PUBLIC_API_URL,
         process.env.NEXT_PUBLIC_UPLOAD_BASE_URL,
