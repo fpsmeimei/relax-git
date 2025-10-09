@@ -140,18 +140,22 @@ const nextConfig = {
 
     return {
       beforeFiles: [
-        // NextAuth 路由优先，不代理
-      ],
-      afterFiles: [
-        // Socket.IO 代理（确保同源 /api/socket.io -> 后端 /socket.io）
+        // Socket.IO 代理优先（兼容带/与不带/的两种形式），目标使用尾随斜杠
         {
           source: '/api/socket.io',
-          destination: `${apiBaseUrl}/socket.io`,
+          destination: `${apiBaseUrl}/socket.io/`,
+        },
+        {
+          source: '/api/socket.io/',
+          destination: `${apiBaseUrl}/socket.io/`,
         },
         {
           source: '/api/socket.io/:path*',
           destination: `${apiBaseUrl}/socket.io/:path*`,
         },
+        // NextAuth 路由优先，不代理（此处不写 /api/auth，交给 NextAuth 自身处理）
+      ],
+      afterFiles: [
         // 认证专用代理（避免与 NextAuth /api/auth 冲突）
         {
           source: '/api/_auth/:path*',
