@@ -663,6 +663,15 @@ export class UnifiedSnapshotService {
         'worktree'
       );
 
+      // 同时修复 bundlePath（如果存在且为 Windows 格式）
+      if (baseSnapshot.bundlePath) {
+        await this.autoFixWindowsPath(
+          baseSnapshot.id,
+          baseSnapshot.bundlePath,
+          'bundle'
+        );
+      }
+
       // 检查修复后的路径是否可访问
       const pathExists = await fs.pathExists(finalWorktreePath);
       if (!pathExists) {

@@ -216,12 +216,19 @@ export class PerformanceOptimizerService {
       throw new Error('Artifact not found or worktree not available');
     }
 
-    const fullPath = path.join(artifact.worktreePath, filePath);
+    // 自动修复 Windows 路径
+    let worktreePath = artifact.worktreePath;
+    if (worktreePath.includes('C:\\')) {
+      worktreePath = worktreePath
+        .replace(/^C:\\temp\\relax-git-repos/, '/tmp/relax-git-worktrees')
+        .replace(/\\/g, '/');
+    }
+
+    const fullPath = path.join(worktreePath, filePath);
     const content = await fs.readFile(fullPath, 'utf-8');
 
     // 执行语法高亮（简化实现）
     const highlighted = await this.highlightCode(content, filePath);
-
     // 缓存结果
     await this.redis.set(cacheKey, highlighted, 86400); // 24小时缓存
 
@@ -277,7 +284,15 @@ export class PerformanceOptimizerService {
       throw new Error('Artifact not found');
     }
 
-    const fullPath = path.join(artifact.worktreePath, filePath);
+    // 自动修复 Windows 路径
+    let worktreePath = artifact.worktreePath;
+    if (worktreePath.includes('C:\\')) {
+      worktreePath = worktreePath
+        .replace(/^C:\\temp\\relax-git-repos/, '/tmp/relax-git-worktrees')
+        .replace(/\\/g, '/');
+    }
+
+    const fullPath = path.join(worktreePath, filePath);
 
     // 3. 检查文件大小
     const stats = await fs.stat(fullPath);
@@ -529,7 +544,15 @@ export class PerformanceOptimizerService {
       });
 
       if (artifact?.worktreePath) {
-        const fullPath = path.join(artifact.worktreePath, filePath);
+        // 自动修复 Windows 路径
+        let worktreePath = artifact.worktreePath;
+        if (worktreePath.includes('C:\\')) {
+          worktreePath = worktreePath
+            .replace(/^C:\\temp\\relax-git-repos/, '/tmp/relax-git-worktrees')
+            .replace(/\\/g, '/');
+        }
+
+        const fullPath = path.join(worktreePath, filePath);
         content = await fs.readFile(fullPath);
       }
     }
