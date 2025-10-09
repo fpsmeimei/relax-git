@@ -53,7 +53,7 @@ export class AiService {
     conversationHistory: Array<{ role: string; content: string }> = []
   ): Promise<string> {
     if (!this.isAvailable()) {
-      return '抱歉，AI 服务暂时不可用。请联系管理员配置 DEEPSEEK_API_KEY。';
+      return '抱歉，AI 服务暂时不可用。请联系管理员配置 ZHIPU_API_KEY。';
     }
 
     try {
@@ -146,7 +146,7 @@ export class AiService {
 
     try {
       const response = await this.client!.chat.completions.create({
-        model: 'deepseek-chat',
+        model: 'glm-4-flash',
         messages: [
           {
             role: 'system',
@@ -191,7 +191,7 @@ feat: 添加用户头像上传功能
 
     try {
       const response = await this.client!.chat.completions.create({
-        model: 'deepseek-chat',
+        model: 'glm-4-flash',
         messages: [
           {
             role: 'system',
