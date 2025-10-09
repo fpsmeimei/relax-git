@@ -9,8 +9,9 @@ const _mw = auth((req: any) => {
   const isLoggedIn = !!req.auth;
 
   const isAuthPage = nextUrl.pathname.startsWith('/auth');
-  // 🔥 公开页面：仅 首页 + 认证页面
-  const isPublicPage = nextUrl.pathname === '/' || isAuthPage;
+  // 🔥 公开页面：仅 首页 + 认证页面 + 健康检查
+  const isPublicPage =
+    nextUrl.pathname === '/' || isAuthPage || nextUrl.pathname === '/health';
 
   // 已登录用户访问登录/注册页，重定向到首页（可配置）
   if (isLoggedIn && isAuthPage) {
