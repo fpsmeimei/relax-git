@@ -28,6 +28,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   CreateUserDto,
   QueryUsersDto,
+  UpdateUserDto,
   UserResponseDto,
   UsersListResponseDto,
 } from './dto/users.dto';
