@@ -28,16 +28,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import {
   CreateUserDto,
   QueryUsersDto,
-  UpdateUserDto,
   UserResponseDto,
   UsersListResponseDto,
 } from './dto/users.dto';
 import { UsersService } from './users.service';
 import type { FastifyRequest } from 'fastify';
-import { createWriteStream } from 'fs';
-import { mkdir } from 'fs/promises';
-import { extname, join } from 'path';
-import { pipeline } from 'stream/promises';
+import { UploadService } from '../upload/upload.service';
 
 /**
  * 用户管理控制器
@@ -46,7 +42,10 @@ import { pipeline } from 'stream/promises';
 @ApiTags('users')
 @Controller('api/users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly uploadService: UploadService
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -184,28 +183,15 @@ export class UsersController {
       const data = await req.file();
       if (!data) throw new BadRequestException('未接收到文件');
 
-      const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
-      if (!allowed.has(data.mimetype)) {
-        throw new BadRequestException('仅支持 PNG/JPEG/WEBP 图片');
-      }
+      // 使用新的上传服务
+      const avatarUrl = await this.uploadService.uploadAvatar(
+        data,
+        currentUserId
+      );
 
-      // 获取 uid 以构建目录
-      const me = await this.usersService.findOne(currentUserId);
-      const uid = (me as any).uid || me.id;
-
-      const dir = join(process.cwd(), 'uploads', 'avatars', uid);
-      await mkdir(dir, { recursive: true });
-
-      const ext = (extname(data.filename) || '.bin').toLowerCase();
-      const name = `${Date.now()}${ext}`;
-      const filepath = join(dir, name);
-
-      await pipeline(data.file, createWriteStream(filepath));
-
-      const publicUrl = `/uploads/avatars/${uid}/${name}`;
       const updated = await this.usersService.updateAvatar(
         currentUserId,
-        publicUrl
+        avatarUrl
       );
       return updated;
     } catch (error) {
