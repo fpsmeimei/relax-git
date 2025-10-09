@@ -299,7 +299,7 @@ export class UnifiedSnapshotService {
 
   /**
    * 获取快照的工作树路径
-   * 统一处理不同类型快照的工作树路径获取
+   * 统一处理不同类型快照的工作树路径获取，自动修复 Windows 路径
    *
    * @param id 快照ID
    * @returns 工作树路径或null
@@ -308,10 +308,16 @@ export class UnifiedSnapshotService {
     // 1. 尝试BaseSnapshot
     const baseSnapshot = await this.prisma.baseSnapshot.findUnique({
       where: { id },
-      select: { worktreePath: true },
+      select: { id: true, worktreePath: true },
     });
-    if (baseSnapshot) {
-      return baseSnapshot.worktreePath;
+    if (baseSnapshot && baseSnapshot.worktreePath) {
+      // 自动修复 Windows 路径
+      const fixedPath = await this.autoFixWindowsPath(
+        baseSnapshot.id,
+        baseSnapshot.worktreePath,
+        'worktree'
+      );
+      return fixedPath;
     }
 
     // 2. 尝试SessionSnapshot（若自身未写入 worktreePath，回退到其 baseSnapshot 的路径）
@@ -324,9 +330,17 @@ export class UnifiedSnapshotService {
       if (sessionSnapshot.baseSnapshotId) {
         const base = await this.prisma.baseSnapshot.findUnique({
           where: { id: sessionSnapshot.baseSnapshotId },
-          select: { worktreePath: true },
+          select: { id: true, worktreePath: true },
         });
-        return base?.worktreePath ?? null;
+        if (base?.worktreePath) {
+          // 自动修复 Windows 路径
+          const fixedPath = await this.autoFixWindowsPath(
+            base.id,
+            base.worktreePath,
+            'worktree'
+          );
+          return fixedPath;
+        }
       }
       return null;
     }
@@ -642,16 +656,23 @@ export class UnifiedSnapshotService {
         return;
       }
 
-      // 检查工作树路径是否可访问
-      const pathExists = await fs.pathExists(worktreePath);
+      // 自动修复 Windows 路径（如果需要）
+      const finalWorktreePath = await this.autoFixWindowsPath(
+        baseSnapshot.id,
+        worktreePath,
+        'worktree'
+      );
+
+      // 检查修复后的路径是否可访问
+      const pathExists = await fs.pathExists(finalWorktreePath);
       if (!pathExists) {
-        this.logger.error(`Base snapshot worktree not found: ${worktreePath}`);
+        this.logger.error(`工作树路径不存在: ${finalWorktreePath}`);
 
         await this.prisma.sessionSnapshot.update({
           where: { id: sessionSnapshot.id },
           data: {
             status: 'FAILED',
-            errorMessage: `工作树路径不存在: ${worktreePath}`,
+            errorMessage: `工作树路径不存在: ${finalWorktreePath}`,
           },
         });
         return;
@@ -690,6 +711,54 @@ export class UnifiedSnapshotService {
           updateError
         );
       }
+    }
+  }
+
+  /**
+   * 自动修复 Windows 路径为 Linux 路径
+   */
+  private async autoFixWindowsPath(
+    baseSnapshotId: string,
+    currentPath: string,
+    pathType: 'worktree' | 'bundle'
+  ): Promise<string> {
+    if (!currentPath || !currentPath.includes('C:\\')) {
+      return currentPath;
+    }
+
+    this.logger.warn(
+      `检测到 Windows ${pathType} 路径，尝试自动修复: ${currentPath}`
+    );
+
+    let fixedPath: string;
+    if (pathType === 'worktree') {
+      fixedPath = currentPath
+        .replace(/^C:\\temp\\relax-git-repos/, '/tmp/relax-git-worktrees')
+        .replace(/\\/g, '/');
+    } else {
+      fixedPath = currentPath
+        .replace(/^C:\\temp\\relax-git-bundles/, '/tmp/relax-git-bundles')
+        .replace(/\\/g, '/');
+    }
+
+    this.logger.log(`修复后的 ${pathType} 路径: ${fixedPath}`);
+
+    // 更新数据库中的路径
+    try {
+      const updateData: any = {};
+      updateData[pathType === 'worktree' ? 'worktreePath' : 'bundlePath'] =
+        fixedPath;
+
+      await this.prisma.baseSnapshot.update({
+        where: { id: baseSnapshotId },
+        data: updateData,
+      });
+
+      this.logger.log(`基础快照 ${pathType} 路径已自动修复: ${baseSnapshotId}`);
+      return fixedPath;
+    } catch (updateError) {
+      this.logger.error(`更新基础快照 ${pathType} 路径失败:`, updateError);
+      return currentPath;
     }
   }
 
