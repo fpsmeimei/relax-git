@@ -36,9 +36,11 @@ interface AuthenticatedSocket extends Socket {
  * 应届生学习项目版本：简化实现，重点学习WebSocket基础
  */
 @WSGateway({
-  port: parseInt(process.env['PORT'] ?? process.env['API_PORT'] ?? '3001', 10),
+  // 不指定 port，附着在 Nest HTTP 服务器（4000）上，路径为 /socket.io
+  path: '/socket.io',
   cors: {
-    origin: process.env['CORS_ORIGIN'] ?? 'http://localhost:3000',
+    // 通过 Next 同源代理到 API，放宽为 true 以避免握手阶段 CORS 问题
+    origin: true,
     credentials: true,
   },
   transports: ['websocket', 'polling'],
