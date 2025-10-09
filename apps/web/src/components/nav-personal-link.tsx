@@ -1,14 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/use-auth';
 import { useAvatarSync } from '@/hooks/use-avatar-sync';
 import { cn } from '@/lib/utils';
@@ -167,43 +159,56 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
         >
           登录
         </Link>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded-full px-5 py-2 text-base font-medium text-muted-foreground transition-colors duration-200 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
-        >
-          退出登录
-        </button>
-      </div>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-full px-5 py-2 text-base font-medium text-muted-foreground transition-colors duration-200 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+          >
+            退出登录
+          </button>
 
-      {/* 退出登录二次确认弹窗 */}
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent
-          onClose={() => setConfirmOpen(false)}
-          className="max-w-sm"
-        >
-          <DialogHeader>
-            <DialogTitle>确认退出登录？</DialogTitle>
-            <DialogDescription>退出后将返回首页。</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:justify-end">
-            <Button
-              variant="outline-subtle"
-              onClick={() => setConfirmOpen(false)}
-              disabled={pending}
-            >
-              取消
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmLogout}
-              loading={pending}
-            >
-              是，退出
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {/* 退出登录二次确认弹窗 - 相对定位 */}
+          {confirmOpen && (
+            <>
+              {/* 背景遮罩 */}
+              <div
+                className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
+                onClick={() => setConfirmOpen(false)}
+              />
+              {/* 弹窗内容 - 定位在按钮右下方 */}
+              <div className="absolute top-full right-0 mt-2 z-50 w-80 bg-background border border-border rounded-lg shadow-lg p-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">确认退出登录？</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      退出后将返回首页。
+                    </p>
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      variant="outline-subtle"
+                      onClick={() => setConfirmOpen(false)}
+                      disabled={pending}
+                      size="sm"
+                    >
+                      取消
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={confirmLogout}
+                      loading={pending}
+                      size="sm"
+                    >
+                      是，退出
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

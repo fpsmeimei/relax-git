@@ -608,30 +608,67 @@ export class UnifiedSnapshotService {
     baseSnapshot: BaseSnapshot
   ): Promise<void> {
     try {
-      // 简化版本：直接使用基础快照的工作树路径
-      // 在实际实现中，这里应该创建独立的工作树副本
-      const worktreePath = baseSnapshot.worktreePath;
+      // 检查基础快照状态
+      if (baseSnapshot.status !== 'READY') {
+        this.logger.warn(
+          `Base snapshot ${baseSnapshot.id} is not ready (status: ${baseSnapshot.status})`
+        );
 
-      if (worktreePath && (await fs.pathExists(worktreePath))) {
-        // 为避免清理会话时误删基础快照的工作树，这里不再将 base 的 worktreePath 写入会话记录
-        // 读取时通过 getWorktreePath() 自动回退到 base 的路径
         await this.prisma.sessionSnapshot.update({
           where: { id: sessionSnapshot.id },
           data: {
-            status: 'READY',
-            worktreePath: null,
+            status: 'FAILED',
+            errorMessage: `基础快照未就绪 (状态: ${baseSnapshot.status})`,
           },
         });
+        return;
+      }
 
-        this.logger.log(`Session snapshot ${sessionSnapshot.id} is ready`);
-      } else {
+      // 检查工作树路径
+      const worktreePath = baseSnapshot.worktreePath;
+
+      if (!worktreePath) {
+        this.logger.error(
+          `Base snapshot ${baseSnapshot.id} has no worktree path`
+        );
+
         await this.prisma.sessionSnapshot.update({
           where: { id: sessionSnapshot.id },
-          data: { status: 'FAILED' },
+          data: {
+            status: 'FAILED',
+            errorMessage: '基础快照缺少工作树路径',
+          },
         });
-
-        this.logger.error(`Base snapshot worktree not found: ${worktreePath}`);
+        return;
       }
+
+      // 检查工作树路径是否可访问
+      const pathExists = await fs.pathExists(worktreePath);
+      if (!pathExists) {
+        this.logger.error(`Base snapshot worktree not found: ${worktreePath}`);
+
+        await this.prisma.sessionSnapshot.update({
+          where: { id: sessionSnapshot.id },
+          data: {
+            status: 'FAILED',
+            errorMessage: `工作树路径不存在: ${worktreePath}`,
+          },
+        });
+        return;
+      }
+
+      // 会话快照直接共享基础快照的工作树（只读访问）
+      await this.prisma.sessionSnapshot.update({
+        where: { id: sessionSnapshot.id },
+        data: {
+          status: 'READY',
+          worktreePath: null, // 不复制路径，通过 getWorktreePath() 回退到 base
+        },
+      });
+
+      this.logger.log(
+        `Session snapshot ${sessionSnapshot.id} is ready, sharing worktree: ${worktreePath}`
+      );
     } catch (error) {
       this.logger.error(
         `Failed to create worktree for session snapshot ${sessionSnapshot.id}:`,
@@ -641,7 +678,11 @@ export class UnifiedSnapshotService {
       try {
         await this.prisma.sessionSnapshot.update({
           where: { id: sessionSnapshot.id },
-          data: { status: 'FAILED' },
+          data: {
+            status: 'FAILED',
+            errorMessage:
+              error instanceof Error ? error.message : 'Unknown error',
+          },
         });
       } catch (updateError) {
         this.logger.error(

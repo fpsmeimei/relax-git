@@ -10,6 +10,12 @@ export default registerAs('performance', () => ({
     bareReposPath:
       process.env.BARE_REPOS_PATH || '/var/lib/relax-git/bare-repos',
 
+    // 工作树存储路径
+    worktreePath: process.env.WORKTREE_PATH || '/tmp/relax-git-worktrees',
+
+    // Bundle 文件存储路径
+    bundlePath: process.env.BUNDLE_PATH || '/tmp/relax-git-bundles',
+
     // 是否启用裸仓复用
     enableBareRepoReuse: process.env.ENABLE_BARE_REPO_REUSE === 'true' || true,
 
