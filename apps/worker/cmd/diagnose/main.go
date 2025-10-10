@@ -200,7 +200,8 @@ func testGitOperations() {
 	log.Info().Msg("测试 git bundle...")
 	bundleFile := filepath.Join(testDir, "test.bundle")
 	
-	cmd = exec.CommandContext(ctx, "git", "bundle", "create", bundleFile, testCommit)
+	// 使用 --all 参数，与 Worker 实际使用的命令一致
+	cmd = exec.CommandContext(ctx, "git", "bundle", "create", bundleFile, "--all")
 	cmd.Dir = repoDir
 	
 	if output, err := cmd.CombinedOutput(); err != nil {
