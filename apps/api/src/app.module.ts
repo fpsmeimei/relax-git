@@ -25,6 +25,7 @@ import { RepositoriesModule } from './repositories/repositories.module';
 import { SearchModule } from './search/search.module';
 import { SnapshotsModule } from './snapshots/snapshots.module';
 import { TimelineModule } from './timeline/timeline.module';
+import { UploadModule } from './upload/upload.module';
 import { UsersModule } from './users/users.module';
 import { WebSocketModule } from './websocket/websocket.module';
 
@@ -53,6 +54,7 @@ import { WebSocketModule } from './websocket/websocket.module';
 
     // 业务模块
     AuthModule,
+    UploadModule,
     UsersModule,
     RepositoriesModule,
     SnapshotsModule,

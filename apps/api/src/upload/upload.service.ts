@@ -18,7 +18,7 @@ export class UploadService {
 
   constructor(private readonly configService: ConfigService) {
     this.s3Enabled = this.configService.get<boolean>('S3_ENABLED', false);
-    
+
     // 修复环境变量解析 - 字符串 "true" 应该被识别为 boolean true
     const cloudinaryEnabledStr = this.configService.get('CLOUDINARY_ENABLED', 'false');
     this.cloudinaryEnabled = cloudinaryEnabledStr === 'true' || cloudinaryEnabledStr === true;
@@ -32,9 +32,9 @@ export class UploadService {
       const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
       const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
       const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
-      
+
       this.logger.log(`Cloudinary config: cloud_name=${cloudName}, api_key=${apiKey ? 'SET' : 'MISSING'}, api_secret=${apiSecret ? 'SET' : 'MISSING'}`);
-      
+
       cloudinary.config({
         cloud_name: cloudName,
         api_key: apiKey,
@@ -110,7 +110,7 @@ export class UploadService {
     repositoryId: string
   ): Promise<string> {
     this.logger.log(`Uploading repository cover for ${repositoryId}, cloudinaryEnabled: ${this.cloudinaryEnabled}`);
-    
+
     const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
     if (!allowedTypes.has(file.mimetype)) {
       throw new Error('不支持的文件类型，仅支持 PNG、JPEG、WebP');

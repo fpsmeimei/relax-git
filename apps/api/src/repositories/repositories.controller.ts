@@ -33,10 +33,7 @@ import {
 } from './dto';
 import { RepositoriesService } from './repositories.service';
 import type { FastifyRequest } from 'fastify';
-import { createWriteStream } from 'fs';
-import { mkdir } from 'fs/promises';
-import { extname, join } from 'path';
-import { pipeline } from 'stream/promises';
+import { UploadService } from '../upload/upload.service';
 
 /**
  * 仓库管理控制器
@@ -44,7 +41,10 @@ import { pipeline } from 'stream/promises';
 @ApiTags('repositories')
 @Controller('api/repositories')
 export class RepositoriesController {
-  constructor(private readonly repositoriesService: RepositoriesService) {}
+  constructor(
+    private readonly repositoriesService: RepositoriesService,
+    private readonly uploadService: UploadService
+  ) {}
 
   /**
    * 将仓库模型映射为响应 DTO
@@ -389,25 +389,14 @@ export class RepositoriesController {
       throw new Error('未接收到文件');
     }
 
-    const allowed = new Set(['image/png', 'image/jpeg', 'image/webp']);
-    if (!allowed.has((data as any).mimetype)) {
-      throw new Error('仅支持 PNG/JPEG/WEBP 图片');
-    }
+    // 使用 UploadService 处理文件上传
+    const coverUrl = await this.uploadService.uploadRepositoryCover(data, id);
 
-    const dir = join(process.cwd(), 'uploads', 'repositories', id);
-    await mkdir(dir, { recursive: true });
-
-    const ext = (extname((data as any).filename) || '.bin').toLowerCase();
-    const name = `${Date.now()}${ext}`;
-    const filepath = join(dir, name);
-    await pipeline((data as any).file, createWriteStream(filepath));
-
-    const publicUrl = `/uploads/repositories/${id}/${name}`;
     const updated = await this.repositoriesService.updateCoverImage(
       id,
       userId,
       userRole,
-      publicUrl
+      coverUrl
     );
     return this.toRepositoryResponseDto(updated);
   }
