@@ -6,7 +6,7 @@ import { Public } from './auth/decorators/public.decorator';
  * 处理根路径请求和基本信息
  */
 @ApiTags('app')
-@Controller()
+@Controller('api')
 @Public()
 export class AppController {
   @Get('info')
