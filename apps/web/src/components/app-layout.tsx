@@ -39,38 +39,41 @@ export function AppLayout({ children }: AppLayoutProps) {
           >
             社区
           </Link>
-          <nav className="flex items-center gap-8">
-            {/* 导航：未登录点击跳登录 */}
-            <Link
-              href="/about"
-              className="text-base text-muted-foreground hover:text-foreground rounded-full px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium"
-            >
-              Relax-Git
-            </Link>
-            <Link
-              href={
-                isAuthenticated
-                  ? '/repositories/import'
-                  : '/auth/login?callbackUrl=%2Frepositories%2Fimport'
-              }
-              className="text-base text-muted-foreground hover:text-foreground rounded-full px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium"
-            >
-              导入仓库
-            </Link>
-            <Link
-              href={
-                isAuthenticated
-                  ? '/repositories'
-                  : '/auth/login?callbackUrl=%2Frepositories'
-              }
-              className="text-base text-muted-foreground hover:text-foreground rounded-full px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium"
-            >
-              我的仓库
-            </Link>
-            {isAuthenticated && <NavChatLink />}
-            <ThemeToggle />
-            {/* 个人/登录/退出登录 统一由 NavPersonalLink 处理 */}
-            <NavPersonalLink />
+          {/* 导航容器 - 支持水平滚动 */}
+          <nav className="flex items-center overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-max px-2 sm:px-0">
+              {/* 导航：未登录点击跳登录 */}
+              <Link
+                href="/about"
+                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+              >
+                Relax-Git
+              </Link>
+              <Link
+                href={
+                  isAuthenticated
+                    ? '/repositories/import'
+                    : '/auth/login?callbackUrl=%2Frepositories%2Fimport'
+                }
+                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+              >
+                导入仓库
+              </Link>
+              <Link
+                href={
+                  isAuthenticated
+                    ? '/repositories'
+                    : '/auth/login?callbackUrl=%2Frepositories'
+                }
+                className="text-sm lg:text-base text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+              >
+                我的仓库
+              </Link>
+              {isAuthenticated && <NavChatLink />}
+              <ThemeToggle />
+              {/* 个人/登录/退出登录 统一由 NavPersonalLink 处理 */}
+              <NavPersonalLink />
+            </div>
           </nav>
         </div>
       </header>

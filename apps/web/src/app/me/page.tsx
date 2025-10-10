@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LogoutButton } from '@/components/logout-button';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/stores/auth-store';
@@ -192,21 +193,24 @@ export default function MePage() {
     <div className="container mx-auto px-4 py-6">
       <h1 className="text-2xl font-bold mb-6">个人中心</h1>
 
-      <div className="flex items-center gap-2 mb-6">
-        <Button
-          variant={tab === 'overview' ? 'soft' : 'outline-subtle'}
-          size="sm"
-          onClick={() => setTab('overview')}
-        >
-          概览
-        </Button>
-        <Button
-          variant={tab === 'notifications' ? 'soft' : 'outline-subtle'}
-          size="sm"
-          onClick={() => setTab('notifications')}
-        >
-          通知
-        </Button>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={tab === 'overview' ? 'soft' : 'outline-subtle'}
+            size="sm"
+            onClick={() => setTab('overview')}
+          >
+            概览
+          </Button>
+          <Button
+            variant={tab === 'notifications' ? 'soft' : 'outline-subtle'}
+            size="sm"
+            onClick={() => setTab('notifications')}
+          >
+            通知
+          </Button>
+        </div>
+        <LogoutButton />
       </div>
 
       {tab === 'overview' ? (
