@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -158,16 +157,8 @@ func runStartupDiagnosis() {
 		return
 	}
 	
-	// 分行输出诊断结果，避免日志截断
-	lines := strings.Split(string(output), "\n")
-	log.Info().Msg("📋 === DIAGNOSIS RESULTS START ===")
-	for i, line := range lines {
-		if strings.TrimSpace(line) != "" {
-			log.Info().
-				Int("line", i+1).
-				Str("content", line).
-				Msg("📄 Diagnosis output")
-		}
-	}
-	log.Info().Msg("📋 === DIAGNOSIS RESULTS END ===")
+	// 直接输出诊断结果，使用简洁格式
+	log.Info().Msg("📋 === DIAGNOSIS RESULTS ===")
+	log.Info().Str("diagnosis", string(output)).Msg("🔍 Full diagnosis output")
+	log.Info().Msg("📋 === END DIAGNOSIS ===")
 }
