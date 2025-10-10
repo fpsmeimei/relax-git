@@ -808,7 +808,7 @@ export class UnifiedSnapshotService {
     let fixedPath: string;
     if (pathType === 'worktree') {
       fixedPath = currentPath
-        .replace(/^C:\\temp\\relax-git-repos/, '/tmp/relax-git-worktrees')
+        .replace(/^C:\\temp\\relax-git-repos/, '/tmp/relax-git-repos')
         .replace(/\\/g, '/');
     } else {
       fixedPath = currentPath
