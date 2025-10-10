@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -111,12 +113,14 @@ func runWorker(log zerolog.Logger) {
 		Str("queue_name", cfg.Worker.QueueName).
 		Int("health_port", 3002).
 		Msg("Worker started successfully")
+	
+	// 启动时运行环境诊断
+	go runStartupDiagnosis()
 
 	// 监听系统信号
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// 等待退出信号
 	<-sigChan
 	log.Info().Msg("Shutting down worker...")
 
@@ -132,4 +136,24 @@ func runWorker(log zerolog.Logger) {
 	// 停止处理器
 	processor.Stop()
 	log.Info().Msg("Worker stopped")
+}
+
+// runStartupDiagnosis 启动时运行环境诊断
+func runStartupDiagnosis() {
+	// 等待一秒让 Worker 完全启动
+	time.Sleep(1 * time.Second)
+	
+	log.Info().Msg("🔍 Running startup environment diagnosis...")
+	
+	// 执行诊断命令
+	cmd := exec.Command("/app/diagnose")
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to run diagnosis")
+		return
+	}
+	
+	// 输出诊断结果
+	log.Info().Str("diagnosis_output", string(output)).Msg("Diagnosis completed")
 }
