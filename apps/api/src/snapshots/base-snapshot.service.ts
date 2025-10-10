@@ -306,12 +306,32 @@ export class BaseSnapshotService {
       },
     });
 
-    // 2. 存在且 READY：直接返回（实现跨分支复用）
+    // 2. 存在且 READY：检查是否完整（包括 worktreePath）
     if (existing && existing.status === BaseSnapshotStatus.READY) {
-      this.logger.log(
-        `Reusing existing artifact ${existing.id} for commit ${commitSha}`
-      );
-      return existing;
+      // 检查 worktreePath 是否存在
+      if (existing.worktreePath) {
+        this.logger.log(
+          `Reusing existing artifact ${existing.id} for commit ${commitSha}`
+        );
+        return existing;
+      } else {
+        // READY 状态但缺少 worktreePath，需要重新处理
+        this.logger.warn(
+          `Artifact ${existing.id} is READY but missing worktreePath, retrying`
+        );
+        const retried = await this.prisma.baseSnapshot.update({
+          where: { id: existing.id },
+          data: {
+            status: BaseSnapshotStatus.QUEUED,
+            errorMessage: null,
+            processedAt: null,
+            worktreePath: null,
+            bundlePath: null,
+          },
+        });
+        await this.enqueueBaseSnapshotTask(retried);
+        return retried;
+      }
     }
 
     // 3. 存在但非 READY：检查状态
