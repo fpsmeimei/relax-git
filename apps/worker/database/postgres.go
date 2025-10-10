@@ -116,11 +116,17 @@ func (p *PostgresDB) UpdateBaseSnapshotStatus(ctx context.Context, snapshotID st
 func (p *PostgresDB) UpdateBaseSnapshotPaths(ctx context.Context, snapshotID, worktreePath, bundlePath string) error {
 	query := `
 		UPDATE base_snapshots
-		SET "worktree_path" = $1, "bundle_path" = $2, status = 'READY', "processedAt" = NOW()
+		SET "worktree_path" = $1, "bundle_path" = $2, status = $4, "processedAt" = NOW()
 		WHERE id = $3
 	`
-	_, err := p.db.ExecContext(ctx, query, worktreePath, bundlePath, snapshotID)
+	_, err := p.db.ExecContext(ctx, query, worktreePath, bundlePath, snapshotID, "READY")
 	if err != nil {
+		p.logger.Error().
+			Err(err).
+			Str("snapshot_id", snapshotID).
+			Str("worktree_path", worktreePath).
+			Str("bundle_path", bundlePath).
+			Msg("Failed to update base snapshot paths")
 		return fmt.Errorf("failed to update base snapshot paths: %w", err)
 	}
 	p.logger.Info().
