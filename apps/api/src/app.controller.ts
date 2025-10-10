@@ -71,6 +71,28 @@ export class AppController {
       });
     }
 
+    // 列出实际存在的工作树
+    try {
+      const worktreeDir = '/tmp/relax-git-worktrees';
+      const worktreeExists = await fs.pathExists(worktreeDir);
+      if (worktreeExists) {
+        const files = await fs.readdir(worktreeDir);
+        checks.push({
+          path: worktreeDir,
+          exists: true,
+          files,
+          count: files.length,
+          note: 'actual worktrees in directory',
+        });
+      }
+    } catch (error: any) {
+      checks.push({
+        path: '/tmp/relax-git-worktrees',
+        error: error.message,
+        note: 'failed to list worktrees',
+      });
+    }
+
     return {
       timestamp: new Date().toISOString(),
       checks,
