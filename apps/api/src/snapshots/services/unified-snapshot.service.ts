@@ -675,20 +675,47 @@ export class UnifiedSnapshotService {
       // 检查修复后的路径是否可访问
       const pathExists = await fs.pathExists(finalWorktreePath);
       if (!pathExists) {
-        this.logger.error(`工作树路径不存在: ${finalWorktreePath}`);
-        this.logger.error(`原始路径: ${worktreePath}`);
-        this.logger.error(`基础快照ID: ${baseSnapshot.id}`);
+        this.logger.warn(`工作树路径不存在: ${finalWorktreePath}`);
+        this.logger.warn(`原始路径: ${worktreePath}`);
+        this.logger.warn(`基础快照ID: ${baseSnapshot.id}`);
+        this.logger.warn(`基础快照创建时间: ${baseSnapshot.createdAt}`);
 
-        // 检查父目录是否存在
-        const parentDir = path.dirname(finalWorktreePath);
-        const parentExists = await fs.pathExists(parentDir);
-        this.logger.error(`父目录 ${parentDir} 存在: ${parentExists}`);
+        // 检查基础快照是否过期（超过1天）或路径不存在，需要重新创建
+        const now = new Date();
+        const snapshotAge =
+          now.getTime() - new Date(baseSnapshot.createdAt).getTime();
+        const isOld = snapshotAge > 24 * 60 * 60 * 1000; // 1天
+
+        if (isOld || !pathExists) {
+          this.logger.log(`基础快照过期或路径不存在，标记为需要重新处理`);
+
+          // 将基础快照状态重置为 QUEUED，让 Worker 重新处理
+          await this.prisma.baseSnapshot.update({
+            where: { id: baseSnapshot.id },
+            data: {
+              status: 'QUEUED',
+              errorMessage: '路径不存在，需要重新创建',
+              worktreePath: null,
+              bundlePath: null,
+            },
+          });
+
+          // 会话快照等待基础快照重新创建
+          await this.prisma.sessionSnapshot.update({
+            where: { id: sessionSnapshot.id },
+            data: {
+              status: 'FAILED',
+              errorMessage: '基础快照需要重新创建，请稍后重试',
+            },
+          });
+          return;
+        }
 
         await this.prisma.sessionSnapshot.update({
           where: { id: sessionSnapshot.id },
           data: {
             status: 'FAILED',
-            errorMessage: `工作树路径不存在: ${finalWorktreePath}，父目录存在: ${parentExists}`,
+            errorMessage: `工作树路径不存在: ${finalWorktreePath}`,
           },
         });
         return;
