@@ -297,9 +297,18 @@ export class ArtifactsController {
       );
     }
 
-    if (artifact.status !== 'FAILED') {
+    // 临时放宽条件：允许重试 READY 但 worktreePath 为空的 artifact
+    if (artifact.status !== 'FAILED' && artifact.status !== 'READY') {
       throw new BadRequestException(
-        `Can only retry failed artifacts, current status: ${artifact.status}`
+        `Can only retry failed or incomplete artifacts, current status: ${artifact.status}`
+      );
+    }
+
+    // 特殊处理：如果是 READY 状态但缺少 worktreePath，也允许重试
+    if (artifact.status === 'READY' && !artifact.worktreePath) {
+      console.log(
+        '🔧 [retryArtifact] Retrying READY artifact with missing worktreePath:',
+        id
       );
     }
 
