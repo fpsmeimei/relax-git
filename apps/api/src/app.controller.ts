@@ -15,9 +15,10 @@ export class AppController {
   getInfo(): any {
     return {
       service: 'relax-git-api',
-      version: '0.1.0',
+      version: '0.1.1', // 版本号更新，强制部署
       environment: process.env.NODE_ENV || 'development',
       timestamp: new Date().toISOString(),
+      deployTime: '2025-01-10T01:36:00Z', // 部署标识
     };
   }
 
