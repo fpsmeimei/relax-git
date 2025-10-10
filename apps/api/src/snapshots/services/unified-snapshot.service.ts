@@ -81,6 +81,31 @@ export class UnifiedSnapshotService {
       },
     });
     if (sessionSnapshot) {
+      // 🔧 检查会话快照状态，如果是 CREATING 且基础快照有问题，触发自动修复
+      if (
+        sessionSnapshot.status === 'CREATING' &&
+        sessionSnapshot.baseSnapshot
+      ) {
+        const baseSnapshot = sessionSnapshot.baseSnapshot;
+
+        // 检查基础快照是否 READY 但缺少 worktreePath
+        if (baseSnapshot.status === 'READY' && !baseSnapshot.worktreePath) {
+          this.logger.warn(
+            `Session ${sessionSnapshot.id}: Base snapshot ${baseSnapshot.id} is READY but missing worktreePath, triggering auto-repair`
+          );
+
+          // 异步触发自动修复，不阻塞当前请求
+          this.triggerBaseSnapshotRepair(baseSnapshot, sessionSnapshot).catch(
+            (error: any) => {
+              this.logger.error(
+                `Failed to trigger base snapshot repair for ${baseSnapshot.id}:`,
+                error
+              );
+            }
+          );
+        }
+      }
+
       return this.formatSnapshotResponse(sessionSnapshot, 'session');
     }
 
@@ -919,5 +944,59 @@ export class UnifiedSnapshotService {
     }
 
     return parts.join(path.sep);
+  }
+
+  /**
+   * 触发基础快照修复
+   * 当发现基础快照状态为 READY 但缺少 worktreePath 时调用
+   */
+  private async triggerBaseSnapshotRepair(
+    baseSnapshot: any,
+    sessionSnapshot: any
+  ): Promise<void> {
+    try {
+      this.logger.log(
+        `🔧 [triggerBaseSnapshotRepair] Auto-repairing base snapshot ${baseSnapshot.id}`
+      );
+
+      // 使用 BaseSnapshotService 的 ensureArtifact 方法来重新处理
+      const repairedSnapshot = await this.baseSnapshotService.ensureArtifact(
+        baseSnapshot.repoId,
+        baseSnapshot.commitSha,
+        baseSnapshot.branchId
+      );
+
+      this.logger.log(
+        `✅ [triggerBaseSnapshotRepair] Base snapshot ${baseSnapshot.id} repair initiated, new status: ${repairedSnapshot.status}`
+      );
+
+      // 如果修复成功且状态变为 QUEUED，更新会话快照状态
+      if (repairedSnapshot.status === 'QUEUED') {
+        await this.prisma.sessionSnapshot.update({
+          where: { id: sessionSnapshot.id },
+          data: {
+            status: 'CREATING',
+            errorMessage: '正在重新处理基础快照...',
+          },
+        });
+        this.logger.log(
+          `🔄 [triggerBaseSnapshotRepair] Session ${sessionSnapshot.id} updated to CREATING status`
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to repair base snapshot ${baseSnapshot.id}:`,
+        error
+      );
+
+      // 如果修复失败，将会话快照设为失败状态
+      await this.prisma.sessionSnapshot.update({
+        where: { id: sessionSnapshot.id },
+        data: {
+          status: 'FAILED',
+          errorMessage: '基础快照自动修复失败',
+        },
+      });
+    }
   }
 }

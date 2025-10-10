@@ -21,6 +21,9 @@ COPY . .
 # 构建应用
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=docker -X main.commit=docker -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o bin/relax-git-worker-linux .
 
+# 构建诊断工具
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/diagnose-linux ./cmd/diagnose
+
 # 运行阶段
 FROM alpine:latest
 
@@ -40,6 +43,7 @@ WORKDIR /app
 
 # 从构建阶段复制二进制文件
 COPY --from=builder /app/bin/relax-git-worker-linux /app/relax-git-worker
+COPY --from=builder /app/bin/diagnose-linux /app/diagnose
 
 # 复制生产配置文件
 COPY --from=builder /app/config.production.yaml /app/config.yaml
