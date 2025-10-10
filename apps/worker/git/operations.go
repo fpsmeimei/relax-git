@@ -197,18 +197,24 @@ func (g *GitOperations) createWorktree(ctx context.Context, repoPath, commitSHA,
 		// 先尝试移除 worktree（如果在 git 中注册）
 		cleanupCmd := exec.CommandContext(ctx, "git", "worktree", "remove", "--force", worktreePath)
 		cleanupCmd.Dir = repoPath
-		cleanupOutput, _ := cleanupCmd.CombinedOutput()
-		g.logger.Debug().
+		cleanupOutput, cleanupErr := cleanupCmd.CombinedOutput()
+		g.logger.Info().
 			Str("cleanup_output", string(cleanupOutput)).
-			Msg("Git worktree remove output")
+			Err(cleanupErr).
+			Msg("Git worktree remove attempt")
 		
 		// 强制删除目录
 		if err := os.RemoveAll(worktreePath); err != nil {
-			g.logger.Warn().
+			g.logger.Error().
 				Err(err).
 				Str("worktree_path", worktreePath).
 				Msg("Failed to remove existing worktree directory")
+			return "", fmt.Errorf("failed to cleanup existing worktree directory: %w", err)
 		}
+		
+		g.logger.Info().
+			Str("worktree_path", worktreePath).
+			Msg("Successfully cleaned up existing worktree directory")
 	}
 
 	// 使用git命令创建worktree（go-git的worktree支持有限）
