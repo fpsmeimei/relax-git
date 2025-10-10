@@ -7,14 +7,8 @@ healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
-# 全栈服务配置（默认）
+# 全栈服务配置（包含 Web + API + Worker）
 [[services]]
 name = "relax-git-fullstack"
 source = "."
 dockerfile = "Dockerfile"
-
-# Worker 服务配置
-[[services]]
-name = "relax-git-worker"
-source = "apps/worker"
-dockerfile = "apps/worker/Dockerfile"

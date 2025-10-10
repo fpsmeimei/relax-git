@@ -30,6 +30,29 @@ COPY libs/shared/package.json ./libs/shared/
 RUN pnpm install --frozen-lockfile
 
 # ============================================
+# Go Builder Stage - 构建 Worker
+# ============================================
+FROM golang:1.22-alpine AS go-builder
+
+# 安装必要的包
+RUN apk add --no-cache git make
+
+# 设置工作目录
+WORKDIR /app/worker
+
+# 复制 Worker 源代码
+COPY apps/worker/ .
+
+# 下载依赖
+RUN go mod download
+
+# 构建 Worker 应用
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=docker -X main.commit=docker -X main.date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" -o relax-git-worker .
+
+# 构建诊断工具
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o diagnose ./cmd/diagnose
+
+# ============================================
 # Builder Stage - 构建应用
 # ============================================
 FROM base AS builder
@@ -172,6 +195,13 @@ COPY --from=builder /app/libs/shared/src/generated ./libs/shared/src/generated
 # 确保 Prisma 客户端在正确位置
 COPY --from=builder /app/libs/shared/src/generated/prisma-client ./libs/shared/dist/generated/prisma-client
 
+# 复制 Worker 二进制文件
+COPY --from=go-builder /app/worker/relax-git-worker ./apps/worker/relax-git-worker
+COPY --from=go-builder /app/worker/diagnose ./apps/worker/diagnose
+
+# 复制 Worker 配置文件
+COPY apps/worker/config.production.yaml ./apps/worker/config.yaml
+
 # 复制配置文件
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/web/next.config.js ./apps/web/
@@ -180,7 +210,7 @@ COPY apps/web/next.config.js ./apps/web/
 COPY ecosystem.config.js ./
 COPY start.sh ./
 COPY healthcheck.js ./
-RUN chmod +x start.sh healthcheck.js
+RUN chmod +x start.sh healthcheck.js ./apps/worker/relax-git-worker ./apps/worker/diagnose
 
 # 创建日志目录
 RUN mkdir -p logs

@@ -57,5 +57,30 @@ module.exports = {
       wait_ready: true,
       listen_timeout: 8000,
     },
+    // Worker 服务 - 独立进程处理快照任务
+    {
+      name: 'relax-git-worker',
+      cwd: './apps/worker',
+      script: './relax-git-worker',
+      env: {
+        NODE_ENV: 'production',
+        DATABASE_URL: process.env.DATABASE_URL,
+        REDIS_URL: process.env.REDIS_URL,
+        GIT_TEMP_DIR: '/tmp/relax-git-repos',
+        GIT_BUNDLE_DIR: '/tmp/relax-git-bundles',
+        WORKER_WORK_DIR: '/tmp/relax-git-worker',
+        WORKER_CONCURRENCY: process.env.WORKER_CONCURRENCY || '2',
+        WORKER_QUEUE_NAME: 'snapshot:queue',
+      },
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '1G', // Worker 需要更多内存处理 Git 操作
+      error_file: './logs/worker-error.log',
+      out_file: './logs/worker-out.log',
+      log_file: './logs/worker-combined.log',
+      time: true,
+      autorestart: true,
+      restart_delay: 5000, // Worker 重启延迟
+    },
   ],
 };
