@@ -162,10 +162,10 @@ const nextConfig = {
           source: '/api/_auth/:path*',
           destination: `${apiBaseUrl}/auth/:path*`,
         },
-        // 只代理非 auth 的 API 请求到后端（保留 /api 前缀）
+        // 只代理非 auth 的 API 请求到后端（移除 /api 前缀）
         {
           source: '/api/:path((?!auth).*)',
-          destination: `${apiBaseUrl}/api/:path*`,
+          destination: `${apiBaseUrl}/:path*`,
         },
         // 静态上传资源代理
         {
