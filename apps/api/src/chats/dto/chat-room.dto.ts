@@ -4,12 +4,12 @@ import {
   IsArray,
   IsOptional,
   IsString,
-  IsUUID,
   Length,
+  Matches,
 } from 'class-validator';
 
 export class CreateDirectChatDto {
-  @IsUUID('4', { message: '目标用户 ID 格式不正确' })
+  @Matches(/^c[a-z0-9]{24}$/, { message: '目标用户 ID 格式不正确' })
   userId!: string;
 }
 
@@ -22,13 +22,13 @@ export class CreateGroupChatDto {
   @IsOptional()
   @IsArray()
   @ArrayNotEmpty({ message: '成员列表不能为空' })
-  @IsUUID('4', { each: true, message: '成员 ID 格式不正确' })
+  @Matches(/^c[a-z0-9]{24}$/, { each: true, message: '成员 ID 格式不正确' })
   memberIds?: string[];
 }
 
 export class AddMembersDto {
   @IsArray({ message: '成员列表必须是数组' })
   @ArrayNotEmpty({ message: '至少添加一位成员' })
-  @IsUUID('4', { each: true, message: '成员 ID 格式不正确' })
+  @Matches(/^c[a-z0-9]{24}$/, { each: true, message: '成员 ID 格式不正确' })
   memberIds!: string[];
 }
