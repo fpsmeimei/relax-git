@@ -98,7 +98,7 @@ func (p *PostgresDB) UpdateSnapshotPaths(ctx context.Context, snapshotID, worktr
 func (p *PostgresDB) UpdateBaseSnapshotStatus(ctx context.Context, snapshotID string, status types.SnapshotStatus, errorMessage string) error {
 	query := `
 		UPDATE base_snapshots
-		SET status = $1, error_message = $2
+		SET status = $1::base_snapshot_status, error_message = $2
 		WHERE id = $3
 	`
 	_, err := p.db.ExecContext(ctx, query, string(status), errorMessage, snapshotID)
@@ -116,7 +116,7 @@ func (p *PostgresDB) UpdateBaseSnapshotStatus(ctx context.Context, snapshotID st
 func (p *PostgresDB) UpdateBaseSnapshotPaths(ctx context.Context, snapshotID, worktreePath, bundlePath string) error {
 	query := `
 		UPDATE base_snapshots
-		SET "worktree_path" = $1, "bundle_path" = $2, status = $4, "processedAt" = NOW()
+		SET "worktree_path" = $1, "bundle_path" = $2, status = $4::base_snapshot_status, "processedAt" = NOW()
 		WHERE id = $3
 	`
 	_, err := p.db.ExecContext(ctx, query, worktreePath, bundlePath, snapshotID, "READY")
@@ -128,6 +128,23 @@ func (p *PostgresDB) UpdateBaseSnapshotPaths(ctx context.Context, snapshotID, wo
 			Str("bundle_path", bundlePath).
 			Msg("Failed to update base snapshot paths")
 		return fmt.Errorf("failed to update base snapshot paths: %w", err)
+	}
+
+	// Write-after-read verification to ensure status and timestamps are updated as expected
+	var statusStr string
+	var processedAt sql.NullTime
+	verifyQuery := `SELECT status, "processedAt" FROM base_snapshots WHERE id = $1`
+	if err2 := p.db.QueryRowContext(ctx, verifyQuery, snapshotID).Scan(&statusStr, &processedAt); err2 != nil {
+		p.logger.Warn().
+			Err(err2).
+			Str("snapshot_id", snapshotID).
+			Msg("Verification read after updating base snapshot paths failed")
+	} else {
+		p.logger.Info().
+			Str("base_snapshot_id", snapshotID).
+			Str("status", statusStr).
+			Bool("processedAt_set", processedAt.Valid).
+			Msg("Verified base snapshot paths update")
 	}
 	p.logger.Info().
 		Str("base_snapshot_id", snapshotID).
