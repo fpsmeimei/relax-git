@@ -23,14 +23,26 @@ export class UploadService {
       false
     );
 
+    // 详细日志
+    this.logger.log(`Storage configuration: S3=${this.s3Enabled}, Cloudinary=${this.cloudinaryEnabled}`);
+    this.logger.log(`CLOUDINARY_ENABLED env: ${process.env.CLOUDINARY_ENABLED}`);
+
     // 配置 Cloudinary
     if (this.cloudinaryEnabled) {
+      const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+      const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+      const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+      
+      this.logger.log(`Cloudinary config: cloud_name=${cloudName}, api_key=${apiKey ? 'SET' : 'MISSING'}, api_secret=${apiSecret ? 'SET' : 'MISSING'}`);
+      
       cloudinary.config({
-        cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
-        api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
-        api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
       });
-      this.logger.log('Cloudinary storage enabled');
+      this.logger.log('Cloudinary storage enabled and configured');
+    } else {
+      this.logger.warn('Cloudinary storage DISABLED - using local storage');
     }
 
     if (this.s3Enabled) {
@@ -97,6 +109,8 @@ export class UploadService {
     file: MultipartFile,
     repositoryId: string
   ): Promise<string> {
+    this.logger.log(`Uploading repository cover for ${repositoryId}, cloudinaryEnabled: ${this.cloudinaryEnabled}`);
+    
     const allowedTypes = new Set(['image/png', 'image/jpeg', 'image/webp']);
     if (!allowedTypes.has(file.mimetype)) {
       throw new Error('不支持的文件类型，仅支持 PNG、JPEG、WebP');
@@ -107,13 +121,16 @@ export class UploadService {
     const key = `repositories/${repositoryId}/${filename}`;
 
     if (this.cloudinaryEnabled) {
+      this.logger.log(`Using Cloudinary upload for repository ${repositoryId}`);
       return this.uploadToCloudinary(
         file,
         `repositories/${repositoryId}/${filename}`
       );
     } else if (this.s3Enabled) {
+      this.logger.log(`Using S3 upload for repository ${repositoryId}`);
       return this.uploadToS3(file, key, file.mimetype);
     } else {
+      this.logger.log(`Using local upload for repository ${repositoryId}`);
       return this.uploadToLocal(
         file,
         `uploads/repositories/${repositoryId}`,
