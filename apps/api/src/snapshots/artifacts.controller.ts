@@ -102,12 +102,31 @@ export class ArtifactsController {
   }
 
   /**
-   * 查询artifact状态
    * GET /api/artifacts/:id/status
    */
   @Get(':id/status')
   async getArtifactStatus(@Param('id') id: string, @Request() req: any) {
     const artifact = await this.getArtifact(id, req);
+
+    // 自修复：若已处理完成但状态未就绪，则修正为 READY，避免前端一直加载
+    try {
+      if (
+        artifact?.processedAt &&
+        artifact?.worktreePath &&
+        artifact.status !== 'READY'
+      ) {
+        await this.prisma.baseSnapshot.update({
+          where: { id },
+          data: { status: BaseSnapshotStatus.READY },
+        });
+        // 同步返回值中的状态
+        (artifact as any).status = 'READY';
+      }
+    } catch (e) {
+      // 仅记录，不影响状态接口返回
+      console.error('⚠️ [getArtifactStatus] self-heal failed:', e);
+    }
+
     return {
       id: artifact.id,
       status: artifact.status,
