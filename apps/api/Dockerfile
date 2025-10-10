@@ -37,7 +37,10 @@ RUN pnpm -C apps/api build
 
 # 生产阶段
 FROM node:20-alpine AS production
-RUN apk add --no-cache git curl
+RUN apk update && \
+    apk add --no-cache git curl && \
+    which git && \
+    git --version
 
 WORKDIR /app
 
