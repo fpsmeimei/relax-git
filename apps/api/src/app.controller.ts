@@ -9,10 +9,9 @@ import { Public } from './auth/decorators/public.decorator';
 @Controller()
 @Public()
 export class AppController {
-  @Get('/api/info')
+  @Get('info')
   @ApiOperation({ summary: '应用基本信息' })
   @ApiResponse({ status: 200, description: '应用运行状态' })
-  @Get('info')
   getInfo(): any {
     return {
       service: 'relax-git-api',
