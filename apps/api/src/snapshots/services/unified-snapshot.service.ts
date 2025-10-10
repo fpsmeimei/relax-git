@@ -687,54 +687,59 @@ export class UnifiedSnapshotService {
         const isOld = snapshotAge > 24 * 60 * 60 * 1000; // 1天
 
         if (isOld || !pathExists) {
-          this.logger.log(`基础快照过期或路径不存在，需要创建新的基础快照`);
+          this.logger.log(`基础快照过期或路径不存在，需要重新处理基础快照`);
 
-          // 不修改现有基础快照（保护评论数据），而是创建新的基础快照
-          // 首先检查是否已经有相同 commit 的新快照正在处理
-          const existingNewSnapshot = await this.prisma.baseSnapshot.findFirst({
-            where: {
-              repoId: baseSnapshot.repoId,
-              branchId: baseSnapshot.branchId,
-              commitSha: baseSnapshot.commitSha,
-              status: { in: ['QUEUED', 'PROCESSING'] },
-              createdAt: { gt: new Date(Date.now() - 60 * 60 * 1000) }, // 1小时内
+          // 重新查询最新状态（可能被其他进程修改）
+          const latestBaseSnapshot = await this.prisma.baseSnapshot.findUnique({
+            where: { id: baseSnapshot.id },
+            select: { status: true },
+          });
+
+          // 检查基础快照是否已经在处理中
+          if (
+            latestBaseSnapshot &&
+            (latestBaseSnapshot.status === 'QUEUED' ||
+              latestBaseSnapshot.status === 'PROCESSING')
+          ) {
+            this.logger.log(
+              `基础快照 ${baseSnapshot.id} 已在处理中，状态: ${latestBaseSnapshot.status}`
+            );
+
+            // 会话快照标记为失败，提示用户稍后重试
+            await this.prisma.sessionSnapshot.update({
+              where: { id: sessionSnapshot.id },
+              data: {
+                status: 'FAILED',
+                errorMessage: '基础快照正在重新创建中，请稍后重试',
+              },
+            });
+            return;
+          }
+
+          // 重置基础快照状态为 QUEUED，让 Worker 重新处理
+          // 这样可以保护评论数据（快照ID不变），同时重新创建工作树
+          await this.prisma.baseSnapshot.update({
+            where: { id: baseSnapshot.id },
+            data: {
+              status: 'QUEUED',
+              errorMessage: '',
+              worktreePath: null, // 清除旧路径
+              bundlePath: null,
             },
           });
 
-          if (!existingNewSnapshot) {
-            // 创建新的基础快照
-            const newBaseSnapshot = await this.prisma.baseSnapshot.create({
-              data: {
-                repoId: baseSnapshot.repoId,
-                branchId: baseSnapshot.branchId,
-                commitSha: baseSnapshot.commitSha,
-                status: 'QUEUED',
-                errorMessage: '',
-              },
-            });
+          this.logger.log(
+            `已重置基础快照 ${baseSnapshot.id} 状态为 QUEUED，Worker 将重新处理`
+          );
 
-            this.logger.log(`创建新的基础快照: ${newBaseSnapshot.id}`);
-
-            // 更新会话快照指向新的基础快照
-            await this.prisma.sessionSnapshot.update({
-              where: { id: sessionSnapshot.id },
-              data: {
-                baseSnapshotId: newBaseSnapshot.id,
-                status: 'FAILED',
-                errorMessage: '正在创建新的基础快照，请稍后重试',
-              },
-            });
-          } else {
-            // 使用现有的新快照
-            await this.prisma.sessionSnapshot.update({
-              where: { id: sessionSnapshot.id },
-              data: {
-                baseSnapshotId: existingNewSnapshot.id,
-                status: 'FAILED',
-                errorMessage: '基础快照正在创建中，请稍后重试',
-              },
-            });
-          }
+          // 会话快照标记为失败，提示用户稍后重试
+          await this.prisma.sessionSnapshot.update({
+            where: { id: sessionSnapshot.id },
+            data: {
+              status: 'FAILED',
+              errorMessage: '基础快照正在重新创建中，请稍后重试',
+            },
+          });
           return;
         }
 

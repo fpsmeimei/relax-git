@@ -28,8 +28,13 @@ export class AppController {
 
     const checks = [];
 
-    // 检查基本目录
-    const dirs = ['/tmp', '/tmp/relax-git-worktrees', '/tmp/relax-git-bundles'];
+    // 检查基本目录（Worker 实际使用的路径）
+    const dirs = [
+      '/tmp',
+      '/tmp/relax-git-repos', // Worker 的 git.temp_dir（包含工作树）
+      '/tmp/relax-git-bundles', // Worker 的 git.bundle_dir
+      '/tmp/relax-git-worktrees', // 旧路径（可能不存在）
+    ];
 
     for (const dir of dirs) {
       try {
@@ -71,26 +76,35 @@ export class AppController {
       });
     }
 
-    // 列出实际存在的工作树
-    try {
-      const worktreeDir = '/tmp/relax-git-worktrees';
-      const worktreeExists = await fs.pathExists(worktreeDir);
-      if (worktreeExists) {
-        const files = await fs.readdir(worktreeDir);
+    // 列出实际存在的工作树（检查 Worker 实际使用的目录）
+    const worktreeDirs = [
+      '/tmp/relax-git-repos', // Worker 实际使用的目录
+      '/tmp/relax-git-worktrees', // 旧目录
+    ];
+
+    for (const worktreeDir of worktreeDirs) {
+      try {
+        const worktreeExists = await fs.pathExists(worktreeDir);
+        if (worktreeExists) {
+          const files = await fs.readdir(worktreeDir);
+          const worktreeFiles = files.filter((f: string) =>
+            f.startsWith('worktree-')
+          );
+          checks.push({
+            path: worktreeDir,
+            exists: true,
+            files: worktreeFiles,
+            count: worktreeFiles.length,
+            note: 'actual worktrees in directory',
+          });
+        }
+      } catch (error: any) {
         checks.push({
           path: worktreeDir,
-          exists: true,
-          files,
-          count: files.length,
-          note: 'actual worktrees in directory',
+          error: error.message,
+          note: 'failed to list worktrees',
         });
       }
-    } catch (error: any) {
-      checks.push({
-        path: '/tmp/relax-git-worktrees',
-        error: error.message,
-        note: 'failed to list worktrees',
-      });
     }
 
     return {
