@@ -205,7 +205,7 @@ func (s *SearchOperations) getSnapshotWorkDir(snapshotID string) (string, error)
 	// 这里应该从数据库查询快照的worktreePath
 	// 为了简化，暂时使用固定路径格式
 	// TODO: 集成数据库查询
-	workDir := filepath.Join(s.config.Git.TempDir, "snapshots", snapshotID)
+	workDir := filepath.Join(s.config.Git.TempDir, "worktree-"+snapshotID)
 	return workDir, nil
 }
 

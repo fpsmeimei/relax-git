@@ -93,7 +93,8 @@ func (g *GitOperations) ProcessSnapshot(ctx context.Context, task *types.Snapsho
 
 // createTempDir 创建临时目录
 func (g *GitOperations) createTempDir(taskID string) (string, error) {
-	tempDir := filepath.Join(g.config.Git.TempDir, taskID)
+	// 使用 worktree- 前缀以匹配 API 期望的路径格式
+	tempDir := filepath.Join(g.config.Git.TempDir, "worktree-"+taskID)
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
