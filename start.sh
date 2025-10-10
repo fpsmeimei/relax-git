@@ -40,6 +40,24 @@ sleep 10
 echo "🎯 Starting API service..."
 pm2 start ecosystem.config.js --only relax-git-api
 
-# 显示状态并保持前台运行
-echo "📋 All services started, switching to no-daemon mode..."
+# 等待 API 服务启动
+echo "⏳ Waiting for API service to start..."
+sleep 5
+
+# 检查 Worker 二进制文件
+echo "🔍 Checking Worker binary..."
+ls -la /app/apps/worker/relax-git-worker
+echo "🔍 Testing Worker binary..."
+/app/apps/worker/relax-git-worker --version || echo "⚠️ Worker binary test failed"
+
+# 启动 Worker 服务
+echo "🎯 Starting Worker service..."
+pm2 start ecosystem.config.js --only relax-git-worker
+
+# 显示所有进程状态
+echo "📋 All services started, checking status..."
+pm2 list
+
+# 切换到无守护进程模式
+echo "📋 Switching to no-daemon mode for log monitoring..."
 pm2 logs --no-daemon
