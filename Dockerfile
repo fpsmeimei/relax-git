@@ -139,8 +139,11 @@ CMD ["pnpm", "-C", "apps/web", "start"]
 # ============================================
 FROM node:20-alpine AS fullstack
 
-# 安装系统依赖和工具
-RUN apk add --no-cache openssl curl python3 make g++
+# 安装系统依赖和工具（包括 Git）
+RUN apk update && \
+    apk add --no-cache openssl curl python3 make g++ git && \
+    which git && \
+    git --version
 
 # 安装 pnpm 和 PM2
 RUN npm install -g pnpm@8.15.0 pm2
