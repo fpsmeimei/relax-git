@@ -7,7 +7,7 @@ import { HealthService } from './health.service';
  * 健康检查控制器
  */
 @ApiTags('health')
-@Controller('health')
+@Controller('api/health')
 @Public()
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
