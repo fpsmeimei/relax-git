@@ -642,18 +642,58 @@ export class UnifiedSnapshotService {
       const worktreePath = baseSnapshot.worktreePath;
 
       if (!worktreePath) {
-        this.logger.error(
-          `Base snapshot ${baseSnapshot.id} has no worktree path`
+        this.logger.warn(
+          `Base snapshot ${baseSnapshot.id} has no worktree path, attempting auto-repair`
         );
 
-        await this.prisma.sessionSnapshot.update({
-          where: { id: sessionSnapshot.id },
-          data: {
-            status: 'FAILED',
-            errorMessage: '基础快照缺少工作树路径',
-          },
-        });
-        return;
+        // 🔧 自动修复：重新触发 Worker 处理
+        try {
+          this.logger.log(
+            `🔧 [UnifiedSnapshotService] Auto-repairing base snapshot ${baseSnapshot.id}`
+          );
+
+          // 使用 BaseSnapshotService 的 ensureArtifact 方法来重新处理
+          // 这会自动处理重试逻辑和队列入队
+          const repairedSnapshot =
+            await this.baseSnapshotService.ensureArtifact(
+              baseSnapshot.repoId,
+              baseSnapshot.commitSha,
+              baseSnapshot.branchId
+            );
+
+          this.logger.log(
+            `✅ [UnifiedSnapshotService] Base snapshot ${baseSnapshot.id} repair initiated, new status: ${repairedSnapshot.status}`
+          );
+
+          // 暂时将会话设为等待状态
+          await this.prisma.sessionSnapshot.update({
+            where: { id: sessionSnapshot.id },
+            data: {
+              status: 'CREATING',
+              errorMessage: '正在重新处理基础快照...',
+            },
+          });
+
+          this.logger.log(
+            `🔄 [UnifiedSnapshotService] Session ${sessionSnapshot.id} set to CREATING, waiting for base snapshot repair`
+          );
+          return;
+        } catch (error) {
+          this.logger.error(
+            `Failed to auto-repair base snapshot ${baseSnapshot.id}:`,
+            error
+          );
+
+          // 如果自动修复失败，才设为 FAILED
+          await this.prisma.sessionSnapshot.update({
+            where: { id: sessionSnapshot.id },
+            data: {
+              status: 'FAILED',
+              errorMessage: '基础快照缺少工作树路径，自动修复失败',
+            },
+          });
+          return;
+        }
       }
 
       // 自动修复 Windows 路径（如果需要）
