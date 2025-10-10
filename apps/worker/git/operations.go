@@ -186,7 +186,7 @@ func (g *GitOperations) createWorktree(ctx context.Context, repoPath, commitSHA,
 		Str("branch_name", branchName).
 		Msg("Creating worktree")
 
-	worktreePath := filepath.Join(g.config.Git.TempDir, fmt.Sprintf("worktree-%s", taskID))
+	worktreePath := filepath.Join(g.config.Git.TempDir, fmt.Sprintf("worktree-%s-output", taskID))
 
 	// 🔧 增强清理：如果目标目录已存在，先清理
 	if _, err := os.Stat(worktreePath); err == nil {
