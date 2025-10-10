@@ -110,17 +110,28 @@ export class ArtifactsController {
 
     // 自修复：若已处理完成但状态未就绪，则修正为 READY，避免前端一直加载
     try {
-      if (
-        artifact?.processedAt &&
-        artifact?.worktreePath &&
-        artifact.status !== 'READY'
-      ) {
+      if (artifact?.processedAt && artifact.status !== 'READY') {
+        console.log(
+          '🔧 [getArtifactStatus] Self-healing triggered for artifact:',
+          id
+        );
+        console.log(
+          '🔧 Current status:',
+          artifact.status,
+          'processedAt:',
+          artifact.processedAt
+        );
+
         await this.prisma.baseSnapshot.update({
           where: { id },
           data: { status: BaseSnapshotStatus.READY },
         });
         // 同步返回值中的状态
         (artifact as any).status = 'READY';
+
+        console.log(
+          '✅ [getArtifactStatus] Self-healing completed, status updated to READY'
+        );
       }
     } catch (e) {
       // 仅记录，不影响状态接口返回
