@@ -783,7 +783,7 @@ export class UnifiedSnapshotService {
 
           // 重置基础快照状态为 QUEUED，让 Worker 重新处理
           // 这样可以保护评论数据（快照ID不变），同时重新创建工作树
-          await this.prisma.baseSnapshot.update({
+          const updatedBaseSnapshot = await this.prisma.baseSnapshot.update({
             where: { id: baseSnapshot.id },
             data: {
               status: 'QUEUED',
@@ -796,6 +796,21 @@ export class UnifiedSnapshotService {
           this.logger.log(
             `已重置基础快照 ${baseSnapshot.id} 状态为 QUEUED，Worker 将重新处理`
           );
+
+          // 🔧 关键修复：推送任务到 Worker 队列
+          try {
+            await this.baseSnapshotService['enqueueBaseSnapshotTask'](
+              updatedBaseSnapshot
+            );
+            this.logger.log(
+              `✅ 已推送基础快照 ${baseSnapshot.id} 到 Worker 队列`
+            );
+          } catch (error) {
+            this.logger.error(
+              `❌ 推送基础快照 ${baseSnapshot.id} 到队列失败:`,
+              error
+            );
+          }
 
           // 会话快照标记为失败，提示用户稍后重试
           await this.prisma.sessionSnapshot.update({
