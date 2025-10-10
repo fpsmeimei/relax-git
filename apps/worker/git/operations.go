@@ -22,10 +22,15 @@ type GitOperations struct {
 
 // NewGitOperations 创建Git操作管理器
 func NewGitOperations(cfg *config.Config, logger zerolog.Logger) *GitOperations {
-	return &GitOperations{
+	ops := &GitOperations{
 		config: cfg,
 		logger: logger.With().Str("component", "git-ops").Logger(),
 	}
+	
+	// 🔧 启动时清理残留的临时文件
+	ops.cleanupOnStartup()
+	
+	return ops
 }
 
 // ProcessSnapshot 处理快照任务
@@ -183,6 +188,29 @@ func (g *GitOperations) createWorktree(ctx context.Context, repoPath, commitSHA,
 
 	worktreePath := filepath.Join(g.config.Git.TempDir, fmt.Sprintf("worktree-%s", taskID))
 
+	// 🔧 增强清理：如果目标目录已存在，先清理
+	if _, err := os.Stat(worktreePath); err == nil {
+		g.logger.Warn().
+			Str("worktree_path", worktreePath).
+			Msg("Worktree directory already exists, cleaning up")
+		
+		// 先尝试移除 worktree（如果在 git 中注册）
+		cleanupCmd := exec.CommandContext(ctx, "git", "worktree", "remove", "--force", worktreePath)
+		cleanupCmd.Dir = repoPath
+		cleanupOutput, _ := cleanupCmd.CombinedOutput()
+		g.logger.Debug().
+			Str("cleanup_output", string(cleanupOutput)).
+			Msg("Git worktree remove output")
+		
+		// 强制删除目录
+		if err := os.RemoveAll(worktreePath); err != nil {
+			g.logger.Warn().
+				Err(err).
+				Str("worktree_path", worktreePath).
+				Msg("Failed to remove existing worktree directory")
+		}
+	}
+
 	// 使用git命令创建worktree（go-git的worktree支持有限）
 	cmd := exec.CommandContext(ctx, "git", "worktree", "add", worktreePath, commitSHA)
 	cmd.Dir = repoPath
@@ -260,4 +288,69 @@ func (g *GitOperations) failResult(result *types.SnapshotResult, code, message s
 		Message: message,
 		Details: err.Error(),
 	}
+}
+
+// cleanupOnStartup 启动时清理残留的临时文件和worktree
+func (g *GitOperations) cleanupOnStartup() {
+	g.logger.Info().Msg("Starting cleanup of residual temporary files")
+	
+	// 清理临时目录中的所有内容
+	if g.config.Git.TempDir != "" {
+		if err := g.cleanupDirectory(g.config.Git.TempDir, "worktree-*"); err != nil {
+			g.logger.Warn().
+				Err(err).
+				Str("temp_dir", g.config.Git.TempDir).
+				Msg("Failed to cleanup temp directory on startup")
+		}
+	}
+	
+	// 清理bundle目录中的旧文件（可选，保留最近的）
+	if g.config.Git.BundleDir != "" {
+		if err := g.cleanupDirectory(g.config.Git.BundleDir, "*.bundle"); err != nil {
+			g.logger.Warn().
+				Err(err).
+				Str("bundle_dir", g.config.Git.BundleDir).
+				Msg("Failed to cleanup bundle directory on startup")
+		}
+	}
+	
+	g.logger.Info().Msg("Startup cleanup completed")
+}
+
+// cleanupDirectory 清理指定目录中匹配模式的文件/目录
+func (g *GitOperations) cleanupDirectory(dir, pattern string) error {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		// 目录不存在，无需清理
+		return nil
+	}
+	
+	matches, err := filepath.Glob(filepath.Join(dir, pattern))
+	if err != nil {
+		return fmt.Errorf("failed to glob pattern %s in %s: %w", pattern, dir, err)
+	}
+	
+	cleaned := 0
+	for _, match := range matches {
+		if err := os.RemoveAll(match); err != nil {
+			g.logger.Warn().
+				Err(err).
+				Str("path", match).
+				Msg("Failed to remove file/directory")
+		} else {
+			cleaned++
+			g.logger.Debug().
+				Str("path", match).
+				Msg("Removed residual file/directory")
+		}
+	}
+	
+	if cleaned > 0 {
+		g.logger.Info().
+			Int("cleaned_count", cleaned).
+			Str("directory", dir).
+			Str("pattern", pattern).
+			Msg("Cleaned up residual files")
+	}
+	
+	return nil
 }
