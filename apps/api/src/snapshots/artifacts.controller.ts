@@ -158,6 +158,38 @@ export class ArtifactsController {
   ) {
     const artifact = await this.getArtifact(id, req);
 
+    // 自修复：若已处理完成但状态未就绪，则修正为 READY
+    if (
+      artifact?.processedAt &&
+      artifact?.worktreePath &&
+      artifact.status !== 'READY'
+    ) {
+      console.log('🔧 [getTree] Self-healing triggered for artifact:', id);
+      console.log(
+        '🔧 Current status:',
+        artifact.status,
+        'processedAt:',
+        artifact.processedAt,
+        'worktreePath:',
+        artifact.worktreePath
+      );
+
+      try {
+        await this.prisma.baseSnapshot.update({
+          where: { id },
+          data: { status: BaseSnapshotStatus.READY },
+        });
+        // 同步更新返回的 artifact 对象
+        (artifact as any).status = 'READY';
+
+        console.log(
+          '✅ [getTree] Self-healing completed, status updated to READY'
+        );
+      } catch (e) {
+        console.error('⚠️ [getTree] self-heal failed:', e);
+      }
+    }
+
     if (artifact.status !== 'READY') {
       throw new BadRequestException(
         `Artifact is not ready, current status: ${artifact.status}`
@@ -236,6 +268,38 @@ export class ArtifactsController {
     }
 
     const artifact = await this.getArtifact(id, req);
+
+    // 自修复：若已处理完成但状态未就绪，则修正为 READY
+    if (
+      artifact?.processedAt &&
+      artifact?.worktreePath &&
+      artifact.status !== 'READY'
+    ) {
+      console.log('🔧 [getFile] Self-healing triggered for artifact:', id);
+      console.log(
+        '🔧 Current status:',
+        artifact.status,
+        'processedAt:',
+        artifact.processedAt,
+        'worktreePath:',
+        artifact.worktreePath
+      );
+
+      try {
+        await this.prisma.baseSnapshot.update({
+          where: { id },
+          data: { status: BaseSnapshotStatus.READY },
+        });
+        // 同步更新返回的 artifact 对象
+        (artifact as any).status = 'READY';
+
+        console.log(
+          '✅ [getFile] Self-healing completed, status updated to READY'
+        );
+      } catch (e) {
+        console.error('⚠️ [getFile] self-heal failed:', e);
+      }
+    }
 
     if (artifact.status !== 'READY') {
       throw new BadRequestException(
