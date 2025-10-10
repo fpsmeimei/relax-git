@@ -676,12 +676,19 @@ export class UnifiedSnapshotService {
       const pathExists = await fs.pathExists(finalWorktreePath);
       if (!pathExists) {
         this.logger.error(`工作树路径不存在: ${finalWorktreePath}`);
+        this.logger.error(`原始路径: ${worktreePath}`);
+        this.logger.error(`基础快照ID: ${baseSnapshot.id}`);
+
+        // 检查父目录是否存在
+        const parentDir = path.dirname(finalWorktreePath);
+        const parentExists = await fs.pathExists(parentDir);
+        this.logger.error(`父目录 ${parentDir} 存在: ${parentExists}`);
 
         await this.prisma.sessionSnapshot.update({
           where: { id: sessionSnapshot.id },
           data: {
             status: 'FAILED',
-            errorMessage: `工作树路径不存在: ${finalWorktreePath}`,
+            errorMessage: `工作树路径不存在: ${finalWorktreePath}，父目录存在: ${parentExists}`,
           },
         });
         return;
