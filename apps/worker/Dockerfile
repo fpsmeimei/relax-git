@@ -48,6 +48,11 @@ COPY --from=builder /app/bin/diagnose-linux /app/diagnose
 # 复制生产配置文件
 COPY --from=builder /app/config.production.yaml /app/config.yaml
 
+# 设置 Git 全局配置
+RUN git config --global user.name "Relax-Git Worker" && \
+    git config --global user.email "worker@relax-git.com" && \
+    git config --global init.defaultBranch main
+
 # 设置权限
 RUN chown -R relax-git:relax-git /app
 

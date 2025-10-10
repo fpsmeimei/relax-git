@@ -246,8 +246,8 @@ func (g *GitOperations) createBundle(ctx context.Context, worktreePath, taskID s
 
 	bundlePath := filepath.Join(g.config.Git.BundleDir, fmt.Sprintf("%s.bundle", taskID))
 
-	// 使用git命令创建bundle
-	cmd := exec.CommandContext(ctx, "git", "bundle", "create", bundlePath, "HEAD")
+	// 使用git命令创建bundle文件 - 使用 --all 包含所有引用，避免空 bundle
+	cmd := exec.CommandContext(ctx, "git", "bundle", "create", bundlePath, "--all")
 	cmd.Dir = worktreePath
 
 	output, err := cmd.CombinedOutput()
