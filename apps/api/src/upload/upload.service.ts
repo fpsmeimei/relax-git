@@ -18,10 +18,10 @@ export class UploadService {
 
   constructor(private readonly configService: ConfigService) {
     this.s3Enabled = this.configService.get<boolean>('S3_ENABLED', false);
-    this.cloudinaryEnabled = this.configService.get<boolean>(
-      'CLOUDINARY_ENABLED',
-      false
-    );
+    
+    // 修复环境变量解析 - 字符串 "true" 应该被识别为 boolean true
+    const cloudinaryEnabledStr = this.configService.get('CLOUDINARY_ENABLED', 'false');
+    this.cloudinaryEnabled = cloudinaryEnabledStr === 'true' || cloudinaryEnabledStr === true;
 
     // 详细日志
     this.logger.log(`Storage configuration: S3=${this.s3Enabled}, Cloudinary=${this.cloudinaryEnabled}`);
