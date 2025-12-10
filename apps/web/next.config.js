@@ -43,6 +43,9 @@ const imageDomains = Array.from(
         'octodex.github.com', // GitHub Octodex 域名
         'api.dicebear.com',
         'res.cloudinary.com', // Cloudinary 图片域名
+        'picsum.photos', // Picsum Photos 图片域名（电影页面海报）
+        'image.tmdb.org', // TMDB 电影海报 CDN
+        'm.media-amazon.com', // OMDb API 海报 CDN (Amazon)
         process.env.NEXT_PUBLIC_APP_URL,
         process.env.NEXT_PUBLIC_API_URL,
         process.env.NEXT_PUBLIC_UPLOAD_BASE_URL,
@@ -135,9 +138,9 @@ const nextConfig = {
   // 🔥 全栈部署架构：Web 服务在主端口，API 服务在内部端口
   async rewrites() {
     // 根据环境变量确定 API 基础 URL
-    // 全栈部署：API 服务运行在内部端口 4000
-    const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    // 开发环境：使用 API_URL（服务端代理目标）
+    // 生产环境：使用内部端口 4000
+    const apiBaseUrl = process.env.API_URL || 'http://localhost:3001';
 
     return {
       beforeFiles: [

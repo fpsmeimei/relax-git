@@ -12,6 +12,7 @@ import { ConfigModule as AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 
 import { AiModule } from './ai/ai.module';
+import { MoviesModule } from './movies/movies.module';
 import { AppController } from './app.controller';
 import { ChatsModule } from './chats/chats.module';
 import { ChatFriendsModule } from './chats/friends/chat-friends.module';
@@ -70,6 +71,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     ChatsModule,
     ChatFriendsModule,
     AiModule,
+    MoviesModule,
   ],
   controllers: [AppController],
   providers: [

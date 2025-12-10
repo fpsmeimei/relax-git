@@ -32,11 +32,24 @@ class ChatRequestDto {
   @ValidateNested({ each: true })
   @Type(() => ConversationMessageDto)
   conversationHistory?: ConversationMessageDto[];
+
+  @ApiProperty({
+    required: false,
+    enum: ['discovery', 'thinking', 'chat'],
+    description:
+      'AI 模式：discovery=新鲜探索, thinking=深度思考, chat=闲聊对话',
+  })
+  @IsOptional()
+  @IsString()
+  mode?: 'discovery' | 'thinking' | 'chat';
 }
 
 class ChatResponseDto {
   @ApiProperty()
   reply: string;
+
+  @ApiProperty({ required: false })
+  reasoning?: string;
 
   @ApiProperty()
   timestamp: string;
@@ -64,8 +77,8 @@ export class AiController {
   async getStatus() {
     return {
       available: this.aiService.isAvailable(),
-      provider: 'Zhipu AI',
-      model: 'glm-4-flash',
+      provider: 'DeepSeek',
+      model: 'deepseek-chat (v3.2)',
       timestamp: new Date().toISOString(),
     };
   }
@@ -84,12 +97,17 @@ export class AiController {
     @Body() body: ChatRequestDto,
     @CurrentUser('id') _userId: string
   ): Promise<ChatResponseDto> {
-    const { message, conversationHistory = [] } = body;
+    const { message, conversationHistory = [], mode = 'discovery' } = body;
 
-    const reply = await this.aiService.chat(message, conversationHistory);
+    const result = await this.aiService.chat(
+      message,
+      conversationHistory,
+      mode
+    );
 
     return {
-      reply,
+      reply: result.reply,
+      reasoning: result.reasoning,
       timestamp: new Date().toISOString(),
     };
   }

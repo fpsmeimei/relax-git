@@ -137,6 +137,11 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return (this.client as any).messageVisibility;
   }
 
+  // MovieFavorite 模型代理（用于电影收藏）
+  get movieFavorite() {
+    return (this.client as any).movieFavorite;
+  }
+
   // Notification 模型代理（用于通知）
   get notification() {
     return (this.client as any).notification;

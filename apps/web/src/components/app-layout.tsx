@@ -70,6 +70,16 @@ export function AppLayout({ children }: AppLayoutProps) {
                 我的仓库
               </Link>
               {isAuthenticated && <NavChatLink />}
+              <Link
+                href={
+                  isAuthenticated
+                    ? '/chatroom'
+                    : '/auth/login?callbackUrl=%2Fchatroom'
+                }
+                className="text-sm lg:text-base text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+              >
+                🎬 电影
+              </Link>
               <ThemeToggle />
               {/* 个人/登录/退出登录 统一由 NavPersonalLink 处理 */}
               <NavPersonalLink />
