@@ -28,24 +28,24 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="relative flex min-h-screen flex-col">
       <header className="border-b bg-background/95 backdrop-blur-sm">
-        <div className="container-responsive flex h-20 items-center justify-between">
+        <div className="container-responsive flex h-16 items-center justify-between gap-4">
           <Link
             href={
               isAuthenticated
                 ? '/community'
                 : '/auth/login?callbackUrl=%2Fcommunity'
             }
-            className="inline-flex items-center px-6 py-3 text-lg font-bold text-foreground bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl shadow-sm hover:shadow-md hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
+            className="inline-flex items-center px-4 py-2 text-base font-bold text-foreground bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl shadow-sm hover:shadow-md hover:from-primary/15 hover:to-primary/10 hover:border-primary/30 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
           >
             社区
           </Link>
           {/* 导航容器 - 支持水平滚动 */}
           <nav className="flex items-center overflow-x-auto scrollbar-hide">
-            <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-max px-2 sm:px-0">
+            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-max px-1 sm:px-0">
               {/* 导航：未登录点击跳登录 */}
               <Link
                 href="/about"
-                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-2.5 lg:px-4 py-1.5 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
               >
                 Relax-Git
               </Link>
@@ -55,7 +55,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     ? '/repositories/import'
                     : '/auth/login?callbackUrl=%2Frepositories%2Fimport'
                 }
-                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-2.5 lg:px-4 py-1.5 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
               >
                 导入仓库
               </Link>
@@ -65,21 +65,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                     ? '/repositories'
                     : '/auth/login?callbackUrl=%2Frepositories'
                 }
-                className="text-sm lg:text-base text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-2.5 lg:px-4 py-1.5 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
               >
                 我的仓库
               </Link>
               {isAuthenticated && <NavChatLink />}
-              <Link
-                href={
-                  isAuthenticated
-                    ? '/chatroom'
-                    : '/auth/login?callbackUrl=%2Fchatroom'
-                }
-                className="text-sm lg:text-base text-muted-foreground hover:text-foreground rounded-full px-3 lg:px-5 py-2 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
-              >
-                🎬 电影
-              </Link>
               <ThemeToggle />
               {/* 个人/登录/退出登录 统一由 NavPersonalLink 处理 */}
               <NavPersonalLink />

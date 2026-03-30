@@ -260,7 +260,7 @@ class HealthChecker {
     this.checkCommand('node --version', 'Node.js');
     this.checkCommand('pnpm --version', 'PNPM');
     this.checkCommand('docker --version', 'Docker');
-    this.checkCommand('docker-compose --version', 'Docker Compose');
+    this.checkCommand('docker compose version', 'Docker Compose');
     this.checkCommand('go version', 'Go');
 
     // 动态验证 - 运行关键脚本

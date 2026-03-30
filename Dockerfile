@@ -206,12 +206,6 @@ COPY apps/worker/config.production.yaml ./apps/worker/config.yaml
 COPY apps/api/prisma ./apps/api/prisma
 COPY apps/web/next.config.js ./apps/web/
 
-# 复制启动脚本和 PM2 配置文件
-COPY ecosystem.config.js ./
-COPY start.sh ./
-COPY healthcheck.js ./
-RUN chmod +x start.sh healthcheck.js ./apps/worker/relax-git-worker ./apps/worker/diagnose
-
 # 创建日志目录
 RUN mkdir -p logs
 
@@ -221,5 +215,5 @@ ENV NODE_ENV=production
 # 暴露端口
 EXPOSE 3000
 
-# 使用启动脚本
-CMD ["./start.sh"]
+# 使用内联启动命令，避免依赖仓库根目录的旧启动脚本
+CMD ["sh", "-c", "pm2 start pnpm --name relax-git-api --cwd /app/apps/api -- start && pm2 start pnpm --name relax-git-web --cwd /app/apps/web -- start && pm2 start /app/apps/worker/relax-git-worker --name relax-git-worker --interpreter none && pm2 logs --no-daemon"]

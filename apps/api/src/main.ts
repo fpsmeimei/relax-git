@@ -174,16 +174,15 @@ async function bootstrap() {
   console.log('🔄 Web service will run on port 8080, API on port 3000');
   console.log('📝 Next.js rewrites will handle API proxying');
 
-  // 启动服务器 - 使用固定的内部端口，不使用 Railway 的 PORT
-  console.log('🔧 API PORT FIX: Not using process.env.PORT, using API_PORT instead');
+  // 启动服务器 - 使用固定的内部端口，不依赖外部注入的 PORT
+  console.log(
+    '🔧 API PORT FIX: Not using process.env.PORT, using API_PORT instead'
+  );
   console.log('🔧 process.env.PORT:', process.env['PORT']);
   console.log('🔧 process.env.API_PORT:', process.env['API_PORT']);
-  
-  const port = parseInt(
-    process.env['API_PORT'] ?? '4000',
-    10
-  );
-  
+
+  const port = parseInt(process.env['API_PORT'] ?? '4000', 10);
+
   console.log(`🔧 API will listen on port: ${port}`);
   await app.listen(port, '0.0.0.0');
 

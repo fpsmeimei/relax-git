@@ -1,25 +1,8 @@
-import {
-  Delete as DeleteIcon,
-  History as HistoryIcon,
-  Search as SearchIcon,
-} from '@mui/icons-material';
-import {
-  Alert,
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  IconButton,
-  List,
-  ListItem,
-  ListItemSecondaryAction,
-  ListItemText,
-  Pagination,
-  Paper,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, Search, History as HistoryIcon, Trash2 } from 'lucide-react';
 import { formatSmartTime } from '@/lib/utils/format-time';
 import React, { useEffect } from 'react';
 import { useSearchStore } from '../../stores/searchStore';
@@ -80,19 +63,10 @@ export const SearchHistory: React.FC<SearchHistoryProps> = ({
 
   if (historyLoading) {
     return (
-      <Card className="hover-lift">
-        <CardContent>
-          <Box
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            py={4}
-          >
-            <CircularProgress size={24} />
-            <Typography variant="body2" sx={{ ml: 2 }}>
-              加载搜索历史...
-            </Typography>
-          </Box>
+      <Card className="border-border/60 bg-card/90 shadow-sm">
+        <CardContent className="flex items-center justify-center gap-3 py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">加载搜索历史...</span>
         </CardContent>
       </Card>
     );
@@ -100,9 +74,9 @@ export const SearchHistory: React.FC<SearchHistoryProps> = ({
 
   if (historyError) {
     return (
-      <Card className="hover-lift">
-        <CardContent>
-          <Alert severity="error">{historyError}</Alert>
+      <Card className="border-border/60 bg-card/90 shadow-sm">
+        <CardContent className="p-6">
+          <Alert variant="destructive">{historyError}</Alert>
         </CardContent>
       </Card>
     );
@@ -110,13 +84,14 @@ export const SearchHistory: React.FC<SearchHistoryProps> = ({
 
   if (searchHistory.length === 0) {
     return (
-      <Card className="hover-lift">
-        <CardContent>
-          <div className="empty-state">
-            <HistoryIcon className="empty-state-icon" />
-            <h3 className="empty-state-title"> 暂无搜索历史</h3>
-            <p className="empty-state-desc">
-              {' '}
+      <Card className="border-border/60 bg-card/90 shadow-sm">
+        <CardContent className="p-6">
+          <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 px-6 py-10 text-center">
+            <HistoryIcon className="mx-auto h-10 w-10 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold text-foreground">
+              暂无搜索历史
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
               开始搜索后，历史记录将显示在这里
             </p>
           </div>
@@ -125,102 +100,117 @@ export const SearchHistory: React.FC<SearchHistoryProps> = ({
     );
   }
 
-  return (
-    <Card className="hover-lift">
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          搜索历史
-        </Typography>
+  const totalPages = Math.max(
+    1,
+    Math.ceil(historyPagination.total / historyPagination.limit)
+  );
 
-        <List disablePadding>
-          {searchHistory.map(item => (
-            <ListItem
-              className="hover-lift"
-              key={item.id}
-              component={Paper}
-              variant="outlined"
-              sx={{
-                mb: 1,
-                cursor: onHistoryItemClick ? 'pointer' : 'default',
-                '&:hover': onHistoryItemClick
-                  ? { backgroundColor: 'action.hover' }
-                  : {},
-              }}
-              onClick={() =>
-                handleHistoryItemClick(item.query, item.searchType)
-              }
-            >
-              <ListItemText
-                primary={
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <SearchIcon fontSize="small" color="action" />
-                    <Typography variant="body1" component="span">
-                      {item.query}
-                    </Typography>
-                    <Chip
-                      label={searchTypeLabels[item.searchType]}
-                      size="small"
-                      color={searchTypeColors[item.searchType]}
-                      variant="outlined"
-                    />
-                  </Box>
+  return (
+    <Card className="border-border/60 bg-card/90 shadow-sm">
+      <CardContent className="space-y-4 p-6">
+        <h3 className="text-lg font-semibold text-foreground">搜索历史</h3>
+
+        <div className="space-y-3">
+          {searchHistory.map(item => {
+            const clickable = Boolean(onHistoryItemClick);
+
+            return (
+              <div
+                key={item.id}
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                onClick={() =>
+                  handleHistoryItemClick(item.query, item.searchType)
                 }
-                secondary={
-                  <Box mt={1}>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      component="div"
-                    >
-                      仓库: {item.repository.name}
-                      {item.snapshot && ` • 快照: ${item.snapshot.title}`}
-                    </Typography>
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="space-between"
-                      mt={0.5}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        {formatSmartTime(item.createdAt)}
-                      </Typography>
-                      <Chip
-                        label={`${item.resultsCount} 个结果`}
-                        size="small"
-                        variant="outlined"
-                        color={item.resultsCount > 0 ? 'success' : 'default'}
-                      />
-                    </Box>
-                  </Box>
-                }
-              />
-              <ListItemSecondaryAction>
-                <Tooltip title="删除历史记录">
-                  <IconButton
-                    edge="end"
-                    size="small"
+                onKeyDown={event => {
+                  if (
+                    clickable &&
+                    (event.key === 'Enter' || event.key === ' ')
+                  ) {
+                    event.preventDefault();
+                    handleHistoryItemClick(item.query, item.searchType);
+                  }
+                }}
+                className={`rounded-2xl border border-border/60 bg-background/80 p-4 shadow-sm transition-colors ${clickable ? 'cursor-pointer hover:bg-accent/30' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Search className="h-4 w-4 text-muted-foreground" />
+                      <span className="truncate text-sm font-medium text-foreground">
+                        {item.query}
+                      </span>
+                      <Badge variant="outline-subtle">
+                        {searchTypeLabels[item.searchType]}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <div>
+                        仓库: {item.repository.name}
+                        {item.snapshot ? ` • 快照: ${item.snapshot.title}` : ''}
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span>{formatSmartTime(item.createdAt)}</span>
+                        <Badge
+                          variant={
+                            item.resultsCount > 0 ? 'success' : 'outline-subtle'
+                          }
+                        >
+                          {item.resultsCount} 个结果
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
                     onClick={e => handleDeleteHistory(item.id, e)}
                   >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </ListItemSecondaryAction>
-            </ListItem>
-          ))}
-        </List>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
 
-        {historyPagination.total > historyPagination.limit && (
-          <Box display="flex" justifyContent="center" mt={2}>
-            <Pagination
-              count={Math.ceil(
-                historyPagination.total / historyPagination.limit
-              )}
-              page={historyPagination.page}
-              onChange={handlePageChange}
-              color="primary"
-            />
-          </Box>
-        )}
+        {historyPagination.total > historyPagination.limit ? (
+          <div className="flex items-center justify-between gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={historyPagination.page <= 1}
+              onClick={event => {
+                event.stopPropagation();
+                loadSearchHistory(repositoryId, historyPagination.page - 1);
+              }}
+            >
+              上一页
+            </Button>
+
+            <span className="text-sm text-muted-foreground">
+              第 {historyPagination.page} / {totalPages} 页
+            </span>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={historyPagination.page >= totalPages}
+              onClick={event => {
+                event.stopPropagation();
+                loadSearchHistory(repositoryId, historyPagination.page + 1);
+              }}
+            >
+              下一页
+            </Button>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

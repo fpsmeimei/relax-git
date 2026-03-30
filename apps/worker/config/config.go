@@ -111,16 +111,16 @@ func setDefaults() {
 	viper.SetDefault("database.host", "localhost")
 	viper.SetDefault("database.port", 5432)
 	viper.SetDefault("database.user", "postgres")
-	viper.SetDefault("database.password", "")
-	viper.SetDefault("database.db_name", "relax_git")
+	viper.SetDefault("database.password", "postgres")
+	viper.SetDefault("database.db_name", "relax_git_dev")
 	viper.SetDefault("database.ssl_mode", "disable")
 
 	viper.SetDefault("worker.concurrency", 3)
 	viper.SetDefault("worker.queue_name", "snapshot:queue")
-	viper.SetDefault("worker.work_dir", "/tmp/relax-git-worker")
+	viper.SetDefault("worker.work_dir", "./data/worker")
 
-	viper.SetDefault("git.temp_dir", "/tmp/relax-git-repos")
-	viper.SetDefault("git.bundle_dir", "/tmp/relax-git-bundles")
+	viper.SetDefault("git.temp_dir", "./data/git/worktrees")
+	viper.SetDefault("git.bundle_dir", "./data/git/bundles")
 	viper.SetDefault("git.max_repo_size", 1073741824) // 1GB
 	viper.SetDefault("git.http_proxy", "")
 	viper.SetDefault("git.https_proxy", "")
@@ -137,32 +137,32 @@ func getDefaultConfig() *Config {
 		Password: getEnv("REDIS_PASSWORD", ""),
 		DB:       getEnvInt("REDIS_DB", 0),
 	}
-	
+
 	// 如果设置了 REDIS_URL，解析并覆盖默认配置
 	if redisURL := getEnv("REDIS_URL", ""); redisURL != "" {
 		if parsed := parseRedisURL(redisURL); parsed != nil {
 			redisConfig = *parsed
 		}
 	}
-	
+
 	return &Config{
 		Redis: redisConfig,
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnvInt("DB_PORT", 5432),
 			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", ""),
-			DBName:   getEnv("DB_NAME", "relax_git"),
+			Password: getEnv("DB_PASSWORD", "postgres"),
+			DBName:   getEnv("DB_NAME", "relax_git_dev"),
 			SSLMode:  getEnv("DB_SSL_MODE", "disable"),
 		},
 		Worker: WorkerConfig{
 			Concurrency: getEnvInt("WORKER_CONCURRENCY", 3),
 			QueueName:   getEnv("WORKER_QUEUE_NAME", "snapshot:queue"),
-			WorkDir:     getEnv("WORKER_WORK_DIR", "/tmp/relax-git-worker"),
+			WorkDir:     getEnv("WORKER_WORK_DIR", "./data/worker"),
 		},
 		Git: GitConfig{
-			TempDir:     getEnv("GIT_TEMP_DIR", "/tmp/relax-git-repos"),
-			BundleDir:   getEnv("GIT_BUNDLE_DIR", "/tmp/relax-git-bundles"),
+			TempDir:     getEnv("GIT_TEMP_DIR", "./data/git/worktrees"),
+			BundleDir:   getEnv("GIT_BUNDLE_DIR", "./data/git/bundles"),
 			MaxRepoSize: getEnvInt64("GIT_MAX_REPO_SIZE", 1024*1024*1024), // 1GB
 			HTTPProxy:   getEnv("GIT_HTTP_PROXY", ""),
 			HTTPSProxy:  getEnv("GIT_HTTPS_PROXY", ""),
@@ -295,7 +295,7 @@ func parseDatabaseURL(databaseURL string) *DatabaseConfig {
 		config.SSLMode = sslMode
 	}
 
-	fmt.Printf("Parsed DATABASE_URL: host=%s, port=%d, user=%s, db=%s, sslmode=%s\n", 
+	fmt.Printf("Parsed DATABASE_URL: host=%s, port=%d, user=%s, db=%s, sslmode=%s\n",
 		config.Host, config.Port, config.User, config.DBName, config.SSLMode)
 	return config
 }

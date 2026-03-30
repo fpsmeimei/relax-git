@@ -153,17 +153,17 @@ function CommunityPageContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container-responsive py-8 lg:py-12">
+      <div className="container-responsive py-6 lg:py-10">
         {/* 页面标题 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-4">社区</h1>
-          <p className="text-muted-foreground text-lg">
+        <div className="mb-6 lg:mb-7">
+          <h1 className="text-2xl lg:text-[2rem] font-bold mb-2.5">社区</h1>
+          <p className="max-w-2xl text-base text-muted-foreground lg:text-lg">
             发现优秀的开源项目，像刷视频一样学技术
           </p>
         </div>
 
         {/* 过滤器 */}
-        <div className="mb-8">
+        <div className="mb-6 lg:mb-7">
           <CommunityFilters
             filters={filters}
             onFiltersChange={handleFiltersChange}
@@ -172,7 +172,7 @@ function CommunityPageContent() {
 
           {/* 错误状态 */}
           {!!error && !loading && (
-            <div className="mb-8">
+            <div className="mb-6 lg:mb-7">
               <FeedbackBanner
                 variant="error"
                 message={<>社区列表加载失败：{error}</>}
@@ -185,12 +185,12 @@ function CommunityPageContent() {
 
         {/* 加载状态 */}
         {loading && (
-          <div className="flex justify-center items-center py-12">
+          <div className="flex justify-center items-center py-10">
             <LoadingHint
               message={'加载中...'}
               withSpinner
-              className="text-base"
-              iconClassName="h-5 w-5"
+              className="text-sm"
+              iconClassName="h-[18px] w-[18px]"
             />
           </div>
         )}
@@ -198,7 +198,7 @@ function CommunityPageContent() {
         {/* 仓库卡片流 */}
         {!loading && (
           <>
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-3.5 sm:gap-4 lg:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {repositories.map(repo => (
                 <RepositoryCard
                   key={repo.id}
@@ -211,23 +211,25 @@ function CommunityPageContent() {
 
             {/* 无限滚动哨兵 - 放在列表底部 */}
             {hasMore && repositories.length > 0 && (
-              <div ref={loadMoreRef} className="h-px mt-12" />
+              <div ref={loadMoreRef} className="h-px mt-8 lg:mt-10" />
             )}
 
             {/* 加载更多指示器 */}
             {loadingMore && (
-              <div className="flex justify-center mt-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <div className="flex justify-center mt-8 lg:mt-10">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
               </div>
             )}
 
             {/* 空状态提示 */}
             {repositories.length === 0 && (
-              <div className="text-center py-16">
-                <GitBranch className="h-12 w-12 text-muted-foreground mx-auto mb-6" />
-                <h3 className="text-lg font-medium mb-4">暂无项目</h3>
+              <div className="text-center py-12 lg:py-14">
+                <GitBranch className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-base lg:text-lg font-medium mb-3">
+                  暂无项目
+                </h3>
                 <EmptyHint
-                  className="mb-6"
+                  className="mb-5"
                   message={
                     filters.search
                       ? '没有找到符合条件的项目，试试调整搜索关键词'
@@ -252,12 +254,12 @@ export default function CommunityPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex justify-center items-center py-12">
+        <div className="flex justify-center items-center py-10">
           <LoadingHint
             message={'加载中...'}
             withSpinner
-            className="text-base"
-            iconClassName="h-5 w-5"
+            className="text-sm"
+            iconClassName="h-[18px] w-[18px]"
           />
         </div>
       }

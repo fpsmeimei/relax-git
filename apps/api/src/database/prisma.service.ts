@@ -24,14 +24,6 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
       url = `postgresql://${username}:${password}@${host}:${port}/${database}${sslParam}`;
     }
 
-    console.log('🔍 Prisma Config Debug:');
-    console.log(
-      'DATABASE_URL:',
-      process.env['DATABASE_URL']?.substring(0, 50),
-      '...'
-    );
-    console.log('Using URL:', url?.substring(0, 50), '...');
-
     this.client = new PrismaClient({
       datasources: {
         db: {
@@ -135,11 +127,6 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   get messageVisibility() {
     return (this.client as any).messageVisibility;
-  }
-
-  // MovieFavorite 模型代理（用于电影收藏）
-  get movieFavorite() {
-    return (this.client as any).movieFavorite;
   }
 
   // Notification 模型代理（用于通知）
