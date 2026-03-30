@@ -58,58 +58,46 @@ make build
 make run
 ```
 
-#### Windows 环境
+#### macOS
 
-```powershell
+```bash
 # 安装依赖
 go mod download
 go mod tidy
 
 # 构建
-go build -o bin/relax-git-worker.exe .
+go build -o bin/relax-git-worker .
 
 # 运行
-.\bin\relax-git-worker.exe
+./bin/relax-git-worker
 
 # 或者直接运行
 go run .
 ```
 
-### Docker 运行
-
-```bash
-# 构建镜像
-make docker-build
-
-# 运行容器
-docker run -d \
-  --name relax-git-worker \
-  -e REDIS_HOST=redis \
-  -e DB_HOST=postgres \
-  -e DB_PASSWORD=password \
-  -p 3002:3002 \
-  relax-git-worker:latest
-```
+如果你在 macOS 上开发，`go run .` 是主路径。
 
 ## 环境变量
 
-| 变量名               | 默认值                 | 说明                 |
-| -------------------- | ---------------------- | -------------------- |
-| `REDIS_HOST`         | localhost              | Redis 主机地址       |
-| `REDIS_PORT`         | 6379                   | Redis 端口           |
-| `REDIS_PASSWORD`     | ""                     | Redis 密码           |
-| `REDIS_DB`           | 0                      | Redis 数据库编号     |
-| `DB_HOST`            | localhost              | 数据库主机地址       |
-| `DB_PORT`            | 5432                   | 数据库端口           |
-| `DB_USER`            | postgres               | 数据库用户名         |
-| `DB_PASSWORD`        | ""                     | 数据库密码           |
-| `DB_NAME`            | relax_git              | 数据库名称           |
-| `WORKER_CONCURRENCY` | 3                      | 并发处理数量         |
-| `WORKER_QUEUE_NAME`  | snapshot:queue         | 队列名称             |
-| `GIT_TEMP_DIR`       | /tmp/relax-git-repos   | Git 临时目录         |
-| `GIT_BUNDLE_DIR`     | /tmp/relax-git-bundles | Bundle 存储目录      |
-| `GIT_MAX_REPO_SIZE`  | 1073741824             | 最大仓库大小（字节） |
-| `LOG_LEVEL`          | info                   | 日志级别             |
+| 变量名               | 默认值               | 说明                 |
+| -------------------- | -------------------- | -------------------- |
+| `REDIS_HOST`         | localhost            | Redis 主机地址       |
+| `REDIS_PORT`         | 6379                 | Redis 端口           |
+| `REDIS_PASSWORD`     | ""                   | Redis 密码           |
+| `REDIS_DB`           | 0                    | Redis 数据库编号     |
+| `DB_HOST`            | localhost            | 数据库主机地址       |
+| `DB_PORT`            | 5432                 | 数据库端口           |
+| `DB_USER`            | postgres             | 数据库用户名         |
+| `DB_PASSWORD`        | postgres             | 数据库密码           |
+| `DB_NAME`            | relax_git_dev        | 数据库名称           |
+| `WORKER_CONCURRENCY` | 3                    | 并发处理数量         |
+| `WORKER_QUEUE_NAME`  | snapshot:queue       | 队列名称             |
+| `GIT_TEMP_DIR`       | ./data/git/worktrees | Git 临时目录         |
+| `GIT_BUNDLE_DIR`     | ./data/git/bundles   | Bundle 存储目录      |
+| `GIT_MAX_REPO_SIZE`  | 1073741824           | 最大仓库大小（字节） |
+| `LOG_LEVEL`          | info                 | 日志级别             |
+
+默认情况下，Worker 的工作文件都会保存在 `apps/worker/data/` 下，属于当前仓库内部目录。
 
 ## API 端点
 

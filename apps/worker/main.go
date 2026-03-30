@@ -113,7 +113,7 @@ func runWorker(log zerolog.Logger) {
 		Str("queue_name", cfg.Worker.QueueName).
 		Int("health_port", 3002).
 		Msg("Worker started successfully")
-	
+
 	// 启动时运行环境诊断
 	go runStartupDiagnosis()
 
@@ -142,13 +142,18 @@ func runWorker(log zerolog.Logger) {
 func runStartupDiagnosis() {
 	// 等待一秒让 Worker 完全启动
 	time.Sleep(1 * time.Second)
-	
+
 	log.Info().Msg("🔍 Running startup environment diagnosis...")
-	
+
+	if _, err := os.Stat("/app/diagnose"); err != nil {
+		log.Info().Msg("📋 Diagnosis binary not found, skipping startup diagnosis")
+		return
+	}
+
 	// 执行诊断命令
 	cmd := exec.Command("/app/diagnose")
 	output, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -156,7 +161,7 @@ func runStartupDiagnosis() {
 			Msg("❌ Failed to run diagnosis")
 		return
 	}
-	
+
 	// 直接输出诊断结果，使用简洁格式
 	log.Info().Msg("📋 === DIAGNOSIS RESULTS ===")
 	log.Info().Str("diagnosis", string(output)).Msg("🔍 Full diagnosis output")

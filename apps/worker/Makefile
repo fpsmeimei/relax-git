@@ -4,7 +4,7 @@
 BINARY_NAME=relax-git-worker
 VERSION=$(shell git describe --tags --always --dirty)
 COMMIT=$(shell git rev-parse --short HEAD)
-DATE=$(shell powershell -Command "Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'")
+DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS=-ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)"
 
 # Go 相关变量
@@ -56,7 +56,7 @@ clean:
 # 运行
 .PHONY: run
 run:
-	$(GOCMD) run . 
+	$(GOCMD) run .
 
 # 格式化代码
 .PHONY: fmt

@@ -1,42 +1,13 @@
-import { Clear as ClearIcon, Search as SearchIcon } from '@mui/icons-material';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  FormControl,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-} from '@mui/material';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, Search, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { useSearchStore } from '../../stores/searchStore';
 import { CreateSearchRequest, SearchType } from '../../types/search';
-
-const glassCardSx = {
-  position: 'relative' as const,
-  overflow: 'hidden',
-  padding: { xs: '2.25rem', md: '2.75rem' },
-};
-
-const fieldSx = {
-  '& .MuiInputBase-root': {
-    transition:
-      'border-color 0.2s ease, background 0.2s ease, box-shadow 0.28s ease',
-  },
-};
-
-const selectMenuProps = {
-  PaperProps: {
-    className: 'glass-menu',
-  },
-};
 
 interface SearchFormProps {
   repositoryId: string;
@@ -103,122 +74,112 @@ export const SearchForm: React.FC<SearchFormProps> = ({
   };
 
   return (
-    <Card className="glass-panel glass-panel-hero" sx={glassCardSx}>
-      <CardContent sx={{ position: 'relative', zIndex: 1, p: 0 }}>
-        <Typography
-          variant="h5"
-          sx={{ fontWeight: 600, letterSpacing: '-0.01em', mb: 2 }}
-          className="text-foreground"
-        >
-          代码搜索
-        </Typography>
+    <Card className="overflow-hidden border-border/60 bg-card/90 shadow-sm backdrop-blur">
+      <CardContent className="space-y-6 p-6 md:p-8">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            代码搜索
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            在当前仓库或快照里查找内容、文件名或正则匹配。
+          </p>
+        </div>
 
-        <Box mb={2.5} display="flex" flexWrap="wrap" gap={1}>
-          <Chip
-            label={`仓库: ${repositoryName}`}
-            size="small"
-            className="glass-chip"
-          />
-          {snapshotId && snapshotTitle && (
-            <Chip
-              label={`版本: ${snapshotTitle}`}
-              size="small"
-              className="glass-chip"
-            />
-          )}
-        </Box>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline-subtle">仓库: {repositoryName}</Badge>
+          {snapshotId && snapshotTitle ? (
+            <Badge variant="outline-subtle">版本: {snapshotTitle}</Badge>
+          ) : null}
+        </div>
 
-        {searchError && (
-          <Alert severity="error" className="glass-alert glass-alert-error mb-2.5">
-            {searchError}
-          </Alert>
-        )}
+        {searchError ? (
+          <Alert variant="destructive">{searchError}</Alert>
+        ) : null}
 
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={2.5}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="搜索关键词"
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="search-query">搜索关键词</Label>
+            <div className="relative">
+              <Input
+                id="search-query"
                 placeholder="输入要搜索的内容..."
                 value={localQuery}
                 onChange={e => setLocalQuery(e.target.value)}
                 disabled={isSearching}
-                sx={fieldSx}
-                className="glass-field"
-                InputProps={{
-                  endAdornment: localQuery && (
-                    <Button
-                      size="small"
-                      onClick={handleClear}
-                      sx={{ minWidth: 'auto', p: 0.5 }}
-                    >
-                      <ClearIcon fontSize="small" />
-                    </Button>
-                  ),
-                }}
+                className="pr-12"
               />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth sx={fieldSx} className="glass-field">
-                <InputLabel>搜索类型</InputLabel>
-                <Select
-                  value={searchForm.searchType}
-                  label="搜索类型"
-                  onChange={e =>
-                    setSearchForm({ searchType: e.target.value as SearchType })
-                  }
-                  disabled={isSearching}
-                  MenuProps={selectMenuProps}
+              {localQuery ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClear}
+                  className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2"
                 >
-                  {(Object.entries(searchTypeLabels) as [SearchType, string][]).map(([value, label]) => (
-                    <MenuItem key={value} value={value}>
-                      <Box>
-                        <Typography variant="body2" className="text-foreground">
-                          {label}
-                        </Typography>
-                        <Typography variant="caption" className="text-muted-foreground">
-                          {searchTypeDescriptions[value]}
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+                  <X className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </div>
+          </div>
 
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="search-type">搜索类型</Label>
+              <select
+                id="search-type"
+                value={searchForm.searchType}
+                onChange={e =>
+                  setSearchForm({ searchType: e.target.value as SearchType })
+                }
+                disabled={isSearching}
+                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {(
+                  Object.entries(searchTypeLabels) as [SearchType, string][]
+                ).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {searchTypeDescriptions[searchForm.searchType]}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="max-results">最大结果数</Label>
+              <Input
+                id="max-results"
                 type="number"
-                label="最大结果数"
+                min={1}
+                max={1000}
                 value={searchForm.maxResults}
                 onChange={e =>
                   setSearchForm({ maxResults: parseInt(e.target.value) || 100 })
                 }
                 disabled={isSearching}
-                inputProps={{ min: 1, max: 1000 }}
-                sx={fieldSx}
-                className="glass-field"
               />
-            </Grid>
+            </div>
+          </div>
 
-            <Grid item xs={12}>
-              <Button
-                type="submit"
-                variant="contained"
-                fullWidth
-                disabled={!localQuery.trim() || isSearching}
-                startIcon={
-                  isSearching ? <CircularProgress size={20} /> : <SearchIcon />
-                }
-                className="halo-accent halo-accent-pulse"
-              >
-                {isSearching ? '搜索中...' : '开始搜索'}
-              </Button>
-            </Grid>
-          </Grid>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!localQuery.trim() || isSearching}
+          >
+            {isSearching ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                搜索中...
+              </>
+            ) : (
+              <>
+                <Search className="mr-2 h-4 w-4" />
+                开始搜索
+              </>
+            )}
+          </Button>
         </form>
       </CardContent>
     </Card>

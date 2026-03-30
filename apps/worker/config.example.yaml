@@ -13,8 +13,8 @@ database:
   host: localhost
   port: 5432
   user: postgres
-  password: ''
-  db_name: relax_git
+  password: 'postgres'
+  db_name: relax_git_dev
   ssl_mode: disable
 
 # Worker 配置
@@ -24,14 +24,14 @@ worker:
   # 队列名称
   queue_name: 'snapshot:queue'
   # 工作目录
-  work_dir: '/tmp/relax-git-worker'
+  work_dir: './data/worker'
 
 # Git 配置
 git:
   # 临时目录
-  temp_dir: '/tmp/relax-git-repos'
+  temp_dir: './data/git/worktrees'
   # Bundle 存储目录
-  bundle_dir: '/tmp/relax-git-bundles'
+  bundle_dir: './data/git/bundles'
   # 最大仓库大小（字节）
   max_repo_size: 1073741824 # 1GB
 

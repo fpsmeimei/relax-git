@@ -43,8 +43,8 @@ ORDER BY tablename, attname;
 CREATE OR REPLACE VIEW index_usage AS
 SELECT
     schemaname,
-    tablename,
-    indexname,
+    relname AS tablename,
+    indexrelname AS indexname,
     idx_tup_read,
     idx_tup_fetch,
     idx_scan

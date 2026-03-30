@@ -32,10 +32,8 @@ Thumbs.db
 .git/
 .gitignore
 
-# Documentation (保留部署文档)
+# Documentation
 docs/
-!RAILWAY_DEPLOY.md
-!README.md
 
 # Tests
 coverage/

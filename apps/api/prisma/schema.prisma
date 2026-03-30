@@ -76,7 +76,6 @@ model User {
   repositoryViews        RepositoryView[]       @relation("UserRepositoryViews")
   // 消息可见性关联
   messageVisibility      MessageVisibility[]    @relation("MessageVisibility")
-  movieFavorites         MovieFavorite[]        @relation("UserMovieFavorites")
 
   @@map("users")
 }
@@ -778,22 +777,3 @@ model MessageVisibility {
   @@map("message_visibility")
 }
 
-// 电影收藏表
-model MovieFavorite {
-  id          String   @id @default(cuid())
-  userId      String
-  title       String // 中文片名
-  englishName String? // 英文片名，用于查询OMDb
-  year        String? // 年份
-  rating      String? // 评分
-  director    String? // 导演
-  posterUrl   String? // 海报URL
-  createdAt   DateTime @default(now())
-
-  // 关联关系
-  user User @relation("UserMovieFavorites", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, title]) // 同一用户不能重复收藏同一部电影
-  @@index([userId, createdAt(sort: Desc)]) // 按用户和创建时间倒序索引
-  @@map("movie_favorites")
-}

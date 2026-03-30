@@ -31,10 +31,10 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={() => setTheme(nextTheme.id)}
-      className="flex items-center gap-2 px-5 py-2 text-base font-medium text-muted-foreground hover:text-foreground rounded-full transition-colors duration-200 hover:bg-accent"
+      className="flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground rounded-full transition-colors duration-200 hover:bg-accent"
       title={`切换至 ${nextTheme.label}`}
     >
-      <Icon className="h-5 w-5" />
+      <Icon className="h-[18px] w-[18px]" />
       <span>{current.label}</span>
     </button>
   );

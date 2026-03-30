@@ -1,14 +1,9 @@
 'use client';
 
 import { FriendRequestsDrawer } from '@/components/chat/friend-requests-drawer';
-import { MovieCard } from '@/components/movie/movie-card';
-import { AIWelcome } from '@/components/movie/ai-welcome';
-import { FavoritesDialog } from '@/components/movie/favorites-dialog';
+import { AssistantWelcome } from '@/components/assistant/assistant-welcome';
 import { useSocket } from '@/components/socket-provider';
 import { Button } from '@/components/ui/button';
-import { parseMovieMessage, hasMovieRecommendations } from '@/lib/movie-parser';
-import { searchMovie, getPosterUrl } from '@/lib/tmdb-api';
-import { addMovieFavorite, getMovieFavorites } from '@/lib/api/movies';
 import {
   Dialog,
   DialogContent,
@@ -39,78 +34,6 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type FriendEntry = FriendItem & { type: 'friend' };
-
-// 增强版电影卡片组件 - 只显示 OMDb 找到的真实电影
-function EnhancedMovieCard({
-  movie,
-  onAskAbout,
-  onFindSimilar,
-  onSaveToFavorites,
-}: {
-  movie: {
-    title: string;
-    englishName?: string;
-    year?: string;
-    rating?: string;
-    director?: string;
-    description?: string;
-    posterUrl?: string;
-  };
-  onAskAbout: (title: string) => void;
-  onFindSimilar: (title: string) => void;
-  onSaveToFavorites?: (title: string, posterUrl?: string) => void;
-}) {
-  const [posterUrl, setPosterUrl] = useState<string | undefined>();
-  const [isValid, setIsValid] = useState<boolean>(true); // 是否是真实电影
-
-  useEffect(() => {
-    // 异步加载电影海报
-    const loadPoster = async () => {
-      // 优先使用英文名查询 OMDb（支持更好），回退到中文名
-      const queryName = movie.englishName || movie.title;
-      const movieData = await searchMovie(queryName, movie.year);
-
-      if (movieData?.poster_path) {
-        // 找到真实电影，显示海报
-        const fullUrl = getPosterUrl(movieData.poster_path, 'w342');
-        setPosterUrl(fullUrl);
-        setIsValid(true);
-      } else {
-        // OMDb 中找不到，标记为无效，不显示卡片
-        setIsValid(false);
-      }
-    };
-    void loadPoster();
-  }, [movie.title, movie.englishName, movie.year]);
-
-  // 如果不是真实电影，不渲染卡片
-  if (!isValid) {
-    return null;
-  }
-
-  return (
-    <MovieCard
-      title={movie.title}
-      year={movie.year}
-      rating={movie.rating}
-      director={movie.director}
-      description={movie.description}
-      poster={posterUrl}
-      onSave={() => {
-        // 添加到收藏夹，传递 posterUrl
-        onSaveToFavorites?.(movie.title, posterUrl);
-      }}
-      onViewDetails={() => {
-        // 触发详细介绍对话
-        onAskAbout(movie.title);
-      }}
-      onFindSimilar={() => {
-        // 触发相似推荐对话
-        onFindSimilar(movie.title);
-      }}
-    />
-  );
-}
 
 export default function ChatroomPage() {
   const { user } = useAuth();
@@ -154,39 +77,15 @@ export default function ChatroomPage() {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [aiMessages, setAiMessages] = useState<ChatMessage[]>([]);
-  const [favoriteMovies, setFavoriteMovies] = useState<string[]>([]);
-  const [favoritesCount, setFavoritesCount] = useState(0); // 收藏总数
-  const [favoritesDialogOpen, setFavoritesDialogOpen] = useState(false); // 添加收藏对话框状态
-  const [aiMode, setAiMode] = useState<'discovery' | 'thinking' | 'chat'>(
-    'discovery'
-  ); // AI 模式
+  const [aiMode, setAiMode] = useState<'explore' | 'thinking' | 'chat'>(
+    'explore'
+  );
 
   const chatInitialLoaded = useRef(new Set<string>());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
-
-  // 从API加载收藏列表
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const loadFavorites = async () => {
-      try {
-        const response = await getMovieFavorites(1, 100); // 加载前100个收藏
-        const titles = response.favorites.map(f => f.title);
-        setFavoriteMovies(titles);
-        setFavoritesCount(response.total);
-      } catch (error) {
-        console.error('Failed to load favorites:', error);
-        // 失败时保持空列表，不影响页面正常使用
-        setFavoriteMovies([]);
-        setFavoritesCount(0);
-      }
-    };
-
-    void loadFavorites();
-  }, [user?.id]);
 
   // 从 LocalStorage 加载 AI 消息历史（按用户ID隔离）
   useEffect(() => {
@@ -219,7 +118,7 @@ export default function ChatroomPage() {
           id: `ai-welcome-${Date.now()}`,
           chatId: 'ai-chat',
           content:
-            '你好！我是电影顾问，由 DeepSeek v3.2 驱动 🎬\n\n有什么电影相关的问题随时问我：\n- 想看什么类型/风格的电影？\n- 最近喜欢的电影？\n- 或者任何特别要求？\n\n马上为你精准推荐！',
+            '你好！我是你的项目 AI 助手，由 DeepSeek v3.2 驱动。\n\n我可以帮你：\n- 解释毕业设计项目结构\n- 梳理启动步骤和依赖\n- 生成汇报/PPT 说明\n- 协助排查报错和运行问题\n\n直接告诉我你想了解什么。',
           senderId: 'ai-assistant',
           createdAt: new Date().toISOString(),
           type: 'text',
@@ -290,7 +189,7 @@ export default function ChatroomPage() {
     // 创建虚拟的 AI 助手项（置顶）
     const aiBot: FriendEntry = {
       id: 'ai-assistant',
-      username: '电影顾问 🎬',
+      username: '项目助手 🤖',
       avatar: 'https://octodex.github.com/images/nyantocat.gif',
       chatId: 'ai-chat',
       unreadCount: 0,
@@ -540,7 +439,7 @@ export default function ChatroomPage() {
           }>('/ai/chat', {
             message: text,
             conversationHistory,
-            mode: aiMode, // 传递 AI 模式
+            mode: aiMode === 'explore' ? 'chat' : aiMode,
           });
 
           // 移除"思考中"消息，添加思考过程（如果有）和 AI 回复
@@ -658,7 +557,7 @@ export default function ChatroomPage() {
           id: `ai-welcome-${Date.now()}`,
           chatId: 'ai-chat',
           content:
-            '你好！我是电影顾问，由 DeepSeek v3.2 驱动 🎬\n\n有什么电影相关的问题随时问我：\n- 想看什么类型/风格的电影？\n- 最近喜欢的电影？\n- 或者任何特别要求？\n\n马上为你精准推荐！',
+            '你好！我是你的项目 AI 助手，由 DeepSeek v3.2 驱动。\n\n我可以帮你：\n- 解释毕业设计项目结构\n- 梳理启动步骤和依赖\n- 生成汇报/PPT 说明\n- 协助排查报错和运行问题\n\n直接告诉我你想了解什么。',
           senderId: 'ai-assistant',
           createdAt: new Date().toISOString(),
           type: 'text',
@@ -713,8 +612,6 @@ export default function ChatroomPage() {
 
     // 检查是否是AI消息并包含电影推荐
     const isAiMessage = message.senderId === 'ai-assistant';
-    const parsedMessage = isAiMessage ? parseMovieMessage(content) : null;
-    const hasMovies = parsedMessage && parsedMessage.movies.length > 0;
 
     return (
       <div
@@ -782,69 +679,6 @@ export default function ChatroomPage() {
               )}
             </div>
           </div>
-
-          {/* 电影卡片展示 */}
-          {hasMovies && parsedMessage && (
-            <div className="mt-3 space-y-3">
-              {parsedMessage.movies.map((movie, index) => (
-                <EnhancedMovieCard
-                  key={`${message.id}-movie-${index}`}
-                  movie={movie}
-                  onAskAbout={title => {
-                    // 点击"详情"：自动发送给AI
-                    setMessageInput(`详细介绍一下《${title}》`);
-                    setTimeout(() => {
-                      void handleSendChatMessage();
-                    }, 100);
-                  }}
-                  onFindSimilar={title => {
-                    // 点击"相似推荐"：自动发送给AI
-                    setMessageInput(`推荐几部和《${title}》类似的电影`);
-                    setTimeout(() => {
-                      void handleSendChatMessage();
-                    }, 100);
-                  }}
-                  onSaveToFavorites={async (title, posterUrl) => {
-                    // 检查是否已收藏
-                    if (favoriteMovies.includes(title)) {
-                      toast({ title: '已在收藏夹中' });
-                      return;
-                    }
-
-                    try {
-                      // 调用 API 添加收藏，只传递有值的属性
-                      const favoriteData: any = { title: movie.title };
-                      if (movie.englishName)
-                        favoriteData.englishName = movie.englishName;
-                      if (movie.year) favoriteData.year = movie.year;
-                      if (movie.rating) favoriteData.rating = movie.rating;
-                      if (movie.director)
-                        favoriteData.director = movie.director;
-                      if (posterUrl) favoriteData.posterUrl = posterUrl;
-
-                      await addMovieFavorite(favoriteData);
-
-                      // 更新本地状态
-                      setFavoriteMovies(prev => [...prev, title]);
-                      setFavoritesCount(c => c + 1);
-
-                      toast({
-                        title: '收藏成功',
-                        description: `已将《${title}》加入收藏夹`,
-                      });
-                    } catch (error) {
-                      console.error('Failed to add favorite:', error);
-                      toast({
-                        title: '收藏失败',
-                        description: '请稍后重试',
-                        variant: 'destructive',
-                      });
-                    }
-                  }}
-                />
-              ))}
-            </div>
-          )}
         </div>
         {isSelf && (
           <div className="h-10 w-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
@@ -914,9 +748,9 @@ export default function ChatroomPage() {
             {selectedFriend?.id === 'ai-assistant' && (
               <div className="flex items-center gap-1.5 ml-4">
                 <button
-                  onClick={() => setAiMode('discovery')}
+                  onClick={() => setAiMode('explore')}
                   className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all shadow-sm ${
-                    aiMode === 'discovery'
+                    aiMode === 'explore'
                       ? 'bg-[#88C0D0] text-white shadow-[#88C0D0]/30'
                       : 'bg-[#3B4252] text-[#D8DEE9] hover:bg-[#434C5E] hover:shadow-md'
                   }`}
@@ -971,7 +805,7 @@ export default function ChatroomPage() {
           {selectedFriend?.id === 'ai-assistant' &&
           selectedChatMessages.length <= 1 ? (
             // AI助手的精美欢迎界面（消息为空或只有欢迎消息时显示）
-            <AIWelcome />
+            <AssistantWelcome />
           ) : selectedChatMessages.length === 0 && !creatingChat ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               还没有消息，发送第一条吧！
@@ -999,37 +833,31 @@ export default function ChatroomPage() {
             {/* 功能快捷按钮 */}
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setFavoritesDialogOpen(true)}
-                className="px-3 py-1.5 text-sm bg-muted hover:bg-accent rounded-full transition-colors flex items-center gap-1"
-              >
-                📌 我的收藏 {favoritesCount > 0 && `(${favoritesCount})`}
-              </button>
-              <button
                 onClick={() => {
-                  setMessageInput('推荐经典佳作，豆瓣评分9分以上的电影');
+                  setMessageInput('请帮我梳理这个毕业设计项目的启动步骤');
                   setTimeout(() => void handleSendChatMessage(), 100);
                 }}
                 className="px-3 py-1.5 text-sm bg-muted hover:bg-accent rounded-full transition-colors"
               >
-                ⭐ 经典佳作
+                ⭐ 启动步骤
               </button>
               <button
                 onClick={() => {
-                  setMessageInput('推荐2023-2024年最新上映的高分电影');
+                  setMessageInput('请帮我总结这个项目的技术栈和模块结构');
                   setTimeout(() => void handleSendChatMessage(), 100);
                 }}
                 className="px-3 py-1.5 text-sm bg-muted hover:bg-accent rounded-full transition-colors"
               >
-                🎬 最新电影
+                🧩 技术结构
               </button>
               <button
                 onClick={() => {
-                  setMessageInput('推荐适合周末放松看的喜剧电影');
+                  setMessageInput('请帮我生成一段毕业答辩介绍文案');
                   setTimeout(() => void handleSendChatMessage(), 100);
                 }}
                 className="px-3 py-1.5 text-sm bg-muted hover:bg-accent rounded-full transition-colors"
               >
-                😄 喜剧片
+                📝 答辩文案
               </button>
             </div>
           </div>
@@ -1306,35 +1134,6 @@ export default function ChatroomPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* 收藏夹弹窗 */}
-      <FavoritesDialog
-        open={favoritesDialogOpen}
-        onOpenChange={open => {
-          setFavoritesDialogOpen(open);
-          // 关闭时刷新收藏数据
-          if (!open && user?.id) {
-            getMovieFavorites(1, 100)
-              .then(response => {
-                setFavoriteMovies(response.favorites.map(f => f.title));
-                setFavoritesCount(response.total);
-              })
-              .catch(() => {
-                // 忽略错误
-              });
-          }
-        }}
-        onViewDetails={title => {
-          setMessageInput(`详细介绍一下《${title}》这部电影`);
-          setFavoritesDialogOpen(false);
-          setTimeout(() => void handleSendChatMessage(), 100);
-        }}
-        onFindSimilar={title => {
-          setMessageInput(`根据《${title}》推荐类似风格的电影`);
-          setFavoritesDialogOpen(false);
-          setTimeout(() => void handleSendChatMessage(), 100);
-        }}
-      />
     </div>
   );
 }

@@ -1,18 +1,8 @@
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/hooks/use-auth';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CircularProgress,
-  Container,
-  Grid,
-  Paper,
-  Tab,
-  Tabs,
-  Typography,
-} from '@mui/material';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, Lock, LogIn, Search, Clock3 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useSearchStore } from '../../stores/searchStore';
 import { SearchType } from '../../types/search';
@@ -161,142 +151,137 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   // 权限校验中
   if (accessLoading) {
     return (
-      <Container maxWidth="lg">
-        <Box py={6} display="flex" alignItems="center" justifyContent="center">
-          <CircularProgress size={24} />
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-            校验访问权限...
-          </Typography>
-        </Box>
-      </Container>
+      <div className="mx-auto w-full max-w-6xl px-4 py-8">
+        <Card className="border-border/60 bg-card/90 shadow-sm">
+          <CardContent className="flex items-center justify-center gap-3 py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              校验访问权限...
+            </span>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   // 受限占位：显示“受限卡片 + 申请加入 CTA”
   if (isRestricted) {
     return (
-      <Container maxWidth="lg">
-        <Box py={4}>
-          <Card className="hover-lift">
-            <CardContent>
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-                gap={2}
-              >
-                <Box>
-                  <Typography variant="h6">私有仓库</Typography>
-                  <Box display="flex" alignItems="center" gap={1} mt={0.5}>
-                    <Typography variant="body2" color="text.secondary">
-                      受限访问：您无权查看该仓库详情或进行搜索
-                    </Typography>
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ mt: 1, display: 'block' }}
+      <div className="mx-auto w-full max-w-6xl px-4 py-8">
+        <Card className="border-border/60 bg-card/90 shadow-sm">
+          <CardContent className="space-y-6 p-6 md:p-8">
+            <div className="flex items-start gap-4">
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-3">
+                <Lock className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                  私有仓库
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  受限访问：您无权查看该仓库详情或进行搜索
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  仓库ID: {repositoryId}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {isJoinNeeded({
+                visibility: 'PRIVATE',
+                myRole: undefined,
+                isAuthenticated,
+                joinStatus,
+              }) ? (
+                !isAuthenticated ? (
+                  <Button asChild>
+                    <a href={loginUrl}>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      登录后申请加入
+                    </a>
+                  </Button>
+                ) : joinStatus === 'pending' ? (
+                  <>
+                    <Button variant="outline" disabled>
+                      已申请，等待审核
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleCancelJoin()}
+                      disabled={cancelling}
+                    >
+                      {cancelling ? '撤回中…' : '撤回申请'}
+                    </Button>
+                  </>
+                ) : joinStatus === 'approved' ? (
+                  <Button variant="outline" disabled>
+                    已通过，请稍后重试
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => void handleApplyToJoin()}
+                    disabled={applying}
                   >
-                    仓库ID: {repositoryId}
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" gap={1.5}>
-                  {isJoinNeeded({
-                    visibility: 'PRIVATE',
-                    myRole: undefined,
-                    isAuthenticated,
-                    joinStatus,
-                  }) &&
-                    (!isAuthenticated ? (
-                      <Button variant="contained" href={loginUrl}>
-                        登录后申请加入
-                      </Button>
-                    ) : joinStatus === 'pending' ? (
-                      <Box display="flex" alignItems="center" gap={1.5}>
-                        <Button variant="outlined" disabled>
-                          已申请，等待审核
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="inherit"
-                          onClick={() => void handleCancelJoin()}
-                          disabled={cancelling}
-                          sx={{ ml: 0.5 }}
-                        >
-                          {cancelling ? '撤回中…' : '撤回申请'}
-                        </Button>
-                      </Box>
-                    ) : joinStatus === 'approved' ? (
-                      <Button variant="outlined" disabled>
-                        已通过，请稍后重试
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="contained"
-                        onClick={() => void handleApplyToJoin()}
-                        disabled={applying}
-                      >
-                        {applying && (
-                          <CircularProgress size={16} sx={{ mr: 1 }} />
-                        )}
-                        {joinStatus === 'rejected'
-                          ? '重新申请加入'
-                          : '申请加入'}
-                      </Button>
-                    ))}
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
-      </Container>
+                    {applying ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    {joinStatus === 'rejected' ? '重新申请加入' : '申请加入'}
+                  </Button>
+                )
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
+  const tabs = [
+    { id: 0, label: '搜索', icon: Search },
+    { id: 1, label: '历史记录', icon: Clock3 },
+  ] as const;
+
   return (
-    <Container maxWidth="lg">
-      <Box py={3}>
-        <Paper className="hover-lift" sx={{ mb: 3 }}>
-          <Tabs
-            value={activeTab}
-            onChange={handleTabChange}
-            indicatorColor="primary"
-            textColor="primary"
-            variant="fullWidth"
-          >
-            <Tab label="搜索" />
-            <Tab label="历史记录" />
-          </Tabs>
-        </Paper>
+    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      <div className="mb-4 flex rounded-2xl border border-border/60 bg-card/80 p-1 shadow-sm">
+        {tabs.map(tab => {
+          const active = activeTab === tab.id;
+          const Icon = tab.icon;
 
-        <Grid container spacing={3}>
-          {activeTab === 0 && (
-            <>
-              <Grid item xs={12}>
-                <SearchForm
-                  repositoryId={repositoryId}
-                  repositoryName={repositoryName}
-                  {...(snapshotId ? { snapshotId } : {})}
-                  {...(snapshotTitle ? { snapshotTitle } : {})}
-                  onSearchStart={handleSearchStart}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <SearchResults {...(onFileOpen ? { onFileOpen } : {})} />
-              </Grid>
-            </>
-          )}
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${active ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-          {activeTab === 1 && (
-            <Grid item xs={12}>
-              <SearchHistory
-                repositoryId={repositoryId}
-                onHistoryItemClick={handleHistoryItemClick}
-              />
-            </Grid>
-          )}
-        </Grid>
-      </Box>
-    </Container>
+      <div className="grid gap-4">
+        {activeTab === 0 ? (
+          <>
+            <SearchForm
+              repositoryId={repositoryId}
+              repositoryName={repositoryName}
+              {...(snapshotId ? { snapshotId } : {})}
+              {...(snapshotTitle ? { snapshotTitle } : {})}
+              onSearchStart={handleSearchStart}
+            />
+            <SearchResults {...(onFileOpen ? { onFileOpen } : {})} />
+          </>
+        ) : (
+          <SearchHistory
+            repositoryId={repositoryId}
+            onHistoryItemClick={handleHistoryItemClick}
+          />
+        )}
+      </div>
+    </div>
   );
 };

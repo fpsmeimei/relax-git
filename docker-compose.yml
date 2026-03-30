@@ -1,21 +1,16 @@
-# Docker Compose 配置 - 用于本地开发和测试
-version: '3.8'
-
 services:
-  # PostgreSQL 数据库
   postgres:
     image: postgres:16-alpine
     container_name: relax-git-postgres
     environment:
-      POSTGRES_DB: relax_git
+      POSTGRES_DB: relax_git_dev
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./apps/api/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -24,7 +19,6 @@ services:
     networks:
       - relax-git-network
 
-  # Redis 缓存
   redis:
     image: redis:7-alpine
     container_name: relax-git-redis
@@ -41,116 +35,9 @@ services:
     networks:
       - relax-git-network
 
-  # API 服务
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    container_name: relax-git-api
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/relax_git
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-jwt-secret-change-in-production
-      CORS_ORIGIN: http://localhost:3000
-    ports:
-      - "3001:3001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - api_uploads:/app/apps/api/uploads
-    networks:
-      - relax-git-network
-    restart: unless-stopped
-
-  # Web 应用
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: relax-git-web
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: your-nextauth-secret-change-in-production
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
-    networks:
-      - relax-git-network
-    restart: unless-stopped
-
-  # Worker 服务
-  worker:
-    build:
-      context: .
-      dockerfile: apps/worker/Dockerfile
-    container_name: relax-git-worker
-    environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/relax_git
-      REDIS_URL: redis://redis:6379
-      WORKER_CONCURRENCY: 2
-      LOG_LEVEL: info
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - worker_data:/app/data
-    networks:
-      - relax-git-network
-    restart: unless-stopped
-
-  # 全栈应用 (单容器部署，用于测试 Railway 配置)
-  fullstack:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: fullstack
-    container_name: relax-git-fullstack
-    environment:
-      NODE_ENV: production
-      PORT: 3000
-      API_PORT: 3001
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/relax_git
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: your-jwt-secret-change-in-production
-      CORS_ORIGIN: http://localhost:3000
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: your-nextauth-secret-change-in-production
-    ports:
-      - "8000:3000"  # 使用不同端口避免冲突
-      - "8001:3001"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - fullstack_uploads:/app/apps/api/uploads
-      - fullstack_logs:/app/logs
-    networks:
-      - relax-git-network
-    restart: unless-stopped
-    profiles:
-      - fullstack  # 使用 profile 控制是否启动
-
 volumes:
   postgres_data:
   redis_data:
-  api_uploads:
-  worker_data:
-  fullstack_uploads:
-  fullstack_logs:
 
 networks:
   relax-git-network:
