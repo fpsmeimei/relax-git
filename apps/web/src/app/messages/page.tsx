@@ -1,49 +1,73 @@
 'use client';
 
-import { MessageSquare } from 'lucide-react';
-import Link from 'next/link';
+import MessagesCenterPage from '@/components/messages/messages-center-page';
+import { buildMessageThreadHref } from '@/lib/messages-route';
+import { apiClient } from '@/services/apiClient';
+import { Loader2 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 
-export default function MessagesPage() {
+function MessagesPageLoading({ label }: { label: string }) {
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-background/95 backdrop-blur-sm">
-        <div className="container-responsive flex h-16 items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-xl font-bold">消息</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              href="/repositories"
-            >
-              返回仓库
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      <main className="container-responsive py-12">
-        <div className="max-w-2xl mx-auto text-center space-y-6">
-          <div className="flex justify-center">
-            <div className="rounded-full bg-primary/10 p-6">
-              <MessageSquare className="h-16 w-16 text-primary" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">聊天功能</h1>
-            <p className="text-lg text-muted-foreground">
-              此功能正在开发中，敬请期待
-            </p>
-          </div>
-
-          <div className="pt-4">
-            <p className="text-sm text-muted-foreground">
-              即将支持：私聊、群聊、实时消息通知等功能
-            </p>
+      <main className="container-responsive py-16">
+        <div className="flex items-center justify-center">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            {label}
           </div>
         </div>
       </main>
     </div>
+  );
+}
+
+function MessagesPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [creating, setCreating] = useState(false);
+  const createDirect = searchParams.get('createDirect');
+
+  useEffect(() => {
+    if (createDirect) {
+      void handleCreateDirect(createDirect);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createDirect, router]);
+
+  const handleCreateDirect = async (uid: string) => {
+    if (!uid) return;
+    try {
+      setCreating(true);
+      const { data } = await apiClient.post<{ id?: string; chatId?: string }>(
+        '/chats/direct',
+        {
+          userId: uid,
+        }
+      );
+      const chatId = data?.chatId ?? data?.id;
+      if (chatId) {
+        router.replace(buildMessageThreadHref(chatId));
+      } else {
+        router.replace('/messages');
+      }
+    } catch (error) {
+      console.error('Create direct chat failed:', error);
+      router.replace('/messages');
+    }
+  };
+
+  if (createDirect || creating) {
+    return <MessagesPageLoading label="正在创建私信会话..." />;
+  }
+
+  return <MessagesCenterPage />;
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<MessagesPageLoading label="正在加载消息中心..." />}>
+      <MessagesPageContent />
+    </Suspense>
   );
 }

@@ -51,7 +51,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const { addNotification, incrementUnread } = useNotificationsStore();
   const { toast } = useToast();
   const pathname = usePathname();
-  // 记录需要在重连后自动恢复的订阅/房间
+  // 记录需要在重连后自动恢复的订阅频道
   const subscriptionsRef = useRef<
     Map<string, { event: string; payload?: any }>
   >(new Map());
@@ -141,7 +141,6 @@ export function SocketProvider({ children }: SocketProviderProps) {
         }, 200);
       } catch (e) {
         // 刷新失败：跳转登录
-        console.warn('[WS] refresh failed, redirect to login', reason, e);
         if (typeof window !== 'undefined') {
           window.location.href = '/auth/login?reason=session_expired';
         }
@@ -188,7 +187,6 @@ export function SocketProvider({ children }: SocketProviderProps) {
     });
 
     socketInstance.on('connect_error', async error => {
-      console.error('WebSocket connection error:', error || 'Unknown');
       setIsConnecting(false);
       // 尝试静默刷新并重连（例如 access_token 过期）
       await tryRefreshAndReconnect(error);
@@ -263,53 +261,14 @@ export function SocketProvider({ children }: SocketProviderProps) {
     });
 
     // 认证事件监听
-    socketInstance.on('auth:success', data => {
-      console.log('WebSocket authenticated:', data);
-    });
+    socketInstance.on('auth:success', () => {});
 
     socketInstance.on('auth:error', async error => {
-      console.error('WebSocket authentication failed:', error || 'Unknown');
       // 优先尝试刷新并重连，避免直接断开导致长期无实时能力
       await tryRefreshAndReconnect(error);
     });
 
-    // 错误处理
-    socketInstance.on('error', error => {
-      // 防止空错误对象导致控制台错误
-      try {
-        console.error('WebSocket error:', error || {});
-        // 如果错误对象为空或undefined，不要抛出异常
-        if (
-          error &&
-          typeof error === 'object' &&
-          Object.keys(error).length > 0
-        ) {
-          console.error('WebSocket error details:', error);
-        }
-      } catch (e) {
-        console.warn('Error handling WebSocket error:', e);
-      }
-    });
-
-    // 添加通用错误捕获和事件监控
-    socketInstance.onAny((eventName, ...args) => {
-      try {
-        // 捕获所有事件，检查是否有错误
-        if (eventName === 'error') {
-          if (args.length === 0) {
-            console.warn('Received empty error event from WebSocket');
-          } else {
-            console.log('WebSocket error event details:', { eventName, args });
-          }
-        }
-        // 记录所有接收到的事件（仅在开发环境）
-        if (process.env.NODE_ENV === 'development') {
-          console.log('WebSocket event received:', eventName, args);
-        }
-      } catch (e) {
-        console.warn('Error in WebSocket event handler:', e);
-      }
-    });
+    socketInstance.on('error', () => {});
 
     setSocket(socketInstance);
 

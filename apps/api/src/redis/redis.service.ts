@@ -1,6 +1,54 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { REDIS_KEYS, getRedisConfig } from '@relax-git/shared';
 import { Redis } from 'ioredis';
+
+type RedisConfig = {
+  host: string;
+  port: number;
+  password?: string | undefined;
+  db?: number;
+  maxRetriesPerRequest?: number;
+  retryDelayOnFailover?: number;
+  lazyConnect?: boolean;
+};
+
+const getRedisConfig = (): RedisConfig => {
+  const redisUrl = process.env['REDIS_URL'];
+
+  if (redisUrl) {
+    try {
+      const url = new URL(redisUrl);
+      return {
+        host: url.hostname,
+        port: parseInt(url.port || '6379', 10),
+        password: url.password || undefined,
+        db: parseInt(url.pathname.slice(1) || '0', 10),
+        maxRetriesPerRequest: 3,
+        retryDelayOnFailover: 100,
+        lazyConnect: true,
+      };
+    } catch {
+      // ignore invalid REDIS_URL and fall back to individual env vars
+    }
+  }
+
+  return {
+    host: process.env['REDIS_HOST'] ?? 'localhost',
+    port: parseInt(process.env['REDIS_PORT'] ?? '6379', 10),
+    password: process.env['REDIS_PASSWORD'] ?? undefined,
+    db: parseInt(process.env['REDIS_DB'] ?? '0', 10),
+    maxRetriesPerRequest: 3,
+    retryDelayOnFailover: 100,
+    lazyConnect: true,
+  };
+};
+
+const REDIS_KEYS = {
+  SNAPSHOT_QUEUE: 'snapshot:queue',
+  SNAPSHOT_STATUS: 'snapshot:status',
+  USER_SESSION: 'user:session',
+  RATE_LIMIT: 'rate:limit',
+  CACHE_PREFIX: 'cache:',
+} as const;
 
 /**
  * Redis 服务
@@ -29,22 +77,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleInit() {
-    // 监听连接事件
-    this.client.on('connect', () => {
-      console.log('✅ Redis connected successfully');
-    });
-
-    this.client.on('error', error => {
-      console.error('❌ Redis connection error:', error);
-    });
-
     // 尝试连接，但不阻塞应用启动
     try {
       await this.client.ping();
-      console.log('✅ Redis connection established');
     } catch (error) {
       console.warn(
-        '⚠️ Redis connection failed, continuing without Redis:',
+        'Redis connection failed, continuing without Redis:',
         error instanceof Error ? error.message : String(error)
       );
       // 不抛出错误，允许应用继续启动
@@ -57,7 +95,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       this.subscriber.quit(),
       this.publisher.quit(),
     ]);
-    console.log('✅ Redis disconnected successfully');
   }
 
   /**
@@ -88,8 +125,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const result = await this.client.ping();
       return result === 'PONG';
-    } catch (error) {
-      console.error('Redis health check failed:', error);
+    } catch {
       return false;
     }
   }

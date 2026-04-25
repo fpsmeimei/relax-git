@@ -79,10 +79,10 @@ export class WebSocketGateway
     this.logger.log('All Redis subscriptions initialized');
   }
 
-  // ===== 聊天：房间与事件 =====
+  // ===== 私信会话：频道与事件 =====
 
   /**
-   * 加入聊天房间（仅成员）
+   * 加入私信会话频道（仅成员）
    */
   @SubscribeMessage('join:chat')
   async handleJoinChat(
@@ -100,19 +100,19 @@ export class WebSocketGateway
         } as any,
       });
       if (!cm) {
-        client.emit('error', { message: '非会话成员，无法加入房间' });
+        client.emit('error', { message: '非会话成员，无法加入会话频道' });
         return;
       }
       await client.join(`chat:${data.chatId}`);
       client.emit('join:chat:success', { chatId: data.chatId });
     } catch (error) {
-      this.logger.error('Failed to join chat room:', error);
-      client.emit('error', { message: '加入聊天房间失败' });
+      this.logger.error('Failed to join chat channel:', error);
+      client.emit('error', { message: '加入私信会话失败' });
     }
   }
 
   /**
-   * 离开聊天房间
+   * 离开私信会话频道
    */
   @SubscribeMessage('leave:chat')
   async handleLeaveChat(
@@ -123,20 +123,20 @@ export class WebSocketGateway
       await client.leave(`chat:${data.chatId}`);
       client.emit('leave:chat:success', { chatId: data.chatId });
     } catch (error) {
-      this.logger.error('Failed to leave chat room:', error);
-      client.emit('error', { message: '离开聊天房间失败' });
+      this.logger.error('Failed to leave chat channel:', error);
+      client.emit('error', { message: '离开私信会话失败' });
     }
   }
 
   /**
-   * 推送新聊天消息
+   * 推送新的私信消息
    */
   emitChatMessageNew(chatId: string, message: any) {
     this.server.to(`chat:${chatId}`).emit('chat:message:new', message);
   }
 
   /**
-   * 推送聊天消息已读回执
+   * 推送私信消息已读回执
    */
   emitChatMessageRead(
     chatId: string,
@@ -153,7 +153,7 @@ export class WebSocketGateway
   }
 
   /**
-   * 推送新的好友申请（聊天室通知）
+   * 推送新的好友申请通知
    */
   emitChatFriendRequestNew(userId: string, payload: any) {
     this.server.to(`user:${userId}`).emit('chat:friend-request:new', payload);
@@ -169,7 +169,7 @@ export class WebSocketGateway
   }
 
   /**
-   * 推送聊天室未读统计
+   * 推送消息中心未读统计
    */
   emitChatUnreadCounts(userId: string, counts: any) {
     this.server.to(`user:${userId}`).emit('chat:unread-counts', counts);

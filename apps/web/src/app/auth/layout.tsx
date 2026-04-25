@@ -11,7 +11,7 @@ export default function AuthLayout({
       {/* 简化的顶部栏 - 只显示 Logo 和主题切换 */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="container-responsive flex h-14 items-center justify-between">
-          <Link href="/about" className="text-sm font-semibold">
+          <Link href="/" className="text-sm font-semibold">
             Relax-Git
           </Link>
           <ThemeToggle />

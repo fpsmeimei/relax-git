@@ -88,11 +88,6 @@ export default function RepositoriesPage() {
 
   // 检查认证状态
   useEffect(() => {
-    // 临时禁用自动跳转，方便调试
-    console.log('=== REPOSITORIES PAGE AUTH CHECK ===', {
-      isInitialized,
-      isAuthenticated,
-    });
     // if (isInitialized && !isAuthenticated) {
     //   router.push('/auth/login');
     //   return;
@@ -110,16 +105,6 @@ export default function RepositoriesPage() {
     try {
       setLoading(true);
 
-      console.log('[RepositoriesPage] Loading repositories...', {
-        currentPage,
-        limit: 10,
-        searchQuery,
-        isAuthenticated,
-        userId: user?.id,
-        username: user?.username,
-        user,
-      });
-
       const { data } = await apiClient.get<RepositoryListApiResponse>(
         `/repositories`,
         {
@@ -131,12 +116,6 @@ export default function RepositoriesPage() {
         }
       );
 
-      console.log('[RepositoriesPage] Loaded repositories:', {
-        total: data.total,
-        count: data.repositories.length,
-        repositories: data.repositories,
-      });
-
       setRepositories(data.repositories);
       const computedTotalPages = Math.max(
         1,
@@ -144,7 +123,7 @@ export default function RepositoriesPage() {
       );
       setTotalPages(computedTotalPages);
     } catch (error) {
-      console.error('[RepositoriesPage] Failed to load repositories:', error);
+      console.error('加载仓库列表失败:', error);
       setRepositories([]);
     } finally {
       setLoading(false);

@@ -1,0 +1,29 @@
+# Relax-Git Worker 容器运行配置
+# 作为容器化运行的默认配置，敏感信息优先由环境变量覆盖。
+
+redis:
+  host: redis
+  port: 6379
+  password: ''
+  db: 0
+
+database:
+  host: postgres
+  port: 5432
+  user: postgres
+  password: ''
+  db_name: relax_git_prod
+  ssl_mode: disable
+
+worker:
+  concurrency: 3
+  queue_name: 'snapshot:queue'
+  work_dir: '/app/data/worker'
+
+git:
+  temp_dir: '/app/data/git/worktrees'
+  bundle_dir: '/app/data/git/bundles'
+  max_repo_size: 1073741824
+
+log:
+  level: info

@@ -137,7 +137,6 @@ export const useAppStore = create<AppState>()(
 
       // 重置应用状态（用于用户切换）
       reset: () => {
-        console.log('[app-store] 重置应用状态');
         set(state => {
           state.currentRepository = null;
           state.currentSnapshot = null;

@@ -180,9 +180,7 @@ export default function MePage() {
       if (readIds.has(id)) return;
       setReadIds(prev => new Set(prev).add(id));
       setUnreadCount(Math.max(0, (unreadCount || 0) - 1));
-      console.log('标记通知为已读:', id);
-      const response = await apiClient.patch(`/notifications/${id}/read`);
-      console.log('标记成功:', response);
+      await apiClient.patch(`/notifications/${id}/read`);
     } catch (error) {
       console.error('标记通知为已读失败:', error);
       // 忽略失败（不回滚），刷新列表时会以服务端为准

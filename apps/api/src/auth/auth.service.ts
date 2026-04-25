@@ -40,23 +40,13 @@ export class AuthService {
    * User registration
    */
   async register(registerDto: RegisterDto, ipAddress?: string) {
-    console.log('AuthService.register called with:', {
-      username: registerDto.username,
-      ipAddress,
-    });
     const { username, password } = registerDto;
 
-    // Check if username already exists
-    console.log('Checking if username exists:', username);
     const existingUser = await this.prisma.user.findFirst({
       where: {
         username,
       },
     });
-    console.log(
-      'Existing user check result:',
-      existingUser ? 'User exists' : 'User does not exist'
-    );
 
     if (existingUser) {
       throw new ConflictException('该用户已注册');
@@ -66,11 +56,7 @@ export class AuthService {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user with unique uid
-    console.log('Generating uid for user:', username);
     const uid = await this.generateUid(username);
-    console.log('Generated uid:', uid);
-    console.log('Creating user in database...');
     const user = await this.prisma.user.create({
       data: {
         username,
@@ -79,7 +65,6 @@ export class AuthService {
         role: UserRole.USER,
       },
     });
-    console.log('User created successfully:', user.id);
 
     // 自动添加 relax-git-bot 为好友
     try {
@@ -148,7 +133,7 @@ export class AuthService {
         chatId: chat.id,
         senderId: bot.id,
         content:
-          '你好，我是 Relax-Git 助手机器人。\n可以点击下面的输入框和我打个招呼，体验一下聊天的流程吧！',
+          '你好，我是 Relax-Git 助手机器人。\n可以点击下面的输入框和我打个招呼，体验一下消息中心里的私信流程。',
         type: 'TEXT',
         isRead: false,
       },
@@ -192,7 +177,6 @@ export class AuthService {
 
     // Reset failed attempts on successful login
     this.accountSecurity.resetFailedAttempts(username).catch(error => {
-      // Log error but don't fail login
       console.warn('Failed to reset failed attempts:', error);
     });
 

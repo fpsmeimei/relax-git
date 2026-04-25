@@ -8,7 +8,7 @@ import { GitBranch, Loader2 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState } from 'react';
 const HOME_ROUTE = process.env['NEXT_PUBLIC_HOME_ROUTE'] || '/';
 
 export default function LoginPage() {
@@ -34,75 +34,11 @@ function LoginPageInner() {
 
   // 从URL参数获取用户名（注册成功后跳转时携带）
   const usernameFromUrl = searchParams?.get('username') ?? '';
-  const autoLoginUser = searchParams?.get('auto_login') ?? '';
-
   const [formData, setFormData] = useState({
     username: usernameFromUrl,
     password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
-
-  // 自动登录逻辑
-  useEffect(() => {
-    if (autoLoginUser && (autoLoginUser === '001' || autoLoginUser === '002')) {
-      console.log(`[LoginPage] 检测到自动登录参数: ${autoLoginUser}`);
-      console.log(`[LoginPage] 当前URL: ${window.location.href}`);
-
-      // 自动填充表单并登录
-      const autoFormData = {
-        username: autoLoginUser,
-        password: '123456', // 演示账号的固定密码
-      };
-
-      setFormData(autoFormData);
-      setIsLoading(true);
-
-      // 延迟一点时间让用户看到自动填充过程
-      setTimeout(async () => {
-        try {
-          console.log(`[LoginPage] 开始自动登录用户: ${autoLoginUser}`);
-
-          const result = await signIn('credentials', {
-            username: autoFormData.username,
-            password: autoFormData.password,
-            redirect: false,
-          });
-
-          if (result?.error) {
-            console.error(`[LoginPage] 自动登录失败:`, result.error);
-            toast({
-              title: '自动登录失败',
-              description: `用户 ${autoLoginUser} 登录失败，请手动登录`,
-              variant: 'destructive',
-            });
-          } else {
-            console.log(`[LoginPage] 自动登录成功: ${autoLoginUser}`);
-            toast({
-              title: '自动登录成功',
-              description: `欢迎回来，用户 ${autoLoginUser}！`,
-            });
-
-            // 清除自动登录参数，避免重复触发
-            const url = new URL(window.location.href);
-            url.searchParams.delete('auto_login');
-            url.searchParams.delete('clear_auth');
-            window.history.replaceState({}, '', url.toString());
-
-            router.push(callbackUrl);
-          }
-        } catch (error) {
-          console.error(`[LoginPage] 自动登录异常:`, error);
-          toast({
-            title: '自动登录异常',
-            description: '请手动登录',
-            variant: 'destructive',
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      }, 1500); // 增加延迟时间，确保清除认证完成
-    }
-  }, [autoLoginUser, router, callbackUrl, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,19 +55,13 @@ function LoginPageInner() {
     setIsLoading(true);
 
     try {
-      console.log('[Login] Attempting login with username:', formData.username);
-
       const result = await signIn('credentials', {
         username: formData.username,
         password: formData.password,
         redirect: false,
       });
 
-      console.log('[Login] SignIn result:', result);
-
       if (result?.error) {
-        console.error('[Login] SignIn error:', result.error);
-
         toast({
           title: '登录失败',
           description: result.error || '用户名或密码错误',
@@ -145,14 +75,11 @@ function LoginPageInner() {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       try {
-        console.log('[Login] Getting NextAuth session...');
-        // 获取 NextAuth session（客户端）
         const { getSession } = await import('next-auth/react');
         const session = await getSession();
 
         const user = session?.user as any;
         if (user?.accessToken) {
-          console.log('[Login] Setting cookies with session token...');
           const cookieResp = await fetch('/api/_auth/set-cookie', {
             method: 'POST',
             headers: {
@@ -162,12 +89,8 @@ function LoginPageInner() {
           });
 
           if (!cookieResp.ok) {
-            console.warn('[Login] Failed to set JWT cookies');
-          } else {
-            console.log('[Login] JWT cookies set successfully');
+            console.warn('[Login] Failed to set auth cookies');
           }
-        } else {
-          console.warn('[Login] No accessToken in session');
         }
       } catch (e) {
         console.warn('[Login] Cookie setup error:', e);
@@ -180,8 +103,7 @@ function LoginPageInner() {
 
       // 登录成功，跳转（避免 refresh，且忽略不安全/无效的 callbackUrl）
       router.replace(callbackUrl);
-    } catch (error: any) {
-      console.error('Login error:', error);
+    } catch {
       toast({
         title: '登录失败',
         description: '登录过程中出现错误',
@@ -208,7 +130,7 @@ function LoginPageInner() {
         {/* Logo */}
         <div className="text-center">
           <Link
-            href="/about"
+            href="/"
             className="flex items-center justify-center space-x-2 mb-6"
           >
             <GitBranch className="h-8 w-8 text-primary" />
@@ -217,18 +139,6 @@ function LoginPageInner() {
           <h2 className="text-3xl font-bold">欢迎回来</h2>
           <p className="text-muted-foreground mt-2">登录您的账户以继续使用</p>
         </div>
-
-        {/* 自动登录提示 */}
-        {autoLoginUser && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span className="text-sm text-blue-700 dark:text-blue-300">
-                正在自动登录用户 <strong>{autoLoginUser}</strong>...
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* 登录表单 */}
         <form onSubmit={handleSubmit} className="space-y-6">

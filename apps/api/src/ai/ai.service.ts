@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 
 /**
  * AI 服务 - 集成 DeepSeek API
- * 提供聊天对话、代码分析等 AI 功能
+ * 提供仓库发现、仓库简介与代码分析等 AI 功能
  */
 @Injectable()
 export class AiService {
@@ -46,10 +46,10 @@ export class AiService {
   }
 
   /**
-   * 聊天对话（支持三种模式）
+   * 仓库助手问答（支持三种模式）
    * @param message 用户消息
    * @param conversationHistory 对话历史
-   * @param mode AI 模式：discovery=新鲜探索, thinking=深度思考, chat=闲聊对话
+   * @param mode AI 模式：discovery=仓库发现, thinking=仓库简介/分析, chat=补充问答
    */
   async chat(
     message: string,
@@ -82,7 +82,7 @@ export class AiService {
       ];
 
       this.logger.debug(
-        `Sending chat request to DeepSeek v3.2 (mode: ${mode})`
+        `Sending repository assistant request to DeepSeek v3.2 (mode: ${mode})`
       );
 
       // 根据模式调整参数
@@ -286,7 +286,7 @@ ${formatInstruction}
   Deliver depth efficiently. Quality insights, not lengthy prose.`;
 
       case 'chat':
-        // 聊天模式 - 对标官网标准对话模式
+        // 补充问答模式 - 用于围绕仓库发现继续追问
         return `You are DeepSeek, a friendly AI assistant who helps with graduation project work.
 
 Core principles:
@@ -342,7 +342,7 @@ ${formatInstruction}
         };
 
       case 'chat':
-        // 聊天模式 - 对标官网标准对话模式
+        // 补充问答模式
         return {
           temperature: 1.0, // 官网标准对话温度
           max_tokens: 4096, // 官网标准输出长度

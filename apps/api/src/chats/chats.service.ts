@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
+  GoneException,
 } from '@nestjs/common';
 import {
   MessageType,
@@ -138,26 +139,10 @@ export class ChatsService {
   }
 
   async createGroupChat(ownerId: string, name: string, memberIds: string[]) {
-    const uniqueMemberIds = Array.from(
-      new Set([ownerId, ...memberIds.filter(Boolean)])
-    );
-    if (!name || !name.trim())
-      throw new BadRequestException('群聊名称不能为空');
-
-    const chat = await (this.prisma as any).chat.create({
-      data: {
-        type: 'GROUP',
-        name: name.trim(),
-        members: {
-          create: uniqueMemberIds.map(uid => ({
-            userId: uid,
-            role: uid === ownerId ? 'ADMIN' : 'MEMBER',
-          })),
-        },
-      },
-    });
-
-    return chat;
+    void ownerId;
+    void name;
+    void memberIds;
+    throw new GoneException('群组会话功能已冻结，当前版本仅保留好友私聊');
   }
 
   private async ensureMember(userId: string, chatId: string) {
@@ -293,13 +278,13 @@ export class ChatsService {
       },
     });
 
-    // 更新聊天更新时间
+    // 更新私信会话更新时间
     await (this.prisma as any).chat.update({
       where: { id: chatId },
       data: { updatedAt: new Date() },
     });
 
-    // 发送到房间
+    // 推送到当前会话频道
     this.ws.emitChatMessageNew(chatId, message);
 
     return message;
@@ -347,21 +332,10 @@ export class ChatsService {
   }
 
   async addMembers(adminUserId: string, chatId: string, memberIds: string[]) {
-    const me = await this.ensureMember(adminUserId, chatId);
-    const chat = await (this.prisma as any).chat.findUnique({
-      where: { id: chatId },
-    });
-    if (!chat) throw new NotFoundException('会话不存在');
-    if (chat.type !== 'GROUP')
-      throw new BadRequestException('仅群聊可添加成员');
-    if (me.role !== 'ADMIN') throw new ForbiddenException('仅群管理员可操作');
-
-    const ids = Array.from(new Set(memberIds.filter(Boolean)));
-    await (this.prisma as any).chatMember.createMany({
-      data: ids.map(uid => ({ chatId, userId: uid, role: 'MEMBER' })),
-      skipDuplicates: true,
-    });
-    return { ok: true };
+    void adminUserId;
+    void chatId;
+    void memberIds;
+    throw new GoneException('成员邀请功能已冻结，当前版本仅保留好友私聊');
   }
 
   async removeMember(
@@ -369,41 +343,19 @@ export class ChatsService {
     chatId: string,
     targetUserId: string
   ) {
-    const me = await this.ensureMember(adminUserId, chatId);
-    const chat = await (this.prisma as any).chat.findUnique({
-      where: { id: chatId },
-    });
-    if (!chat) throw new NotFoundException('会话不存在');
-    if (chat.type !== 'GROUP')
-      throw new BadRequestException('仅群聊可移除成员');
-    if (me.role !== 'ADMIN') throw new ForbiddenException('仅群管理员可操作');
-
-    const target = await (this.prisma as any).chatMember.findUnique({
-      where: { chatId_userId: { chatId, userId: targetUserId } } as any,
-    });
-    if (!target) return { ok: true };
-
-    // 不允许移除最后一个管理员
-    if (target.role === 'ADMIN') {
-      const adminCount = await (this.prisma as any).chatMember.count({
-        where: { chatId, role: 'ADMIN' },
-      });
-      if (adminCount <= 1) throw new BadRequestException('至少保留一名管理员');
-    }
-
-    await (this.prisma as any).chatMember.delete({
-      where: { chatId_userId: { chatId, userId: targetUserId } } as any,
-    });
-    return { ok: true };
+    void adminUserId;
+    void chatId;
+    void targetUserId;
+    throw new GoneException('成员移除功能已冻结，当前版本仅保留好友私聊');
   }
 
   async clearMessages(userId: string, chatId: string) {
     await this.ensureMember(userId, chatId);
 
-    // 方案：将该聊天中对当前用户可见的所有消息设置为不可见
+    // 方案：将该私信会话中对当前用户可见的所有消息设置为不可见
     // 这样用户看到的是完全清空，但数据库中消息仍然存在，对方不受影响
 
-    // 1. 获取该聊天的所有消息ID
+    // 1. 获取该私信会话的所有消息ID
     const messages = await (this.prisma as any).message.findMany({
       where: { chatId },
       select: { id: true },
