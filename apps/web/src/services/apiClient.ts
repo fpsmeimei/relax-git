@@ -53,9 +53,6 @@ class ApiClient {
           (originalConfig as any).__retryCount = retryCount + 1;
           // 指数退避: 1s, 2s, 4s
           const delay = Math.pow(2, retryCount) * 1000;
-          console.log(
-            `[API] 请求失败，${delay}ms后重试 (${retryCount + 1}/${maxRetries})...`
-          );
           await new Promise(resolve => setTimeout(resolve, delay));
           return this.client.request(originalConfig);
         }

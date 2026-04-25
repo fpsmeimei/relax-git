@@ -29,6 +29,8 @@ export function useAuth() {
 
   const displayName =
     getString('name') ?? getString('displayName') ?? (username || undefined);
+  const roleValue = getString('role');
+  const role = roleValue === 'ADMIN' ? 'ADMIN' : 'USER';
 
   return {
     user:
@@ -37,7 +39,7 @@ export function useAuth() {
             id: id ?? uid ?? '',
             uid: uid ?? id ?? '',
             username,
-            role: 'USER',
+            role,
             avatar,
             displayName,
           }

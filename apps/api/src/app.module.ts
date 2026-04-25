@@ -12,6 +12,7 @@ import { ConfigModule as AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 
 import { AiModule } from './ai/ai.module';
+import { AdminModule } from './admin/admin.module';
 import { AppController } from './app.controller';
 import { ChatsModule } from './chats/chats.module';
 import { ChatFriendsModule } from './chats/friends/chat-friends.module';
@@ -51,6 +52,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     RedisModule,
     HealthModule,
     WebSocketModule,
+    AdminModule,
 
     // 业务模块
     AuthModule,

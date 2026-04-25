@@ -37,7 +37,7 @@ class ChatRequestDto {
     required: false,
     enum: ['discovery', 'thinking', 'chat'],
     description:
-      'AI 模式：discovery=新鲜探索, thinking=深度思考, chat=闲聊对话',
+      'AI 模式：discovery=仓库发现, thinking=仓库简介/分析, chat=补充问答',
   })
   @IsOptional()
   @IsString()
@@ -57,7 +57,7 @@ class ChatResponseDto {
 
 /**
  * AI 功能控制器
- * 提供聊天对话、代码分析等 AI 接口
+ * 提供仓库发现、仓库简介与补充问答等 AI 接口
  */
 @ApiTags('ai')
 @Controller('api/ai')
@@ -84,13 +84,13 @@ export class AiController {
   }
 
   /**
-   * 聊天对话
+   * 仓库助手问答
    */
   @Post('chat')
-  @ApiOperation({ summary: '与 AI 聊天' })
+  @ApiOperation({ summary: '仓库发现助手问答' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: '聊天成功',
+    description: '问答成功',
     type: ChatResponseDto,
   })
   async chat(

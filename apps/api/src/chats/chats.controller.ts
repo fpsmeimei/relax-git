@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  GoneException,
   Get,
   Param,
   Post,
@@ -11,11 +12,7 @@ import { MessageType } from '@relax-git/shared/generated/prisma-client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ChatsService } from './chats.service';
 import { MarkReadDto, SendMessageDto } from './dto/chat-message.dto';
-import {
-  AddMembersDto,
-  CreateDirectChatDto,
-  CreateGroupChatDto,
-} from './dto/chat-room.dto';
+import { CreateDirectChatDto } from './dto/chat-room.dto';
 
 @Controller('api/chats')
 export class ChatsController {
@@ -40,11 +37,8 @@ export class ChatsController {
   }
 
   @Post('group')
-  async createGroup(
-    @CurrentUser('id') userId: string,
-    @Body() body: CreateGroupChatDto
-  ) {
-    return this.chats.createGroupChat(userId, body.name, body.memberIds ?? []);
+  async createGroup(@CurrentUser('id') _userId: string, @Body() _body: any) {
+    throw new GoneException('群组会话已冻结，当前版本仅保留好友私聊能力');
   }
 
   @Get(':chatId/messages')
@@ -88,11 +82,11 @@ export class ChatsController {
 
   @Post(':chatId/members')
   async addMembers(
-    @CurrentUser('id') userId: string,
-    @Param('chatId') chatId: string,
-    @Body() body: AddMembersDto
+    @CurrentUser('id') _userId: string,
+    @Param('chatId') _chatId: string,
+    @Body() _body: unknown
   ) {
-    return this.chats.addMembers(userId, chatId, body.memberIds);
+    throw new GoneException('成员邀请功能已冻结，当前版本仅保留好友私聊');
   }
 
   @Delete(':chatId/messages')

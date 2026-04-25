@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { useChatStore } from './chat-store';
-import { useChatFriendsStore } from './chat-friends-store';
+import { useMessagesStore } from './messages-store';
+import { useContactsStore } from './contacts-store';
 import { useNotificationsStore } from './notifications-store';
 import { useAppStore } from './app-store';
 import { useSearchStore } from './searchStore';
@@ -39,7 +39,6 @@ if (typeof window !== 'undefined') {
   const hasOldTokenData =
     localStorage.getItem('token') || localStorage.getItem('refreshToken');
   if (hasOldTokenData) {
-    console.log('[Auth] 检测到旧版 token 数据，自动清理...');
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     // 也清理可能包含 token 的 auth-storage
@@ -48,7 +47,6 @@ if (typeof window !== 'undefined') {
       try {
         const parsed = JSON.parse(authStorage);
         if (parsed.state?.token || parsed.state?.refreshToken) {
-          console.log('[Auth] 清理包含 token 的旧版 auth-storage');
           localStorage.removeItem('auth-storage');
         }
       } catch {
@@ -56,7 +54,6 @@ if (typeof window !== 'undefined') {
         localStorage.removeItem('auth-storage');
       }
     }
-    console.log('[Auth] 旧版数据清理完成，请重新登录');
   }
 }
 
@@ -81,8 +78,6 @@ export const useAuthStore = create<AuthState>()(
 
       // 登出
       logout: () => {
-        console.log('[auth-store] 用户退出登录，开始清理状态...');
-
         set(state => {
           state.user = null;
           state.isAuthenticated = false;
@@ -91,8 +86,8 @@ export const useAuthStore = create<AuthState>()(
 
         // 清空所有相关的 store 状态
         try {
-          useChatStore.getState().reset();
-          useChatFriendsStore.getState().reset();
+          useMessagesStore.getState().reset();
+          useContactsStore.getState().reset();
           useNotificationsStore.getState().reset();
           useAppStore.getState().reset();
           useSearchStore.getState().reset();
@@ -103,8 +98,6 @@ export const useAuthStore = create<AuthState>()(
               window.dispatchEvent(new Event('RG_LOGOUT'));
             } catch {}
           }
-
-          console.log('[auth-store] 状态清理完成');
         } catch (error) {
           console.error('[auth-store] 状态清理时出错:', error);
         }

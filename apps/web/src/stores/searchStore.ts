@@ -191,7 +191,6 @@ export const useSearchStore = create<SearchState>()(
       },
 
       reset: () => {
-        console.log('[search-store] 重置搜索状态');
         set({
           currentSearch: null,
           isSearching: false,

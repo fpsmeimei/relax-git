@@ -264,7 +264,7 @@ export class ChatFriendsService {
       },
     });
 
-    // 推送聊天室通知
+    // 推送好友申请通知
     this.ws.emitChatFriendRequestNew(toUserId, {
       requestId: request.id,
       fromUserId,

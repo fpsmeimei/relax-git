@@ -26,19 +26,12 @@ const nextAuth = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) {
-          console.log('[NextAuth] Missing credentials');
           return null;
         }
 
         try {
-          // 🔥 使用 Next.js 代理路由，确保 Cookie 正确传递
           const loginUrl = `${API_BASE}/api/_auth/login`;
-          console.log(
-            '[NextAuth] Calling backend login API via proxy:',
-            loginUrl
-          );
 
-          // 通过 Next.js 代理调用后端（SSR 环境也能正确处理 Cookie）
           const response = await fetch(loginUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -49,31 +42,26 @@ const nextAuth = NextAuth({
             }),
           });
 
-          console.log('[NextAuth] Backend response status:', response.status);
-
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('[NextAuth] Backend login failed:', errorData);
+            await response.json().catch(() => ({}));
             return null;
           }
 
           const data = await response.json();
-          console.log('[NextAuth] Backend login success:', data);
 
-          // 返回用户信息和token
-          // 🔥 修复：将accessToken传递给JWT callback
           const user: any = {
             id: data.user.id,
             name: data.user.username,
+            username: data.user.username,
             uid: data.user.uid,
+            avatar: data.user.avatar ?? null,
+            role: data.user.role,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
           };
 
-          console.log('[NextAuth] Returning user with token');
           return user;
-        } catch (error) {
-          console.error('[NextAuth] Auth error:', error);
+        } catch {
           return null;
         }
       },
@@ -87,6 +75,9 @@ const nextAuth = NextAuth({
         const u = user as any;
         token['uid'] = u.uid;
         token['id'] = u.id;
+        token['username'] = u.username ?? u.name;
+        token['avatar'] = u.avatar ?? null;
+        token['role'] = u.role ?? 'USER';
         token['accessToken'] = u.accessToken;
         token['refreshToken'] = u.refreshToken;
       }
@@ -98,6 +89,9 @@ const nextAuth = NextAuth({
         const t = token as any;
         (session.user as any).uid = t.uid;
         (session.user as any).id = t.id;
+        (session.user as any).username = t.username;
+        (session.user as any).avatar = t.avatar ?? null;
+        (session.user as any).role = t.role ?? 'USER';
         (session.user as any).accessToken = t.accessToken;
         (session.user as any).refreshToken = t.refreshToken;
       }

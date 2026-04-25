@@ -102,7 +102,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
     return (this.client as any).commentLike;
   }
 
-  // 聊天系统模型代理
+  // 私信会话模型代理（底层 Prisma 模型仍保留 chat 命名）
   get chat() {
     return (this.client as any).chat;
   }
@@ -247,18 +247,21 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
    */
   async getStats(): Promise<Record<string, unknown>> {
     try {
-      const [users, repos, snaps, comments, events] = await Promise.all([
-        (this.client as any).user.count(),
-        (this.client as any).repository.count(),
-        (this.client as any).snapshot.count(),
-        (this.client as any).comment.count(),
-        (this.client as any).timelineEvent.count(),
-      ]);
+      const [users, repos, baseSnapshots, sessionSnapshots, comments, events] =
+        await Promise.all([
+          (this.client as any).user.count(),
+          (this.client as any).repository.count(),
+          (this.client as any).baseSnapshot.count(),
+          (this.client as any).sessionSnapshot.count(),
+          (this.client as any).comment.count(),
+          (this.client as any).timelineEvent.count(),
+        ]);
       return {
         counts: {
           users,
           repositories: repos,
-          snapshots: snaps,
+          baseSnapshots,
+          sessionSnapshots,
           comments,
           timelineEvents: events,
         },

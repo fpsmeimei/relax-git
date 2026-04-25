@@ -534,12 +534,12 @@ model Notification {
 
 // ===== 聊天系统（MVP） =====
 
-/// 会话：私聊(DIRECT) 或 群聊(GROUP)
+/// 会话模型：当前版本以私聊(DIRECT)为主，GROUP 仅保留历史兼容语义
 model Chat {
   id        String   @id @default(cuid())
   type      ChatType
   name      String?
-  /// 私聊唯一键：由两个用户ID排序后拼接（如 userA:userB），群聊为空
+  /// 私聊唯一键：由两个用户ID排序后拼接（如 userA:userB），历史群组会话为空
   directKey String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -553,7 +553,7 @@ model Chat {
 
 enum ChatType {
   DIRECT
-  GROUP
+  GROUP // 冻结保留，仅用于兼容历史数据
 
   @@map("chat_type")
 }
@@ -776,4 +776,3 @@ model MessageVisibility {
   @@index([chatMessageId])
   @@map("message_visibility")
 }
-

@@ -40,6 +40,10 @@ coverage/
 tmp/
 temp/*
 !temp/.gitkeep
+*.backup
+
+# Local thesis/reference materials
+毕业设计/
 
 # Database
 *.db

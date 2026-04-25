@@ -90,7 +90,6 @@ export const useNotificationsStore = create<NotificationsState>()(
 
       // 重置通知状态（用于用户切换）
       reset: () => {
-        console.log('[notifications-store] 重置通知状态');
         set({ unreadCount: 0, items: [] });
         // 同步到其他标签页
         if (broadcastChannel) {

@@ -9,13 +9,11 @@ export function NetworkStatus() {
 
   useEffect(() => {
     const handleOnline = () => {
-      console.log('[Network] 网络已恢复');
       setIsOnline(true);
       setWasOffline(false);
     };
 
     const handleOffline = () => {
-      console.log('[Network] 网络已断开');
       setIsOnline(false);
       setWasOffline(true);
     };
@@ -33,6 +31,15 @@ export function NetworkStatus() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!wasOffline) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setWasOffline(false), 3000);
+    return () => window.clearTimeout(timer);
+  }, [wasOffline]);
+
   // 不在线时显示警告横幅
   if (!isOnline) {
     return (
@@ -47,7 +54,6 @@ export function NetworkStatus() {
 
   // 刚恢复网络时显示提示（3秒后消失）
   if (wasOffline) {
-    setTimeout(() => setWasOffline(false), 3000);
     return (
       <div className="fixed top-0 left-0 right-0 z-50 bg-green-600 text-white">
         <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-2 text-sm">

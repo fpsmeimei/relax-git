@@ -15,21 +15,22 @@ export function AssistantWelcome() {
 
           <div className="space-y-2">
             <h1 className="text-3xl font-light tracking-wide text-[#ECEFF4]">
-              项目 AI 助手
+              仓库发现助手
             </h1>
             <p className="text-sm font-light text-[#D8DEE9]/50">
-              面向毕业设计项目的结构梳理、汇报辅助与问题排查 · 由 DeepSeek v3.2
-              驱动
+              面向 Relax-Git 社区的仓库推荐、方向检索与仓库简介生成 · 由
+              DeepSeek v3.2 驱动
             </p>
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-[#4C566A]/30 bg-[#3B4252]/70 p-4 text-sm text-[#D8DEE9]/80">
-            我可以帮你梳理项目启动步骤、解释代码结构、整理答辩话术，也可以直接帮你总结当前页面在做什么。
+            我可以根据社区数据推荐热门仓库，或者帮你按 AI Agent、前端工程化、Go
+            并发这类方向寻找值得看的项目。
           </div>
           <div className="rounded-2xl border border-[#4C566A]/30 bg-[#3B4252]/70 p-4 text-sm text-[#D8DEE9]/80">
-            如果你遇到运行报错、构建错误或配置问题，直接把信息发给我，我会优先给出可执行的排查步骤。
+            如果你已经选中某个仓库，我也可以先给出一个简洁介绍，帮助你判断它适不适合继续深入阅读和讨论。
           </div>
         </div>
       </div>

@@ -15,19 +15,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { mkdir } from 'fs/promises';
 
 async function bootstrap() {
-  //  调试：打印环境变量
-  console.log('  Environment Variables Debug (from Node.js):');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('PORT:', process.env.PORT);
-  console.log(
-    'DATABASE_URL:',
-    process.env.DATABASE_URL?.substring(0, 50),
-    '...'
-  );
-  console.log('REDIS_URL:', process.env.REDIS_URL?.substring(0, 30), '...');
-  console.log('JWT_SECRET:', process.env.JWT_SECRET?.substring(0, 10), '...');
-  console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN);
-
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
@@ -168,22 +155,7 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  // 注意：反向代理功能将通过 PM2 和 Web 服务的内置代理处理
-  // Web 服务运行在端口 8080，API 服务运行在端口 3000
-  // Next.js 的 rewrites 配置会处理 API 请求的代理
-  console.log('🔄 Web service will run on port 8080, API on port 3000');
-  console.log('📝 Next.js rewrites will handle API proxying');
-
-  // 启动服务器 - 使用固定的内部端口，不依赖外部注入的 PORT
-  console.log(
-    '🔧 API PORT FIX: Not using process.env.PORT, using API_PORT instead'
-  );
-  console.log('🔧 process.env.PORT:', process.env['PORT']);
-  console.log('🔧 process.env.API_PORT:', process.env['API_PORT']);
-
   const port = parseInt(process.env['API_PORT'] ?? '4000', 10);
-
-  console.log(`🔧 API will listen on port: ${port}`);
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Relax-Git API Server is running on http://localhost:${port}`);

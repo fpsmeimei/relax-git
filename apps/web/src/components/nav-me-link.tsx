@@ -60,7 +60,7 @@ export function NavMeLink({ className }: NavMeLinkProps) {
     );
   }
 
-  // 已登录（或免登录演示模式）：显示 我的（角标）/ 退出登录（演示模式隐藏退出）
+  // 已登录：显示 我的（角标）/ 退出登录
   const handleLogout = () => {
     try {
       logout();

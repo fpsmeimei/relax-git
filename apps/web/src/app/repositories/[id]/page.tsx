@@ -729,15 +729,7 @@ export default function RepositoryDetailPage() {
 
   // 删除仓库（仅所有者可操作）
   const handleDeleteRepo = useCallback(async () => {
-    console.log(
-      'Delete button clicked, myRole:',
-      myRole,
-      'repository:',
-      repository?.name
-    );
-
     if (myRole !== 'OWNER') {
-      console.log('Not owner, cannot delete');
       toast({
         title: '权限不足',
         description: '只有仓库所有者才能删除仓库',
@@ -751,12 +743,10 @@ export default function RepositoryDetailPage() {
     );
 
     if (!confirmed) {
-      console.log('User cancelled deletion');
       return;
     }
 
     try {
-      console.log('Starting deletion process...');
       setDeleting(true);
       await apiClient.delete(`/repositories/${repositoryId}`);
       toast({
@@ -934,7 +924,6 @@ export default function RepositoryDetailPage() {
               variant="outline-subtle"
               size="sm"
               onClick={() => {
-                console.log('Git URL button clicked:', repository.gitUrl);
                 window.open(repository.gitUrl, '_blank', 'noopener,noreferrer');
               }}
             >
@@ -976,8 +965,7 @@ export default function RepositoryDetailPage() {
                 onClick={e => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log('Delete button clicked event triggered');
-                  handleDeleteRepo();
+                  void handleDeleteRepo();
                 }}
                 disabled={deleting}
               >

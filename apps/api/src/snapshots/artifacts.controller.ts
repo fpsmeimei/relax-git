@@ -26,6 +26,26 @@ export class ArtifactsController {
     private readonly prisma: PrismaService
   ) {}
 
+  private async promoteArtifactToReady(id: string, artifact: any) {
+    if (
+      !artifact?.processedAt ||
+      !artifact?.worktreePath ||
+      artifact.status === 'READY'
+    ) {
+      return;
+    }
+
+    try {
+      await this.prisma.baseSnapshot.update({
+        where: { id },
+        data: { status: BaseSnapshotStatus.READY },
+      });
+      artifact.status = 'READY';
+    } catch {
+      // 自修复失败时保持原状态，由后续分支给出明确响应
+    }
+  }
+
   /**
    * 获取artifact信息
    * GET /api/artifacts/:id
@@ -107,36 +127,7 @@ export class ArtifactsController {
   @Get(':id/status')
   async getArtifactStatus(@Param('id') id: string, @Request() req: any) {
     const artifact = await this.getArtifact(id, req);
-
-    // 自修复：若已处理完成但状态未就绪，则修正为 READY，避免前端一直加载
-    try {
-      if (artifact?.processedAt && artifact.status !== 'READY') {
-        console.log(
-          '🔧 [getArtifactStatus] Self-healing triggered for artifact:',
-          id
-        );
-        console.log(
-          '🔧 Current status:',
-          artifact.status,
-          'processedAt:',
-          artifact.processedAt
-        );
-
-        await this.prisma.baseSnapshot.update({
-          where: { id },
-          data: { status: BaseSnapshotStatus.READY },
-        });
-        // 同步返回值中的状态
-        (artifact as any).status = 'READY';
-
-        console.log(
-          '✅ [getArtifactStatus] Self-healing completed, status updated to READY'
-        );
-      }
-    } catch (e) {
-      // 仅记录，不影响状态接口返回
-      console.error('⚠️ [getArtifactStatus] self-heal failed:', e);
-    }
+    await this.promoteArtifactToReady(id, artifact);
 
     return {
       id: artifact.id,
@@ -157,38 +148,7 @@ export class ArtifactsController {
     @Request() req: any
   ) {
     const artifact = await this.getArtifact(id, req);
-
-    // 自修复：若已处理完成但状态未就绪，则修正为 READY
-    if (
-      artifact?.processedAt &&
-      artifact?.worktreePath &&
-      artifact.status !== 'READY'
-    ) {
-      console.log('🔧 [getTree] Self-healing triggered for artifact:', id);
-      console.log(
-        '🔧 Current status:',
-        artifact.status,
-        'processedAt:',
-        artifact.processedAt,
-        'worktreePath:',
-        artifact.worktreePath
-      );
-
-      try {
-        await this.prisma.baseSnapshot.update({
-          where: { id },
-          data: { status: BaseSnapshotStatus.READY },
-        });
-        // 同步更新返回的 artifact 对象
-        (artifact as any).status = 'READY';
-
-        console.log(
-          '✅ [getTree] Self-healing completed, status updated to READY'
-        );
-      } catch (e) {
-        console.error('⚠️ [getTree] self-heal failed:', e);
-      }
-    }
+    await this.promoteArtifactToReady(id, artifact);
 
     if (artifact.status !== 'READY') {
       throw new BadRequestException(
@@ -268,38 +228,7 @@ export class ArtifactsController {
     }
 
     const artifact = await this.getArtifact(id, req);
-
-    // 自修复：若已处理完成但状态未就绪，则修正为 READY
-    if (
-      artifact?.processedAt &&
-      artifact?.worktreePath &&
-      artifact.status !== 'READY'
-    ) {
-      console.log('🔧 [getFile] Self-healing triggered for artifact:', id);
-      console.log(
-        '🔧 Current status:',
-        artifact.status,
-        'processedAt:',
-        artifact.processedAt,
-        'worktreePath:',
-        artifact.worktreePath
-      );
-
-      try {
-        await this.prisma.baseSnapshot.update({
-          where: { id },
-          data: { status: BaseSnapshotStatus.READY },
-        });
-        // 同步更新返回的 artifact 对象
-        (artifact as any).status = 'READY';
-
-        console.log(
-          '✅ [getFile] Self-healing completed, status updated to READY'
-        );
-      } catch (e) {
-        console.error('⚠️ [getFile] self-heal failed:', e);
-      }
-    }
+    await this.promoteArtifactToReady(id, artifact);
 
     if (artifact.status !== 'READY') {
       throw new BadRequestException(
@@ -365,14 +294,6 @@ export class ArtifactsController {
     if (artifact.status !== 'FAILED' && artifact.status !== 'READY') {
       throw new BadRequestException(
         `Can only retry failed or incomplete artifacts, current status: ${artifact.status}`
-      );
-    }
-
-    // 特殊处理：如果是 READY 状态但缺少 worktreePath，也允许重试
-    if (artifact.status === 'READY' && !artifact.worktreePath) {
-      console.log(
-        '🔧 [retryArtifact] Retrying READY artifact with missing worktreePath:',
-        id
       );
     }
 
@@ -447,44 +368,30 @@ export class ArtifactsController {
     @Param('branchId') branchId: string,
     @Request() req: any
   ) {
-    console.log(
-      '🔍 [getArtifactByBranch] START - repoId:',
+    await this.checkRepositoryAccess(repoId, req.user.id);
+
+    const branch = await this.prisma.repositoryBranch.findUnique({
+      where: { id: branchId },
+    });
+
+    if (!branch || branch.repoId !== repoId) {
+      throw new NotFoundException('Branch not found');
+    }
+
+    const artifact = await this.baseSnapshotService.ensureArtifact(
       repoId,
-      'branchId:',
+      branch.commitSha,
       branchId
     );
-    console.log('🔍 [getArtifactByBranch] req.user:', req.user);
 
-    try {
-      await this.checkRepositoryAccess(repoId, req.user.id);
-
-      const branch = await this.prisma.repositoryBranch.findUnique({
-        where: { id: branchId },
-      });
-
-      if (!branch || branch.repoId !== repoId) {
-        throw new NotFoundException('Branch not found');
-      }
-
-      const artifact = await this.baseSnapshotService.ensureArtifact(
-        repoId,
-        branch.commitSha,
-        branchId
-      );
-
-      console.log('🔍 [getArtifactByBranch] SUCCESS');
-      return {
-        id: artifact.id,
-        status: artifact.status,
-        commitSha: artifact.commitSha,
-        worktreePath: artifact.worktreePath,
-        processedAt: artifact.processedAt,
-        errorMessage: artifact.errorMessage,
-      };
-    } catch (error) {
-      console.error('❌ [getArtifactByBranch] ERROR:', error);
-      throw error;
-    }
+    return {
+      id: artifact.id,
+      status: artifact.status,
+      commitSha: artifact.commitSha,
+      worktreePath: artifact.worktreePath,
+      processedAt: artifact.processedAt,
+      errorMessage: artifact.errorMessage,
+    };
   }
 
   /**
@@ -494,22 +401,6 @@ export class ArtifactsController {
     repoId: string,
     userId: string
   ): Promise<void> {
-    console.log(
-      '🔍 [checkRepositoryAccess] repoId:',
-      repoId,
-      'userId:',
-      userId
-    );
-    console.log('🔍 [checkRepositoryAccess] prisma exists:', !!this.prisma);
-    console.log(
-      '🔍 [checkRepositoryAccess] prisma.repository exists:',
-      !!this.prisma?.repository
-    );
-    console.log(
-      '🔍 [checkRepositoryAccess] typeof prisma.repository:',
-      typeof this.prisma?.repository
-    );
-
     const repository = await this.prisma.repository.findUnique({
       where: { id: repoId },
     });
