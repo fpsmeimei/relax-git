@@ -66,6 +66,21 @@ COPY --from=deps /app/libs/shared/node_modules ./libs/shared/node_modules
 # 复制源代码
 COPY . .
 
+# Web 构建时需要这些环境变量来生成正确的元数据、代理目标和图片域名白名单
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_UPLOAD_BASE_URL
+ARG NEXT_PUBLIC_IMAGE_DOMAINS
+ARG API_URL
+ARG NEXTAUTH_URL
+
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_UPLOAD_BASE_URL=${NEXT_PUBLIC_UPLOAD_BASE_URL}
+ENV NEXT_PUBLIC_IMAGE_DOMAINS=${NEXT_PUBLIC_IMAGE_DOMAINS}
+ENV API_URL=${API_URL}
+ENV NEXTAUTH_URL=${NEXTAUTH_URL}
+
 # 强制缓存失效 - 确保 API 代码重新编译
 RUN echo "Build timestamp: $(date)" > /tmp/build-timestamp
 
@@ -85,6 +100,19 @@ RUN pnpm -C apps/api build
 RUN pnpm -C apps/web build
 
 # ============================================
+# API Tools Stage - Prisma/迁移工具
+# ============================================
+FROM base AS api-tools
+
+# 复制依赖
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=deps /app/libs/shared/node_modules ./libs/shared/node_modules
+
+# 复制源代码
+COPY . .
+
+# ============================================
 # API Runner Stage - API 服务运行环境
 # ============================================
 FROM node:20-alpine AS api-runner
@@ -100,12 +128,13 @@ COPY apps/api/package.json ./apps/api/
 COPY libs/shared/package.json ./libs/shared/
 
 # 只安装生产依赖
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # 复制构建产物
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/libs/shared/dist ./libs/shared/dist
 COPY --from=builder /app/libs/shared/src/generated ./libs/shared/src/generated
+COPY --from=builder /app/node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt/lib ./node_modules/.pnpm/bcrypt@5.1.1/node_modules/bcrypt/lib
 
 # 复制 Prisma schema（运行时需要）
 COPY apps/api/prisma ./apps/api/prisma
@@ -136,7 +165,7 @@ COPY apps/web/package.json ./apps/web/
 COPY libs/shared/package.json ./libs/shared/
 
 # 只安装生产依赖
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # 复制构建产物
 COPY --from=builder /app/apps/web/.next ./apps/web/.next

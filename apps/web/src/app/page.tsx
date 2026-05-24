@@ -74,7 +74,6 @@ function HomePageContent() {
         setHasMore(response.hasMore);
         setError(null);
       } catch (err) {
-        console.error('加载社区feed失败:', err);
         const msg = (err as any)?.message || String(err);
 
         if (reset) {

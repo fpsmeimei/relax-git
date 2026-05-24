@@ -184,7 +184,7 @@ export default function ConsolePage() {
         <main className="container-responsive py-16">
           <Card>
             <CardHeader>
-              <CardTitle>控制台暂时不可用</CardTitle>
+              <CardTitle>控制台数据加载失败</CardTitle>
               <CardDescription>{error ?? '暂无数据'}</CardDescription>
             </CardHeader>
           </Card>

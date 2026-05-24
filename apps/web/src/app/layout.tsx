@@ -4,24 +4,9 @@ import { NetworkStatus } from '@/components/network-status';
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/toaster';
 import { AppLayout } from '@/components/app-layout';
-import { cn } from '@/lib/utils';
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
 import 'prismjs/themes/prism.css';
 import './globals.css';
-
-// 字体配置
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  display: 'swap',
-});
 
 // 元数据配置
 export const metadata: Metadata = {
@@ -88,13 +73,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body
-        className={cn(
-          'min-h-screen bg-background font-sans antialiased',
-          inter.variable,
-          jetbrainsMono.variable
-        )}
-      >
+      <body className="min-h-screen bg-background font-sans antialiased">
         <ErrorBoundary>
           <Providers>
             <NetworkStatus />

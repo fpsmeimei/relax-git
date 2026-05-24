@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { AdminConsoleService } from './admin-console.service';
 
 @ApiTags('admin-console')
-@Controller('admin/console')
+@Controller('api/admin/console')
 @UseGuards(RolesGuard)
 @Roles(UserRole.ADMIN)
 export class AdminConsoleController {

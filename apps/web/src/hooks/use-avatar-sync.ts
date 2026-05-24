@@ -58,12 +58,6 @@ export const useAvatarSync = (initialAvatar?: string | null) => {
         return null;
       }
 
-      // 其他错误才打印日志
-      console.warn('Failed to fetch avatar (non-critical):', {
-        message: error?.message,
-        status: error?.status,
-        code: error?.code,
-      });
       return currentAvatar;
     }
   };

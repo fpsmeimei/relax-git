@@ -1,6 +1,7 @@
 'use client';
 
 import { useSocket } from '@/components/socket-provider';
+import { apiClient } from '@/services/apiClient';
 import { useMessagesStore } from '@/stores/messages-store';
 import { useContactsStore } from '@/stores/contacts-store';
 import { useAuth } from '@/stores/auth-store';
@@ -9,12 +10,14 @@ import { useEffect } from 'react';
 export function useMessagesSocket() {
   const { isConnected, on } = useSocket();
   const { user } = useAuth();
-  const { updateOnNewMessage } = useMessagesStore();
+  const { updateOnNewMessage, markMessagesRead, applyUnreadCounts } =
+    useMessagesStore();
   const {
     addIncomingRequest,
     updateRequestStatus,
     updateUnreadRequestCount,
     loadFriends,
+    loadFriendRequests,
   } = useContactsStore();
 
   useEffect(() => {
@@ -33,8 +36,11 @@ export function useMessagesSocket() {
       messageIds: string[];
       readAt: string;
     }) => {
-      // TODO: 更新消息已读状态
-      void data;
+      if (!data.chatId || !Array.isArray(data.messageIds)) {
+        return;
+      }
+
+      markMessagesRead(data.chatId, data.messageIds, data.readAt);
     };
 
     // 好友申请通知
@@ -44,22 +50,55 @@ export function useMessagesSocket() {
       message?: string;
       createdAt: string;
     }) => {
-      // 构造好友申请对象
-      const request = {
-        id: data.requestId,
-        fromUserId: data.fromUserId,
-        toUserId: '', // 当前用户
-        status: 'PENDING' as const,
-        message: data.message ?? null,
-        createdAt: data.createdAt,
-        updatedAt: data.createdAt,
-        fromUser: {
-          id: data.fromUserId,
-          username: '新用户', // TODO: 从缓存或API获取用户信息
-          avatar: null,
-        },
-      };
-      addIncomingRequest(request);
+      // 优先回源，拿到真实用户名和头像，避免消息中心出现占位文案。
+      void loadFriendRequests().catch(async () => {
+        let fromUser:
+          | {
+              id: string;
+              username: string;
+              avatar: string | null;
+            }
+          | undefined;
+
+        try {
+          const response = await apiClient.get<{
+            id: string;
+            username: string;
+            avatar?: string | null;
+          }>(`/users/${data.fromUserId}`);
+
+          if (response.data?.id) {
+            fromUser = {
+              id: response.data.id,
+              username: response.data.username,
+              avatar: response.data.avatar ?? null,
+            };
+          }
+        } catch {
+          // ignore
+        }
+
+        if (!fromUser) {
+          fromUser = {
+            id: data.fromUserId,
+            username: '新用户',
+            avatar: null,
+          };
+        }
+
+        // 构造好友申请对象
+        const request = {
+          id: data.requestId,
+          fromUserId: data.fromUserId,
+          toUserId: user?.id ?? '',
+          status: 'PENDING' as const,
+          message: data.message ?? null,
+          createdAt: data.createdAt,
+          updatedAt: data.createdAt,
+          fromUser,
+        };
+        addIncomingRequest(request);
+      });
     };
 
     // 好友申请处理结果
@@ -83,7 +122,7 @@ export function useMessagesSocket() {
       friendRequests: number;
     }) => {
       updateUnreadRequestCount(counts.friendRequests);
-      // TODO: 更新私信未读统计
+      applyUnreadCounts(counts.chats);
     };
 
     // 注册事件监听，保存清理函数
@@ -115,10 +154,14 @@ export function useMessagesSocket() {
     on,
     user?.id,
     updateOnNewMessage,
+    markMessagesRead,
+    applyUnreadCounts,
     addIncomingRequest,
     updateRequestStatus,
     updateUnreadRequestCount,
     loadFriends,
+    loadFriendRequests,
+    user?.id,
   ]);
 
   return { isConnected };

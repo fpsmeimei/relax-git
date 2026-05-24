@@ -159,35 +159,8 @@ export function SnapshotCodeViewer({
             );
             // 给一个小的延迟确保语言组件完全注册
             await new Promise(resolve => setTimeout(resolve, 10));
-
-            // 如果导入后仍然没有语言，尝试一些常见的别名
-            if (!Prism.languages[lang]) {
-              // 某些语言可能有别名，比如 'tsx' 可以使用 'jsx' 的语法
-              const aliases: Record<string, string> = {
-                tsx: 'jsx',
-                ts: 'typescript',
-                js: 'javascript',
-                md: 'markdown',
-                yml: 'yaml',
-              };
-              const aliasLang = aliases[lang];
-              if (aliasLang && Prism.languages[aliasLang]) {
-                // 开发环境下提示使用了别名
-                if (process.env.NODE_ENV === 'development') {
-                  console.info(
-                    `Using alias language '${aliasLang}' for '${lang}'`
-                  );
-                }
-              }
-            }
           } catch (error) {
-            // 开发环境下输出调试信息
-            if (process.env.NODE_ENV === 'development') {
-              console.warn(
-                `Failed to load Prism language component: ${component}`,
-                error
-              );
-            }
+            void error;
           }
         }
         // 导入后再次检查，确保语言已正确注册
@@ -447,7 +420,6 @@ export function SnapshotCodeViewer({
           return { ...filtered, ...commentsByLine };
         });
       } catch (e: any) {
-        console.warn('加载评论失败:', e?.response?.data || e);
         setCommentsError(
           e?.response?.data?.message || e?.message || '加载评论失败'
         );
@@ -515,8 +487,6 @@ export function SnapshotCodeViewer({
         setSelectedFile(filePath);
         await loadLineComments(filePath);
       } catch (e: any) {
-        // eslint-disable-next-line no-console
-        console.warn('加载文件内容失败:', e?.response?.data || e);
         setFileError(e?.message || '加载文件内容失败');
       } finally {
         setLoadingFile(false);

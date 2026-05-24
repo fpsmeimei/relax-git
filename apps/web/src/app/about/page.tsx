@@ -33,12 +33,12 @@ const coreModules = [
 const supportModules = [
   {
     title: 'AI 助手',
-    description: '作为辅助亮点保留，用于项目问答和协作辅助，不作为主系统展开。',
+    description: '作为辅助亮点保留，围绕仓库发现、问答和项目理解提供支持。',
     icon: Bot,
   },
   {
     title: '运营控制台',
-    description: '后续补充简洁实用的管理视角，展示平台数据与运行状态。',
+    description: '提供简洁实用的管理视角，用于展示平台数据与系统运行状态。',
     icon: LayoutDashboard,
   },
   {
@@ -107,7 +107,7 @@ export default function AboutPage() {
               当前主链路
             </h2>
             <p className="text-muted-foreground">
-              这部分是项目在答辩和演示中应该重点展开的能力。
+              这部分构成了项目当前最完整、最适合展示的核心能力。
             </p>
           </div>
 
@@ -186,8 +186,7 @@ export default function AboutPage() {
           <p className="mt-4 max-w-3xl text-sm leading-7 text-muted-foreground md:text-base">
             当前仓库采用 Next.js 前端、NestJS API、Go Worker、PostgreSQL 与
             Redis
-            的组合。后续将继续围绕“仓库更干净、主线更清楚、控制台更实用、本地
-            演示更稳定”四个方向收敛实现。
+            的组合。当前版本已经围绕“主线清晰、结构完整、本地运行稳定”的目标完成了阶段性收口。
           </p>
         </section>
       </main>

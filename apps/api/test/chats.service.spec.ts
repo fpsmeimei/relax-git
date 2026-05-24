@@ -45,6 +45,12 @@ describe('ChatsService', () => {
         chatId: 'chat1',
         userId: 'user1',
       });
+      prisma.chatMember.findMany.mockResolvedValue([
+        { userId: 'user1' },
+        { userId: 'user2' },
+      ]);
+      prisma.message.groupBy.mockResolvedValue([]);
+      prisma.friendRequest.count.mockResolvedValue(0);
       prisma.message.create.mockResolvedValue({
         id: 'msg1',
         chatId: 'chat1',
@@ -73,6 +79,14 @@ describe('ChatsService', () => {
         data: { updatedAt: expect.any(Date) },
       });
       expect(ws.emitChatMessageNew).toHaveBeenCalledWith('chat1', result);
+      expect(ws.emitChatUnreadCounts).toHaveBeenNthCalledWith(1, 'user1', {
+        chats: [],
+        friendRequests: 0,
+      });
+      expect(ws.emitChatUnreadCounts).toHaveBeenNthCalledWith(2, 'user2', {
+        chats: [],
+        friendRequests: 0,
+      });
       expect(result).toMatchObject({ id: 'msg1', content: 'hello' });
     });
   });
@@ -86,6 +100,12 @@ describe('ChatsService', () => {
         chatId: 'chat1',
         userId: 'user2',
       });
+      prisma.chatMember.findMany.mockResolvedValue([
+        { userId: 'user1' },
+        { userId: 'user2' },
+      ]);
+      prisma.message.groupBy.mockResolvedValue([]);
+      prisma.friendRequest.count.mockResolvedValue(0);
       prisma.chatMember.update.mockResolvedValue(undefined);
       prisma.message.findMany.mockResolvedValue([{ id: 'm1' }, { id: 'm2' }]);
       prisma.message.updateMany.mockResolvedValue({ count: 2 });
@@ -105,6 +125,14 @@ describe('ChatsService', () => {
         ['m1', 'm2'],
         now
       );
+      expect(ws.emitChatUnreadCounts).toHaveBeenNthCalledWith(1, 'user1', {
+        chats: [],
+        friendRequests: 0,
+      });
+      expect(ws.emitChatUnreadCounts).toHaveBeenNthCalledWith(2, 'user2', {
+        chats: [],
+        friendRequests: 0,
+      });
       expect(res).toEqual({ ok: true, updated: 2 });
 
       (global.Date as unknown as jest.Mock).mockRestore();

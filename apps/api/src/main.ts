@@ -78,11 +78,9 @@ async function bootstrap() {
 
   // ⚠️ 生产环境禁止使用 CORS_ORIGIN=* (临时允许用于测试)
   if (isProduction && corsFromEnv === '*') {
-    console.warn('⚠️ 安全警告: 生产环境使用 CORS_ORIGIN=*，仅用于测试！');
-    console.warn(
-      '生产环境请设置具体的域名，例如: CORS_ORIGIN=https://yourdomain.com'
+    throw new Error(
+      '生产环境禁止使用 CORS_ORIGIN=*，请设置具体域名，例如 CORS_ORIGIN=https://relax-git.goodbyeri.cc'
     );
-    // process.exit(1); // 临时注释掉，允许测试
   }
 
   if (corsFromEnv === '*') {
@@ -136,8 +134,8 @@ async function bootstrap() {
   }
 
   // Swagger 文档配置
-  // 在生产环境中也启用 Swagger 文档
-  const enableSwagger = true;
+  const enableSwagger =
+    !isProduction || process.env['ENABLE_SWAGGER'] === 'true';
   if (enableSwagger) {
     const config = new DocumentBuilder()
       .setTitle('Relax-Git API')
@@ -159,7 +157,9 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Relax-Git API Server is running on http://localhost:${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  if (enableSwagger) {
+    console.log(`📚 API Documentation: http://localhost:${port}/api/docs`);
+  }
 }
 
 bootstrap().catch(error => {

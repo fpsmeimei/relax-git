@@ -9,7 +9,7 @@ import type {
   SnapshotStatus,
   TimelineEventType,
   UserRole,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 import type {
   PrismaComment,
   PrismaRepository,

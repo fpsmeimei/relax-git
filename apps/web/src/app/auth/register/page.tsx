@@ -96,9 +96,10 @@ function RegisterPageInner() {
       });
 
       // 注册成功后跳转到登录页，并带上用户名
-      router.push(`/auth/login?username=${encodeURIComponent(formData.username)}`);
+      router.push(
+        `/auth/login?username=${encodeURIComponent(formData.username)}`
+      );
     } catch (error: any) {
-      console.error('Register error:', error);
       toast({
         title: '注册失败',
         description: error.message || '注册过程中出现错误',

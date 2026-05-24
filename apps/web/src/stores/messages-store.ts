@@ -31,6 +31,14 @@ interface MessagesState {
   markRead: (chatId: string) => Promise<void>;
   setCurrentChat: (chatId: string | null) => void;
   updateOnNewMessage: (msg: ChatMessage, isSelf: boolean) => void;
+  markMessagesRead: (
+    chatId: string,
+    messageIds: string[],
+    readAt: string
+  ) => void;
+  applyUnreadCounts: (
+    counts: Array<{ chatId: string; unread: number }>
+  ) => void;
   clearMessages: (chatId: string) => Promise<void>;
   reset: () => void;
 }
@@ -216,6 +224,60 @@ export const useMessagesStore = create<MessagesState>()(
             messages: { ...state.messages, [chatId]: appended },
           };
         });
+      },
+
+      markMessagesRead: (chatId, messageIds, readAt) => {
+        if (messageIds.length === 0) return;
+
+        const targetIds = new Set(messageIds);
+        set(state => {
+          const chatMessages = state.messages[chatId];
+          if (!chatMessages?.length) {
+            return state;
+          }
+
+          let changed = false;
+          const nextMessages = chatMessages.map(message => {
+            if (!targetIds.has(message.id)) {
+              return message;
+            }
+
+            if (message.isRead && message.readAt === readAt) {
+              return message;
+            }
+
+            changed = true;
+            return {
+              ...message,
+              isRead: true,
+              readAt,
+            };
+          });
+
+          if (!changed) {
+            return state;
+          }
+
+          return {
+            messages: {
+              ...state.messages,
+              [chatId]: nextMessages,
+            },
+          };
+        });
+      },
+
+      applyUnreadCounts: counts => {
+        const unreadMap = new Map(
+          counts.map(item => [item.chatId, item.unread] as const)
+        );
+
+        set(state => ({
+          chats: state.chats.map(chat => ({
+            ...chat,
+            unreadCount: unreadMap.get(chat.chatId) ?? 0,
+          })),
+        }));
       },
 
       clearMessages: async (chatId: string) => {

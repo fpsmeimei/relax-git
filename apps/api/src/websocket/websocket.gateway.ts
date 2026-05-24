@@ -614,35 +614,6 @@ export class WebSocketGateway
     client.emit('pong', { timestamp: Date.now() });
   }
 
-  /**
-   * 测试快照状态更新（仅用于调试）
-   */
-  @SubscribeMessage('test:snapshot-status')
-  handleTestSnapshotStatus(
-    @MessageBody() data: { snapshotId: string; status: string },
-    @ConnectedSocket() client: AuthenticatedSocket
-  ) {
-    if (client.userRole !== UserRole.ADMIN) {
-      client.emit('error', { message: '仅管理员可以使用此测试功能' });
-      return;
-    }
-
-    this.logger.log(
-      `Testing snapshot status update for ${data.snapshotId}: ${data.status}`
-    );
-
-    // 直接触发快照状态变更事件
-    this.emitSnapshotStatusChanged(data.snapshotId, {
-      snapshotId: data.snapshotId,
-      status: data.status,
-      timestamp: new Date().toISOString(),
-    });
-
-    client.emit('test:snapshot-status:success', {
-      message: `测试快照状态更新已发送: ${data.snapshotId} -> ${data.status}`,
-    });
-  }
-
   // ===== 事件推送方法 =====
 
   /**

@@ -322,7 +322,6 @@ export function ImportRepositoryForm({
         router.push(`/repositories/${result.repositoryId}`);
       }
     } catch (error) {
-      console.error('Failed to import repository:', error);
       toast({
         title: '导入失败',
         description:

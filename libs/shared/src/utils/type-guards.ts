@@ -10,7 +10,7 @@ import type {
   RepositoryVisibility,
   TimelineEventType,
   UserRole,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 
 import type {
   PrismaComment,

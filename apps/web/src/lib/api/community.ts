@@ -231,7 +231,7 @@ export class CommunityAPI {
       await apiClient.post(`/community/repositories/${repoId}/view`);
     } catch (error) {
       // 静默失败，不影响用户体验
-      console.warn('Failed to record repository view:', error);
+      void error;
     }
   }
 

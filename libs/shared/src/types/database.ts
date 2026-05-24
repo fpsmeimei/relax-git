@@ -9,7 +9,7 @@ export type {
   TimelineEvent,
   User,
   UserSession,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 
 export {
   BaseSnapshotStatus,
@@ -18,7 +18,7 @@ export {
   RepositoryVisibility,
   TimelineEventType,
   UserRole,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 
 // 导入类型用于接口定义
 import type {
@@ -28,7 +28,7 @@ import type {
   TimelineEvent,
   User,
   UserSession,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 
 import {
   BaseSnapshotStatus,
@@ -37,7 +37,7 @@ import {
   RepositoryVisibility,
   TimelineEventType,
   UserRole,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 
 // 扩展类型定义
 export interface UserWithRelations extends User {

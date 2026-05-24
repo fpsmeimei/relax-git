@@ -5,7 +5,7 @@ export type {
   TimelineEvent,
   User,
   UserSession,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 export {
   CommentAnchorType,
   CommentStatus,
@@ -13,7 +13,7 @@ export {
   SnapshotStatus,
   TimelineEventType,
   UserRole,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 import type {
   Comment,
   Repository,
@@ -21,7 +21,7 @@ import type {
   TimelineEvent,
   User,
   UserSession,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 import {
   CommentAnchorType,
   CommentStatus,
@@ -29,7 +29,7 @@ import {
   SnapshotStatus,
   TimelineEventType,
   UserRole,
-} from '../generated/prisma-client';
+} from '../generated/prisma-client/index';
 export interface UserWithRelations extends User {
   ownedRepositories?: Repository[];
   snapshots?: Snapshot[];

@@ -286,6 +286,7 @@ export class ChatsService {
 
     // 推送到当前会话频道
     this.ws.emitChatMessageNew(chatId, message);
+    await this.emitUnreadCountsForChat(chatId);
 
     return message;
   }
@@ -327,6 +328,7 @@ export class ChatsService {
     });
 
     this.ws.emitChatMessageRead(chatId, userId, targetIds, now);
+    await this.emitUnreadCountsForChat(chatId);
 
     return { ok: true, updated: targetIds.length };
   }
@@ -391,5 +393,19 @@ export class ChatsService {
     });
 
     return { ok: true, hidden: messageIds.length };
+  }
+
+  private async emitUnreadCountsForChat(chatId: string) {
+    const members = await (this.prisma as any).chatMember.findMany({
+      where: { chatId },
+      select: { userId: true },
+    });
+
+    await Promise.all(
+      members.map(async (member: { userId: string }) => {
+        const counts = await this.getUnreadCounts(member.userId);
+        this.ws.emitChatUnreadCounts(member.userId, counts);
+      })
+    );
   }
 }

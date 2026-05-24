@@ -111,7 +111,7 @@ export function RepositoryDiscussion({
           }
         }
       } catch (error) {
-        console.error('获取快照ID失败:', error);
+        void error;
       }
     };
 
@@ -148,7 +148,7 @@ export function RepositoryDiscussion({
 
       setComments(topLevelComments);
     } catch (error) {
-      console.error('加载评论失败:', error);
+      void error;
     } finally {
       setLoading(false);
     }
@@ -250,7 +250,7 @@ export function RepositoryDiscussion({
       toast.success('评论发布成功');
       await loadComments();
     } catch (error) {
-      console.error('发布评论失败:', error);
+      void error;
       toast.error('发布评论失败，请重试');
     } finally {
       setSubmitting(false);
@@ -278,7 +278,7 @@ export function RepositoryDiscussion({
       toast.success('回复成功');
       await loadComments();
     } catch (error) {
-      console.error('回复失败:', error);
+      void error;
       toast.error('回复失败，请重试');
     } finally {
       setIsSubmittingReply(false);
@@ -369,7 +369,7 @@ export function RepositoryDiscussion({
 
       setComments(updateCommentInList);
     } catch (error) {
-      console.error('点赞操作失败:', error);
+      void error;
       toast.error('操作失败，请重试');
     } finally {
       setLikingIds(prev => {
@@ -413,7 +413,7 @@ export function RepositoryDiscussion({
     } catch (error) {
       // 回滚到之前的状态
       setComments(snapshot);
-      console.error('删除失败:', error);
+      void error;
       toast.error('删除失败，请重试');
     } finally {
       setDeletingIds(prev => {

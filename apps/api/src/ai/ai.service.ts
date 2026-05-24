@@ -58,7 +58,7 @@ export class AiService {
   ): Promise<{ reply: string; reasoning?: string }> {
     if (!this.isAvailable()) {
       return {
-        reply: '抱歉，AI 服务暂时不可用。请联系管理员配置 DEEPSEEK_API_KEY。',
+        reply: '仓库助手当前不可用，请稍后再试。',
       };
     }
 
@@ -102,7 +102,8 @@ export class AiService {
       );
 
       const content =
-        response.choices[0]?.message?.content || '抱歉，我暂时无法回答。';
+        response.choices[0]?.message?.content ||
+        '抱歉，我现在无法完成这次回答。';
 
       this.logger.debug(`DeepSeek v3.2 response received (mode: ${mode})`);
 
@@ -119,7 +120,7 @@ export class AiService {
 
       if (error?.status === 402) {
         return {
-          reply: '抱歉，AI 服务余额不足。请联系管理员充值账户。',
+          reply: '仓库助手当前不可用，请稍后再试。',
         };
       }
 
@@ -131,7 +132,7 @@ export class AiService {
 
       if (error?.status === 401) {
         return {
-          reply: '抱歉，AI 服务认证失败，请联系管理员检查配置。',
+          reply: '仓库助手当前不可用，请稍后再试。',
         };
       }
 

@@ -2,7 +2,7 @@
  * Prisma 类型映射和扩展
  * 提供类型安全的 Prisma 查询结果类型
  */
-import type { Prisma } from '../generated/prisma-client';
+import type { Prisma } from '../generated/prisma-client/index';
 /**
  * 用户相关类型映射
  */

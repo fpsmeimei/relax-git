@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 import {
   ArtifactStatus,
   SnapshotArtifact,
@@ -22,13 +24,41 @@ import { GitValidationService } from '../repositories/services/git-validation.se
 export class ArtifactService {
   private readonly logger = new Logger(ArtifactService.name);
   private readonly queueName = 'snapshot:queue'; // 保持与现有系统兼容
+  private readonly allowedWorktreeRoots: string[];
+  private readonly allowedBundleRoots: string[];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly gitValidationService: GitValidationService,
     private readonly configService: ConfigService
-  ) {}
+  ) {
+    const defaultWorkerGitRoot = path.resolve(
+      process.cwd(),
+      '..',
+      'worker',
+      'data',
+      'git'
+    );
+    const configuredWorktreeRoot = this.configService.get<string>(
+      'performance.git.worktreePath',
+      '/tmp/relax-git-worktrees'
+    );
+    const configuredBundleRoot = this.configService.get<string>(
+      'performance.git.bundlePath',
+      '/tmp/relax-git-bundles'
+    );
+
+    this.allowedWorktreeRoots = [
+      configuredWorktreeRoot,
+      path.join(defaultWorkerGitRoot, 'worktrees'),
+    ].map(root => path.resolve(root));
+
+    this.allowedBundleRoots = [
+      configuredBundleRoot,
+      path.join(defaultWorkerGitRoot, 'bundles'),
+    ].map(root => path.resolve(root));
+  }
 
   /**
    * 确保工件存在（幂等操作）
@@ -299,8 +329,18 @@ export class ArtifactService {
     });
 
     this.logger.log(`Cleaned up ${expiredArtifacts.length} expired artifacts`);
-
-    // TODO: 清理文件系统上的 worktree 和 bundle 文件
+    await Promise.all(
+      expiredArtifacts.map(
+        async (artifact: {
+          id: string;
+          worktreePath: string | null;
+          bundlePath: string | null;
+        }) => {
+          await this.cleanupArtifactPath(artifact.worktreePath, 'worktree');
+          await this.cleanupArtifactPath(artifact.bundlePath, 'bundle');
+        }
+      )
+    );
 
     return expiredArtifacts.length;
   }
@@ -418,5 +458,59 @@ export class ArtifactService {
     };
 
     return statusMap[oldStatus] || ArtifactStatus.FAILED;
+  }
+
+  private async cleanupArtifactPath(
+    targetPath: string | null,
+    kind: 'worktree' | 'bundle'
+  ): Promise<void> {
+    if (!targetPath) {
+      return;
+    }
+
+    const resolvedPath = path.resolve(targetPath);
+    if (!this.isSafeArtifactPath(resolvedPath, kind)) {
+      this.logger.warn(
+        `Skipping ${kind} cleanup for unexpected path: ${resolvedPath}`
+      );
+      return;
+    }
+
+    try {
+      if (await fs.pathExists(resolvedPath)) {
+        await fs.remove(resolvedPath);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to cleanup ${kind} path ${resolvedPath}: ${String(error)}`
+      );
+    }
+  }
+
+  private isSafeArtifactPath(
+    resolvedPath: string,
+    kind: 'worktree' | 'bundle'
+  ): boolean {
+    const basename = path.basename(resolvedPath);
+    const expectedName =
+      kind === 'worktree'
+        ? basename.startsWith('worktree-') && basename.endsWith('-output')
+        : basename.endsWith('.bundle');
+
+    if (!expectedName) {
+      return false;
+    }
+
+    const allowedRoots =
+      kind === 'worktree' ? this.allowedWorktreeRoots : this.allowedBundleRoots;
+
+    return allowedRoots.some(root => {
+      const relative = path.relative(root, resolvedPath);
+      return (
+        relative !== '' &&
+        !relative.startsWith('..') &&
+        !path.isAbsolute(relative)
+      );
+    });
   }
 }

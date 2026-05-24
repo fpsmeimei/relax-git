@@ -4,21 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LogoutButton } from '@/components/logout-button';
-import { useToast } from '@/hooks/use-toast';
+import { buildNotificationHref } from '@/lib/notification-link';
 import { apiClient } from '@/services/apiClient';
 import { useAuth } from '@/stores/auth-store';
 import { useNotificationsStore } from '@/stores/notifications-store';
-import {
-  Bell,
-  MessageCircle,
-  Settings,
-  User,
-  UserCheck,
-  UserX,
-  Sparkles,
-} from 'lucide-react';
+import { Bell, MessageCircle, Settings, User, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface NotificationDto {
@@ -75,8 +66,6 @@ interface CommentRespDto {
 
 export default function MePage() {
   const { user, isAuthenticated } = useAuth();
-  const router = useRouter();
-  const { toast } = useToast();
   const [tab, setTab] = useState<'notifications' | 'my-comments' | 'overview'>(
     'overview'
   );
@@ -182,7 +171,7 @@ export default function MePage() {
       setUnreadCount(Math.max(0, (unreadCount || 0) - 1));
       await apiClient.patch(`/notifications/${id}/read`);
     } catch (error) {
-      console.error('标记通知为已读失败:', error);
+      void error;
       // 忽略失败（不回滚），刷新列表时会以服务端为准
     }
   };
@@ -339,46 +328,7 @@ export default function MePage() {
           ) : (
             <ul className="space-y-3">
               {notiData.items.map(n => {
-                // 构建跳转链接，根据评论类型决定跳转位置
-                const href = (() => {
-                  if (!n.commentId) return undefined;
-
-                  // 根据评论的锚点类型决定跳转逻辑
-                  const anchorType = n.comment?.anchorType;
-
-                  if (anchorType === 'PROJECT') {
-                    // 项目级评论：跳转到社区详情页面
-                    const repoId = n.comment?.snapshot?.repository?.id;
-                    if (repoId) {
-                      return `/community/${repoId}?commentId=${n.commentId}`;
-                    }
-                  } else if (
-                    anchorType === 'SNAPSHOT' &&
-                    !n.comment?.filePath
-                  ) {
-                    // 项目讨论评论：跳转到项目讨论页面
-                    const repoId = n.comment?.snapshot?.repository?.id;
-                    if (repoId) {
-                      return `/repositories/${repoId}?tab=discussion&commentId=${n.commentId}`;
-                    }
-                  } else if (
-                    anchorType === 'LINE' &&
-                    n.comment?.filePath &&
-                    n.comment?.lineStart
-                  ) {
-                    // 行级评论：跳转到快照页面的具体行
-                    const params = new URLSearchParams();
-                    params.set('file', n.comment.filePath);
-                    params.set('line', String(n.comment.lineStart));
-                    params.set('commentId', n.commentId);
-                    return `/snapshots/${n.snapshotId}?${params.toString()}`;
-                  } else if (n.snapshotId) {
-                    // 快照级评论或其他类型：跳转到快照页面
-                    return `/snapshots/${n.snapshotId}?commentId=${n.commentId}`;
-                  }
-
-                  return undefined;
-                })();
+                const href = buildNotificationHref(n);
 
                 const getNotificationIcon = () => {
                   if (n.type === 'COMMENT_REPLY')
@@ -458,19 +408,17 @@ export default function MePage() {
 
                     {/* 操作按钮区域 */}
                     <div className="shrink-0">
-                      {href ? (
-                        <Link
-                          href={href}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/90 text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all"
-                          onClick={e => {
-                            e.stopPropagation(); // 阻止事件冒泡到通知卡片
-                            void markOneRead(n.id);
-                          }}
-                        >
-                          <Sparkles className="h-3 w-3" />
-                          查看详情
-                        </Link>
-                      ) : null}
+                      <Link
+                        href={href}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/90 text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all"
+                        onClick={e => {
+                          e.stopPropagation();
+                          void markOneRead(n.id);
+                        }}
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        查看详情
+                      </Link>
                     </div>
                   </li>
                 );

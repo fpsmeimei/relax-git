@@ -1,35 +1,19 @@
-'use client';
-
 import { buildMessageThreadHref } from '@/lib/messages-route';
-import { Loader2 } from 'lucide-react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { redirect } from 'next/navigation';
 
-export default function ChatDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const chatId = String(params?.['id'] ?? '');
+export default async function ChatDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id?: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await Promise.resolve(searchParams);
+  const chatId = String(resolvedParams?.id ?? '');
+  if (!chatId) {
+    redirect('/messages');
+  }
 
-  useEffect(() => {
-    if (!chatId) {
-      router.replace('/messages');
-      return;
-    }
-
-    router.replace(buildMessageThreadHref(chatId, searchParams));
-  }, [chatId, router, searchParams]);
-
-  return (
-    <div className="min-h-screen bg-background">
-      <main className="container-responsive py-16">
-        <div className="flex items-center justify-center">
-          <div className="flex items-center gap-3 text-muted-foreground">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            正在跳转到消息中心...
-          </div>
-        </div>
-      </main>
-    </div>
-  );
+  redirect(buildMessageThreadHref(chatId, resolvedSearchParams ?? null));
 }

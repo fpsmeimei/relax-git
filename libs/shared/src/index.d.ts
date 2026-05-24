@@ -1,4 +1,4 @@
-export * from './generated/prisma-client';
+export * from './generated/prisma-client/index';
 export * from './types/database';
 export * from './types/api';
 export * from './types/common';

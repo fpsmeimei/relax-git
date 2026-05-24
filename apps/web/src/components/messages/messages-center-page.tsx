@@ -336,7 +336,6 @@ export default function MessagesCenterPage() {
           void markRead(chatId);
         }
       } catch (error: any) {
-        console.error('创建私信失败:', error);
         toast({
           title: '创建私信失败',
           description: error?.message ?? '请稍后重试',
@@ -480,7 +479,7 @@ export default function MessagesCenterPage() {
           });
           scrollToBottom();
         } catch (aiError) {
-          console.error('AI response error:', aiError);
+          void aiError;
 
           // 移除"思考中"消息，添加错误消息
           setAiMessages(prev => {

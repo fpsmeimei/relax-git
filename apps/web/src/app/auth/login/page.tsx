@@ -89,11 +89,11 @@ function LoginPageInner() {
           });
 
           if (!cookieResp.ok) {
-            console.warn('[Login] Failed to set auth cookies');
+            // 忽略 Cookie 同步失败，后续请求仍会以会话状态为准。
           }
         }
       } catch (e) {
-        console.warn('[Login] Cookie setup error:', e);
+        void e;
       }
 
       toast({

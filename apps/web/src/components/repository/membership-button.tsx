@@ -50,7 +50,7 @@ export function MembershipButton({
     setIsLoading(true);
     try {
       await apiClient.post(`/repositories/${repositoryId}/join-requests`, {
-        reason: '申请加入该仓库', // 可以后续扩展为用户输入
+        reason: '希望参与该仓库的浏览、讨论与协作',
       });
 
       toast.success('你已申请，等待管理员同意中');
@@ -60,7 +60,6 @@ export function MembershipButton({
         queryKey: ['repository-member-status', repositoryId],
       });
     } catch (error: any) {
-      console.error('申请加入失败:', error);
       toast.error(error?.response?.data?.message || '申请失败，请重试');
     } finally {
       setIsLoading(false);
@@ -81,7 +80,6 @@ export function MembershipButton({
         queryKey: ['repository-member-status', repositoryId],
       });
     } catch (error: any) {
-      console.error('退出成员失败:', error);
       toast.error(error?.response?.data?.message || '退出失败，请重试');
     } finally {
       setIsLoading(false);
@@ -101,7 +99,6 @@ export function MembershipButton({
         queryKey: ['repository-member-status', repositoryId],
       });
     } catch (error: any) {
-      console.error('撤回申请失败:', error);
       toast.error(error?.response?.data?.message || '撤回失败，请重试');
     } finally {
       setIsLoading(false);

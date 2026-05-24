@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import * as Dialog from '@radix-ui/react-dialog';
 import { formatSmartTime } from '@/lib/utils/format-time';
+import { buildNotificationHref } from '@/lib/notification-link';
 import { Loader2, MessageCircle, UserCheck, UserX, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
@@ -83,24 +84,7 @@ export function NotificationRow({
   onMarkRead,
   pending,
 }: NotificationRowProps) {
-  const href = useMemo(() => {
-    try {
-      // 重定向到仓库详情页的分支标签页
-      if (n?.repoId) {
-        return `/repositories/${n.repoId}?tab=branches`;
-      }
-      // 如果只有snapshotId，尝试从中提取repoId（如果可能）
-      if (n?.snapshotId) {
-        // 暂时重定向到社区页面，后续可以改进为从快照ID查找仓库ID
-        return `/community`;
-      }
-      return undefined;
-    } catch {
-      return n?.repoId
-        ? `/repositories/${n.repoId}?tab=branches`
-        : `/community`;
-    }
-  }, [n]);
+  const href = useMemo(() => buildNotificationHref(n), [n]);
 
   const actor = useMemo(() => n?.actor?.username ?? '有人', [n]);
   const actorAvatar = useMemo(() => n?.actor?.avatar, [n]);
@@ -177,26 +161,23 @@ export function NotificationRow({
   const actions = (
     <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-0 transition-all duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
       <div className="flex items-center gap-2">
-        {href && (
-          <span className="pointer-events-auto">
-            <Dialog.Close asChild>
-              <Link
-                href={href}
-                aria-label={`查看通知：${title}`}
-                className="inline-flex items-center gap-1 rounded-md bg-primary/90 px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                onClick={e => {
-                  // 查看详情：标记为已读 + 跳转
-                  if (!n?.isRead) {
-                    onMarkRead?.(n);
-                  }
-                  onNavigate?.();
-                }}
-              >
-                查看详情
-              </Link>
-            </Dialog.Close>
-          </span>
-        )}
+        <span className="pointer-events-auto">
+          <Dialog.Close asChild>
+            <Link
+              href={href}
+              aria-label={`查看通知：${title}`}
+              className="inline-flex items-center gap-1 rounded-md bg-primary/90 px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary hover:shadow transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              onClick={() => {
+                if (!n?.isRead) {
+                  onMarkRead?.(n);
+                }
+                onNavigate?.();
+              }}
+            >
+              查看详情
+            </Link>
+          </Dialog.Close>
+        </span>
         {n?.isRead && pending && (
           <Loader2 className="pointer-events-auto h-3 w-3 text-muted-foreground animate-spin" />
         )}
