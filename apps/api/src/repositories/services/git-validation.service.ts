@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // 远程命令超时（调用时读取环境变量，避免模块加载顺序问题）
 const getRemoteTimeout = () =>
@@ -38,6 +38,14 @@ function withProxyEnv() {
 @Injectable()
 export class GitValidationService {
   private readonly logger = new Logger(GitValidationService.name);
+
+  private async runGit(args: string[], timeout: number) {
+    return execFileAsync('git', args, {
+      timeout,
+      env: withProxyEnv(),
+      maxBuffer: 1024 * 1024,
+    });
+  }
 
   /**
    * 验证Git仓库URL是否可访问
@@ -120,10 +128,10 @@ export class GitValidationService {
   }> {
     try {
       // 使用 git ls-remote 获取远程分支信息
-      const { stdout } = await execAsync(`git ls-remote --heads "${gitUrl}"`, {
-        timeout: getRemoteTimeout(), // 默认120秒，可通过 GIT_REMOTE_TIMEOUT_MS 覆盖
-        env: withProxyEnv(),
-      });
+      const { stdout } = await this.runGit(
+        ['ls-remote', '--heads', gitUrl],
+        getRemoteTimeout()
+      );
 
       const branches = this.parseBranches(stdout);
       const defaultBranch = await this.getDefaultBranch(gitUrl);
@@ -181,12 +189,9 @@ export class GitValidationService {
    */
   private async getDefaultBranch(gitUrl: string): Promise<string | null> {
     try {
-      const { stdout } = await execAsync(
-        `git ls-remote --symref "${gitUrl}" HEAD`,
-        {
-          timeout: getHeadTimeout(), // 默认60秒，可通过 GIT_REMOTE_HEAD_TIMEOUT_MS 覆盖
-          env: withProxyEnv(),
-        }
+      const { stdout } = await this.runGit(
+        ['ls-remote', '--symref', gitUrl, 'HEAD'],
+        getHeadTimeout()
       );
 
       const match = stdout.match(/ref: refs\/heads\/(.+)\s+HEAD/);
@@ -245,12 +250,9 @@ export class GitValidationService {
         throw new Error('分支名称包含非法字符');
       }
 
-      const { stdout } = await execAsync(
-        `git ls-remote --heads "${sanitizedUrl}" "${sanitizedBranch}"`,
-        {
-          timeout: getHeadTimeout(),
-          env: withProxyEnv(),
-        }
+      const { stdout } = await this.runGit(
+        ['ls-remote', '--heads', sanitizedUrl, sanitizedBranch],
+        getHeadTimeout()
       );
 
       return stdout.trim().length > 0;
@@ -275,9 +277,9 @@ export class GitValidationService {
         throw new Error('分支名称包含非法字符');
       }
 
-      const { stdout } = await execAsync(
-        `git ls-remote --heads "${sanitizedUrl}" "${sanitizedBranch}"`,
-        { timeout: getHeadTimeout(), env: withProxyEnv() }
+      const { stdout } = await this.runGit(
+        ['ls-remote', '--heads', sanitizedUrl, sanitizedBranch],
+        getHeadTimeout()
       );
 
       const out = stdout.trim();

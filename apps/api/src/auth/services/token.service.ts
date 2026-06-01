@@ -52,7 +52,7 @@ export class TokenService {
       role: user.role,
       type: 'access',
     };
-    const expiresIn = `${this.accessTtlMinutes}m`;
+    const expiresIn = this.accessTtlMinutes * 60;
     return await this.jwt.signAsync(payload, { expiresIn });
   }
 
@@ -63,7 +63,7 @@ export class TokenService {
       jti,
       type: 'refresh',
     };
-    const expiresIn = `${this.refreshTtlDays}d`;
+    const expiresIn = this.refreshTtlDays * 24 * 3600;
     const token = await this.jwt.signAsync(payload, { expiresIn });
 
     // 存入 Redis 作为有效刷新凭据（旋转时替换）

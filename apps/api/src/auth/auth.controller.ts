@@ -116,11 +116,8 @@ export class AuthController {
     );
     this.tokenService.setAuthCookies(reply, access, refresh);
 
-    // 🔥 同时在响应体中返回 token（供 NextAuth 使用）
     return {
       user,
-      accessToken: access,
-      refreshToken: refresh,
       jti,
     };
   }

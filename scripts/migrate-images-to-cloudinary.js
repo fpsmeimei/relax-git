@@ -19,10 +19,21 @@ const fs = require('fs');
 const path = require('path');
 
 // 配置 Cloudinary
+const requiredCloudinaryVars = [
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+];
+for (const key of requiredCloudinaryVars) {
+  if (!process.env[key]) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+}
+
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dzqnf0wcx',
-  api_key: process.env.CLOUDINARY_API_KEY || '135786184385336',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'q9ssbXAJWc4GCfPt79vKgPq_XOI'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // 数据库连接

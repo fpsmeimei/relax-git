@@ -70,32 +70,6 @@ function LoginPageInner() {
         return;
       }
 
-      // 🔥 关键修复：使用 NextAuth session 中的 token 设置浏览器 Cookie
-      // 等待 NextAuth session 创建
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      try {
-        const { getSession } = await import('next-auth/react');
-        const session = await getSession();
-
-        const user = session?.user as any;
-        if (user?.accessToken) {
-          const cookieResp = await fetch('/api/_auth/set-cookie', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${user.accessToken}`,
-            },
-            credentials: 'include',
-          });
-
-          if (!cookieResp.ok) {
-            // 忽略 Cookie 同步失败，后续请求仍会以会话状态为准。
-          }
-        }
-      } catch (e) {
-        void e;
-      }
-
       toast({
         title: '登录成功',
         description: `欢迎回来，${formData.username}！`,

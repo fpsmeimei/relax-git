@@ -43,6 +43,9 @@ temp/*
 *.backup
 ~$*
 
+# Runtime uploads
+apps/api/uploads/
+
 # Database
 *.db
 *.sqlite

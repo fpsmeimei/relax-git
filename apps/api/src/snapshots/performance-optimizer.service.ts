@@ -11,10 +11,12 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
+import { execFile } from 'child_process';
 // import * as crypto from 'crypto';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
+const execFileAsync = promisify(execFile);
 
 /**
  * Phase 3.2: 性能优化服务
@@ -416,13 +418,8 @@ export class PerformanceOptimizerService {
       throw new Error('Repository not found');
     }
 
-    // 使用 git clone --bare
-    const { exec } = require('child_process');
-    const { promisify } = require('util');
-    const execAsync = promisify(exec);
-
     await fs.ensureDir(path.dirname(bareRepoPath));
-    await execAsync(`git clone --bare ${repo.gitUrl} ${bareRepoPath}`);
+    await execFileAsync('git', ['clone', '--bare', repo.gitUrl, bareRepoPath]);
 
     this.logger.log(`Created bare repository at ${bareRepoPath}`);
   }
@@ -431,11 +428,7 @@ export class PerformanceOptimizerService {
    * 更新裸仓
    */
   private async updateBareRepository(bareRepoPath: string): Promise<void> {
-    const { exec } = require('child_process');
-    const { promisify } = require('util');
-    const execAsync = promisify(exec);
-
-    await execAsync(`git fetch --all`, { cwd: bareRepoPath });
+    await execFileAsync('git', ['fetch', '--all'], { cwd: bareRepoPath });
     this.logger.log(`Updated bare repository at ${bareRepoPath}`);
   }
 

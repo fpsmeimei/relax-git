@@ -13,8 +13,6 @@ export interface RedisConfig {
 export const getRedisConfig = (): RedisConfig => {
   // 如果有 REDIS_URL，优先使用
   const redisUrl = process.env['REDIS_URL'];
-  console.log('🔍 Redis Config Debug:');
-  console.log('REDIS_URL:', redisUrl);
 
   if (redisUrl) {
     try {
@@ -28,10 +26,6 @@ export const getRedisConfig = (): RedisConfig => {
         retryDelayOnFailover: 100,
         lazyConnect: true,
       };
-      console.log('Parsed Redis config:', {
-        host: config.host,
-        port: config.port,
-      });
       return config;
     } catch (error) {
       console.warn('Invalid REDIS_URL, falling back to individual env vars');

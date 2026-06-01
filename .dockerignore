@@ -47,6 +47,9 @@ coverage/
 tmp/
 temp/
 
+# Runtime uploads
+apps/api/uploads/
+
 # Logs
 logs/
 *.log

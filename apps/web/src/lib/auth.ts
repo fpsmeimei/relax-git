@@ -56,8 +56,6 @@ const nextAuth = NextAuth({
             uid: data.user.uid,
             avatar: data.user.avatar ?? null,
             role: data.user.role,
-            accessToken: data.accessToken,
-            refreshToken: data.refreshToken,
           };
 
           return user;
@@ -70,7 +68,7 @@ const nextAuth = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     async jwt({ token, user }) {
-      // 首次登录时，将用户信息和tokens存入 token
+      // 首次登录时，只将非敏感用户信息存入 NextAuth token。
       if (user) {
         const u = user as any;
         token['uid'] = u.uid;
@@ -78,8 +76,6 @@ const nextAuth = NextAuth({
         token['username'] = u.username ?? u.name;
         token['avatar'] = u.avatar ?? null;
         token['role'] = u.role ?? 'USER';
-        token['accessToken'] = u.accessToken;
-        token['refreshToken'] = u.refreshToken;
       }
       return token;
     },
@@ -92,8 +88,6 @@ const nextAuth = NextAuth({
         (session.user as any).username = t.username;
         (session.user as any).avatar = t.avatar ?? null;
         (session.user as any).role = t.role ?? 'USER';
-        (session.user as any).accessToken = t.accessToken;
-        (session.user as any).refreshToken = t.refreshToken;
       }
       return session;
     },

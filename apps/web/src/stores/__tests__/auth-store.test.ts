@@ -68,7 +68,7 @@ describe('Auth Store', () => {
       expect(state.isLoading).toBe(false);
     });
 
-    it('should persist uid to localStorage', async () => {
+    it('should not persist legacy uid key', async () => {
       const mockUser = {
         id: '1',
         username: 'testuser',
@@ -81,7 +81,7 @@ describe('Auth Store', () => {
       const { login } = useAuthStore.getState();
       login(mockUser);
 
-      expect(localStorage.getItem('uid')).toBe('testuser');
+      expect(localStorage.getItem('uid')).toBeNull();
     });
   });
 
