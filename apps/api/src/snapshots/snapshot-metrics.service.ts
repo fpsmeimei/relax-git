@@ -443,9 +443,11 @@ export class SnapshotMetricsService {
    */
   private async loadMetricsFromCache(): Promise<void> {
     try {
-      const cached = await this.redis.get(this.METRICS_KEY);
+      const cached = await this.redis.get<string | SnapshotMetrics>(
+        this.METRICS_KEY
+      );
       if (cached) {
-        this.metrics = JSON.parse(cached);
+        this.metrics = typeof cached === 'string' ? JSON.parse(cached) : cached;
         this.logger.debug('Loaded metrics from cache');
       }
     } catch (error) {

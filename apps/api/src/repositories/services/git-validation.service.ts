@@ -92,11 +92,10 @@ export class GitValidationService {
    * 清理和验证Git URL，防止命令注入
    */
   private sanitizeGitUrl(url: string): string {
-    // 移除潜在的危险字符
-    const sanitized = url.replace(/[;&|`$(){}[\]\\]/g, '');
+    const sanitized = url.trim();
 
-    // 确保URL不包含命令分隔符
-    if (sanitized !== url) {
+    // execFile 不经过 shell，但仍拒绝常见命令分隔符和控制字符。
+    if (/[\0\r\n;&|`]/.test(sanitized)) {
       throw new Error('Git URL包含非法字符');
     }
 
@@ -107,6 +106,10 @@ export class GitValidationService {
    * 检查Git URL格式是否有效
    */
   private isValidGitUrl(url: string): boolean {
+    if (this.isLocalGitUrl(url)) {
+      return true;
+    }
+
     const gitUrlPatterns = [
       /^https?:\/\/.+\.git$/, // HTTPS
       /^git@.+:.+\.git$/, // SSH
@@ -117,6 +120,19 @@ export class GitValidationService {
     ];
 
     return gitUrlPatterns.some(pattern => pattern.test(url));
+  }
+
+  private isLocalGitUrl(url: string): boolean {
+    if (url.startsWith('file://')) {
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'file:' && parsed.pathname.length > 1;
+      } catch {
+        return false;
+      }
+    }
+
+    return url.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(url);
   }
 
   /**

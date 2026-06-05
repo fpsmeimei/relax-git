@@ -26,10 +26,10 @@ func NewGitOperations(cfg *config.Config, logger zerolog.Logger) *GitOperations 
 		config: cfg,
 		logger: logger.With().Str("component", "git-ops").Logger(),
 	}
-	
+
 	// 🔧 启动时清理残留的临时文件
 	ops.cleanupOnStartup()
-	
+
 	return ops
 }
 
@@ -99,7 +99,10 @@ func (g *GitOperations) ProcessSnapshot(ctx context.Context, task *types.Snapsho
 // createTempDir 创建临时目录
 func (g *GitOperations) createTempDir(taskID string) (string, error) {
 	// 使用 worktree- 前缀以匹配 API 期望的路径格式
-	tempDir := filepath.Join(g.config.Git.TempDir, "worktree-"+taskID)
+	tempDir, err := filepath.Abs(filepath.Join(g.config.Git.TempDir, "worktree-"+taskID))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve temp directory: %w", err)
+	}
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -186,14 +189,17 @@ func (g *GitOperations) createWorktree(ctx context.Context, repoPath, commitSHA,
 		Str("branch_name", branchName).
 		Msg("Creating worktree")
 
-	worktreePath := filepath.Join(g.config.Git.TempDir, fmt.Sprintf("worktree-%s-output", taskID))
+	worktreePath, err := filepath.Abs(filepath.Join(g.config.Git.TempDir, fmt.Sprintf("worktree-%s-output", taskID)))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve worktree path: %w", err)
+	}
 
 	// 🔧 增强清理：如果目标目录已存在，先清理
 	if _, err := os.Stat(worktreePath); err == nil {
 		g.logger.Warn().
 			Str("worktree_path", worktreePath).
 			Msg("Worktree directory already exists, cleaning up")
-		
+
 		// 先尝试移除 worktree（如果在 git 中注册）
 		cleanupCmd := exec.CommandContext(ctx, "git", "worktree", "remove", "--force", worktreePath)
 		cleanupCmd.Dir = repoPath
@@ -202,7 +208,7 @@ func (g *GitOperations) createWorktree(ctx context.Context, repoPath, commitSHA,
 			Str("cleanup_output", string(cleanupOutput)).
 			Err(cleanupErr).
 			Msg("Git worktree remove attempt")
-		
+
 		// 强制删除目录
 		if err := os.RemoveAll(worktreePath); err != nil {
 			g.logger.Error().
@@ -211,7 +217,7 @@ func (g *GitOperations) createWorktree(ctx context.Context, repoPath, commitSHA,
 				Msg("Failed to remove existing worktree directory")
 			return "", fmt.Errorf("failed to cleanup existing worktree directory: %w", err)
 		}
-		
+
 		g.logger.Info().
 			Str("worktree_path", worktreePath).
 			Msg("Successfully cleaned up existing worktree directory")
@@ -244,7 +250,10 @@ func (g *GitOperations) createBundle(ctx context.Context, worktreePath, taskID s
 		return "", fmt.Errorf("failed to create bundle directory: %w", err)
 	}
 
-	bundlePath := filepath.Join(g.config.Git.BundleDir, fmt.Sprintf("%s.bundle", taskID))
+	bundlePath, err := filepath.Abs(filepath.Join(g.config.Git.BundleDir, fmt.Sprintf("%s.bundle", taskID)))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve bundle path: %w", err)
+	}
 
 	// 使用git命令创建bundle文件 - 使用 --all 包含所有引用，避免空 bundle
 	cmd := exec.CommandContext(ctx, "git", "bundle", "create", bundlePath, "--all")
@@ -299,7 +308,7 @@ func (g *GitOperations) failResult(result *types.SnapshotResult, code, message s
 // cleanupOnStartup 启动时清理残留的临时文件和worktree
 func (g *GitOperations) cleanupOnStartup() {
 	g.logger.Info().Msg("Starting cleanup of residual temporary files")
-	
+
 	// 清理临时目录中的所有内容
 	if g.config.Git.TempDir != "" {
 		if err := g.cleanupDirectory(g.config.Git.TempDir, "worktree-*"); err != nil {
@@ -309,7 +318,7 @@ func (g *GitOperations) cleanupOnStartup() {
 				Msg("Failed to cleanup temp directory on startup")
 		}
 	}
-	
+
 	// 清理bundle目录中的旧文件（可选，保留最近的）
 	if g.config.Git.BundleDir != "" {
 		if err := g.cleanupDirectory(g.config.Git.BundleDir, "*.bundle"); err != nil {
@@ -319,7 +328,7 @@ func (g *GitOperations) cleanupOnStartup() {
 				Msg("Failed to cleanup bundle directory on startup")
 		}
 	}
-	
+
 	g.logger.Info().Msg("Startup cleanup completed")
 }
 
@@ -329,12 +338,12 @@ func (g *GitOperations) cleanupDirectory(dir, pattern string) error {
 		// 目录不存在，无需清理
 		return nil
 	}
-	
+
 	matches, err := filepath.Glob(filepath.Join(dir, pattern))
 	if err != nil {
 		return fmt.Errorf("failed to glob pattern %s in %s: %w", pattern, dir, err)
 	}
-	
+
 	cleaned := 0
 	for _, match := range matches {
 		if err := os.RemoveAll(match); err != nil {
@@ -349,7 +358,7 @@ func (g *GitOperations) cleanupDirectory(dir, pattern string) error {
 				Msg("Removed residual file/directory")
 		}
 	}
-	
+
 	if cleaned > 0 {
 		g.logger.Info().
 			Int("cleaned_count", cleaned).
@@ -357,6 +366,6 @@ func (g *GitOperations) cleanupDirectory(dir, pattern string) error {
 			Str("pattern", pattern).
 			Msg("Cleaned up residual files")
 	}
-	
+
 	return nil
 }

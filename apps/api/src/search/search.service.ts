@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { UserRole } from '@relax-git/shared/generated/prisma-client';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { WebSocketGateway } from '../websocket/websocket.gateway';
@@ -77,6 +78,7 @@ export class SearchService {
       userId,
       repositoryId,
       snapshotId: snapshotId || '',
+      ...this.getLocalSearchWorkDir(repository.gitUrl),
       query,
       searchType: searchType || SearchType.CONTENT,
       maxResults: maxResults || 100,
@@ -148,6 +150,16 @@ export class SearchService {
       };
     }
 
+    if (
+      result.status === SearchStatus.COMPLETED &&
+      searchHistory.resultsCount !== (result.totalMatches ?? 0)
+    ) {
+      await this.prisma.searchHistory.update({
+        where: { id: searchId },
+        data: { resultsCount: result.totalMatches ?? 0 },
+      });
+    }
+
     // 直接返回已解析的结果
     return {
       id: searchId,
@@ -188,7 +200,12 @@ export class SearchService {
           snapshot: {
             select: {
               id: true,
-              title: true,
+              commitSha: true,
+              branch: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -214,7 +231,9 @@ export class SearchService {
         snapshot: item.snapshot
           ? {
               id: item.snapshot.id,
-              title: item.snapshot.title || '未命名快照',
+              title: `${item.snapshot.branch?.name ?? 'snapshot'}@${String(
+                item.snapshot.commitSha ?? ''
+              ).slice(0, 7)}`,
             }
           : undefined,
         createdAt: item.createdAt.toISOString(),
@@ -285,6 +304,24 @@ export class SearchService {
     }
 
     return repository;
+  }
+
+  private getLocalSearchWorkDir(gitUrl: string): { workDir?: string } {
+    const trimmed = gitUrl.trim();
+
+    if (trimmed.startsWith('file://')) {
+      try {
+        return { workDir: fileURLToPath(trimmed) };
+      } catch {
+        return {};
+      }
+    }
+
+    if (trimmed.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(trimmed)) {
+      return { workDir: trimmed };
+    }
+
+    return {};
   }
 
   /**

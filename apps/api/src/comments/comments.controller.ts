@@ -252,6 +252,62 @@ export class CommentsController {
     };
   }
 
+  @Get('me/replies')
+  @ApiOperation({ summary: '获取当前用户发表的回复列表' })
+  @ApiQuery({ name: 'page', required: false, description: '页码', example: 1 })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: '每页数量',
+    example: 20,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: '获取成功',
+    schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/CommentResponseDto' },
+        },
+        total: { type: 'number' },
+        page: { type: 'number' },
+        limit: { type: 'number' },
+      },
+    },
+  })
+  async getMyReplies(
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number
+  ): Promise<{ items: any[]; total: number; page: number; limit: number }> {
+    const result = await this.commentsService.getMyReplies(
+      userId,
+      Number(page) || 1,
+      Number(limit) || 20
+    );
+    const items = result.items.map((reply: any) => ({
+      id: reply.id,
+      content: reply.content,
+      createdAt: reply.createdAt,
+      filePath: reply.filePath ?? undefined,
+      lineNumber: reply.lineStart ?? undefined,
+      parentComment: {
+        id: reply.parent.id,
+        content: reply.parent.content,
+        author: reply.parent.author,
+      },
+      snapshot: reply.snapshot,
+    }));
+    return {
+      items,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    };
+  }
+
   @Post()
   @ApiOperation({ summary: '创建评论' })
   @ApiResponse({

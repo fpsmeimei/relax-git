@@ -65,6 +65,24 @@ describe('RepoAccessGuard', () => {
     });
   });
 
+  it('read: 支持从请求体 repositoryId 解析仓库（搜索接口）', async () => {
+    const req = {
+      body: { repositoryId: 'r1' },
+      user: { id: 'owner1', role: UserRole.USER },
+    };
+    const { guard, prisma, context } = createContext(req, 'read');
+    prisma.repository.findUnique.mockResolvedValue({
+      id: 'r1',
+      ownerId: 'owner1',
+      visibility: RepositoryVisibility.PRIVATE,
+    });
+
+    await expect(guard.canActivate(context as any)).resolves.toBe(true);
+    expect(prisma.repository.findUnique).toHaveBeenCalledWith({
+      where: { id: 'r1' },
+    });
+  });
+
   it('admin: 需为 OWNER/ADMIN 成员', async () => {
     const req = {
       params: { repoId: 'r1' },

@@ -205,6 +205,11 @@ func (q *RedisQueue) PublishSearchResult(ctx context.Context, result *types.Sear
 		return fmt.Errorf("failed to marshal search result: %w", err)
 	}
 
+	resultKey := fmt.Sprintf("search:result:%s", result.ID)
+	if err := q.client.Set(ctx, resultKey, data, 24*time.Hour).Err(); err != nil {
+		return fmt.Errorf("failed to store search result: %w", err)
+	}
+
 	statusChannel := fmt.Sprintf("search:status:%s", result.ID)
 	if err := q.client.Publish(ctx, statusChannel, data).Err(); err != nil {
 		return fmt.Errorf("failed to publish search result: %w", err)

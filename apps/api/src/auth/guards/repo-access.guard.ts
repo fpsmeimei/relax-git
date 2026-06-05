@@ -103,7 +103,12 @@ export class RepoAccessGuard implements CanActivate {
 
     // 1) 优先使用显式 repoId 参数
     const explicitRepoId =
-      p['repoId'] || p['repositoryId'] || q['repoId'] || b['repoId'];
+      p['repoId'] ||
+      p['repositoryId'] ||
+      q['repoId'] ||
+      q['repositoryId'] ||
+      b['repoId'] ||
+      b['repositoryId'];
     if (explicitRepoId) {
       return await this.prisma.repository.findUnique({
         where: { id: String(explicitRepoId) },

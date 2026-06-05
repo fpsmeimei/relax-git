@@ -953,6 +953,58 @@ export class CommentsService {
     return { items, total, page, limit };
   }
 
+  /**
+   * 当前用户发表的回复列表（跨仓库聚合）
+   */
+  async getMyReplies(
+    userId: string,
+    page = 1,
+    limit = 20
+  ): Promise<{ items: any[]; total: number; page: number; limit: number }> {
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safeLimit =
+      Number.isFinite(limit) && limit > 0 && limit <= 100 ? limit : 20;
+    const skip = (safePage - 1) * safeLimit;
+    const where = {
+      authorId: userId,
+      parentId: { not: null },
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where,
+        include: {
+          parent: {
+            select: {
+              id: true,
+              content: true,
+              author: {
+                select: {
+                  id: true,
+                  username: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          snapshot: {
+            select: {
+              id: true,
+              commitSha: true,
+              repository: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: safeLimit,
+      }),
+      this.prisma.comment.count({ where }),
+    ]);
+
+    return { items, total, page: safePage, limit: safeLimit };
+  }
+
   // ===== 私有辅助方法 =====
 
   /**

@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
-  IsUUID,
+  IsNotEmpty,
   IsOptional,
   IsEnum,
   IsInt,
@@ -21,7 +21,8 @@ export class CreateSearchDto {
     description: '仓库ID',
     example: 'clp1234567890abcdef',
   })
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty({ message: '仓库ID不能为空' })
   repositoryId: string;
 
   @ApiProperty({
@@ -30,7 +31,8 @@ export class CreateSearchDto {
     required: false,
   })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty({ message: '快照ID不能为空' })
   snapshotId?: string;
 
   @ApiProperty({

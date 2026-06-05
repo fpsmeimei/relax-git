@@ -63,6 +63,7 @@ type SearchTask struct {
 	UserID       string    `json:"userId"`
 	RepositoryID string    `json:"repositoryId"`
 	SnapshotID   string    `json:"snapshotId,omitempty"`
+	WorkDir      string    `json:"workDir,omitempty"`
 	Query        string    `json:"query"`
 	SearchType   string    `json:"searchType"`
 	MaxResults   int       `json:"maxResults"`

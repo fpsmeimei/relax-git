@@ -55,6 +55,7 @@ libs/shared/src/generated/
 
 # Go specific
 apps/worker/bin/
+apps/worker/data/
 apps/worker/vendor/
 
 # Docker

@@ -47,10 +47,14 @@ func (s *SearchOperations) ExecuteSearch(ctx context.Context, task *types.Search
 		ProcessedAt: time.Now(),
 	}
 
-	// 获取快照的worktree路径
-	workDir, err := s.getSnapshotWorkDir(task.SnapshotID)
-	if err != nil {
-		return s.failResult(result, types.ErrCodeFileSystem, "Failed to get snapshot work directory", err)
+	// 本地仓库搜索由 API 直接提供真实目录；快照搜索保留原有回退逻辑。
+	workDir := task.WorkDir
+	if workDir == "" {
+		var err error
+		workDir, err = s.getSnapshotWorkDir(task.SnapshotID)
+		if err != nil {
+			return s.failResult(result, types.ErrCodeFileSystem, "Failed to get snapshot work directory", err)
+		}
 	}
 
 	// 执行搜索
@@ -148,7 +152,7 @@ func (s *SearchOperations) parseRipgrepOutput(output []byte, searchType string) 
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		
+
 		if searchType == "FILENAME" {
 			// 文件名搜索只返回文件路径
 			matches = append(matches, types.SearchMatch{

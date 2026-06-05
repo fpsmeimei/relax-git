@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID, IsInt, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNotEmpty,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SearchType } from './create-search.dto';
 
@@ -10,7 +17,8 @@ export class QuerySearchHistoryDto {
     required: false,
   })
   @IsOptional()
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty({ message: '仓库ID不能为空' })
   repositoryId?: string;
 
   @ApiProperty({

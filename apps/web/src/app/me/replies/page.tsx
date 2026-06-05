@@ -52,7 +52,7 @@ export default function MyRepliesPage() {
         if (append) setLoadingMore(true);
         else setLoading(true);
 
-        const response = await apiClient.get('/me/replies', {
+        const response = await apiClient.get('/comments/me/replies', {
           params: {
             page: pageNum,
             limit,
