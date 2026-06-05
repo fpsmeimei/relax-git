@@ -72,7 +72,7 @@ describe('useProtectedAction Hook', () => {
 
       // 不应该执行原始函数
       expect(mockAction).not.toHaveBeenCalled();
-      
+
       // 应该显示提示
       expect(toast).toHaveBeenCalledWith({
         title: '需要登录',

@@ -52,6 +52,11 @@ export class ArtifactsController {
    */
   @Get(':id')
   async getArtifact(@Param('id') id: string, @Request() req: any) {
+    const artifact = await this.getArtifactRecord(id, req);
+    return this.toPublicArtifact(artifact);
+  }
+
+  private async getArtifactRecord(id: string, req: any) {
     // 先尝试从base_snapshots获取
     const baseSnapshot = await this.prisma.baseSnapshot.findUnique({
       where: { id },
@@ -65,26 +70,7 @@ export class ArtifactsController {
       // 检查访问权限
       await this.checkRepositoryAccess(baseSnapshot.repository.id, req.user.id);
 
-      return {
-        id: baseSnapshot.id,
-        repoId: baseSnapshot.repoId,
-        branchId: baseSnapshot.branchId,
-        commitSha: baseSnapshot.commitSha,
-        status: baseSnapshot.status,
-        worktreePath: baseSnapshot.worktreePath,
-        bundlePath: baseSnapshot.bundlePath,
-        processedAt: baseSnapshot.processedAt,
-        errorMessage: baseSnapshot.errorMessage,
-        createdAt: baseSnapshot.createdAt,
-        repository: {
-          id: baseSnapshot.repository.id,
-          name: baseSnapshot.repository.name,
-        },
-        branch: {
-          id: baseSnapshot.branch.id,
-          name: baseSnapshot.branch.name,
-        },
-      };
+      return baseSnapshot;
     }
 
     // 兼容性：尝试从旧 snapshots 表获取（仅当存在时）
@@ -100,25 +86,38 @@ export class ArtifactsController {
       if (snapshot) {
         await this.checkRepositoryAccess(snapshot.repository.id, req.user.id);
 
-        return {
-          id: snapshot.id,
-          repoId: snapshot.repoId,
-          commitSha: snapshot.commitSha,
-          status: snapshot.status,
-          worktreePath: snapshot.worktreePath,
-          bundlePath: snapshot.bundlePath,
-          processedAt: snapshot.processedAt,
-          errorMessage: snapshot.errorMessage,
-          createdAt: snapshot.createdAt,
-          repository: {
-            id: snapshot.repository.id,
-            name: snapshot.repository.name,
-          },
-        };
+        return snapshot;
       }
     }
 
     throw new NotFoundException('Artifact not found');
+  }
+
+  private toPublicArtifact(artifact: any) {
+    return {
+      id: artifact.id,
+      repoId: artifact.repoId,
+      ...(artifact.branchId ? { branchId: artifact.branchId } : {}),
+      commitSha: artifact.commitSha,
+      status: artifact.status,
+      processedAt: artifact.processedAt,
+      errorMessage: artifact.errorMessage,
+      createdAt: artifact.createdAt,
+      repository: artifact.repository
+        ? {
+            id: artifact.repository.id,
+            name: artifact.repository.name,
+          }
+        : undefined,
+      ...(artifact.branch
+        ? {
+            branch: {
+              id: artifact.branch.id,
+              name: artifact.branch.name,
+            },
+          }
+        : {}),
+    };
   }
 
   /**
@@ -126,7 +125,7 @@ export class ArtifactsController {
    */
   @Get(':id/status')
   async getArtifactStatus(@Param('id') id: string, @Request() req: any) {
-    const artifact = await this.getArtifact(id, req);
+    const artifact = await this.getArtifactRecord(id, req);
     await this.promoteArtifactToReady(id, artifact);
 
     return {
@@ -147,7 +146,7 @@ export class ArtifactsController {
     @Query('path') dirPath = '',
     @Request() req: any
   ) {
-    const artifact = await this.getArtifact(id, req);
+    const artifact = await this.getArtifactRecord(id, req);
     await this.promoteArtifactToReady(id, artifact);
 
     if (artifact.status !== 'READY') {
@@ -227,7 +226,7 @@ export class ArtifactsController {
       throw new BadRequestException('File path is required');
     }
 
-    const artifact = await this.getArtifact(id, req);
+    const artifact = await this.getArtifactRecord(id, req);
     await this.promoteArtifactToReady(id, artifact);
 
     if (artifact.status !== 'READY') {
@@ -272,7 +271,7 @@ export class ArtifactsController {
    */
   @Post(':id/retry')
   async retryArtifact(@Param('id') id: string, @Request() req: any) {
-    const artifact = await this.getArtifact(id, req);
+    const artifact = await this.getArtifactRecord(id, req);
 
     // 检查是否为仓库owner或admin
     const member = await this.prisma.member.findUnique({
@@ -320,44 +319,6 @@ export class ArtifactsController {
   }
 
   /**
-   * 获取或创建分支的artifact（兼容接口）
-   * GET /api/repositories/:repoId/branches/:branchId/artifact
-   */
-  @Get('../repositories/:repoId/branches/:branchId/artifact')
-  async getBranchArtifact(
-    @Param('repoId') repoId: string,
-    @Param('branchId') branchId: string,
-    @Request() req: any
-  ) {
-    await this.checkRepositoryAccess(repoId, req.user.id);
-
-    // 获取分支信息
-    const branch = await this.prisma.repositoryBranch.findUnique({
-      where: { id: branchId },
-    });
-
-    if (!branch || branch.repoId !== repoId) {
-      throw new NotFoundException('Branch not found');
-    }
-
-    // 确保artifact存在
-    const artifact = await this.baseSnapshotService.ensureArtifact(
-      repoId,
-      branch.commitSha,
-      branchId
-    );
-
-    return {
-      id: artifact.id,
-      status: artifact.status,
-      commitSha: artifact.commitSha,
-      worktreePath: artifact.worktreePath,
-      processedAt: artifact.processedAt,
-      errorMessage: artifact.errorMessage,
-    };
-  }
-
-  /**
    * 通过 repoId + branchId 获取（或创建）artifact
    * 标准路径：GET /api/artifacts/by-branch/:repoId/:branchId
    * 便于前端稳定调用，避免相对路径的路由歧义
@@ -388,7 +349,6 @@ export class ArtifactsController {
       id: artifact.id,
       status: artifact.status,
       commitSha: artifact.commitSha,
-      worktreePath: artifact.worktreePath,
       processedAt: artifact.processedAt,
       errorMessage: artifact.errorMessage,
     };

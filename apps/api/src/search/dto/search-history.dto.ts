@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsUUID, IsInt, Min, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SearchType } from './create-search.dto';
@@ -81,14 +81,13 @@ export class SearchHistoryItemDto {
     name: string;
   };
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: '快照信息（如果指定了快照）',
     type: 'object',
     properties: {
       id: { type: 'string', example: 'clp1234567890abcdef' },
       title: { type: 'string', example: '初始快照' },
     },
-    required: false,
   })
   snapshot?: {
     id: string;

@@ -12,8 +12,8 @@ const EXACT_FILE_COLORS: Record<string, string> = {
   'package-lock.json': 'var(--seti-file-node)',
   'pnpm-lock.yaml': 'var(--seti-file-node)',
   'yarn.lock': 'var(--seti-file-node)',
-  'dockerfile': 'var(--seti-file-docker)',
-  'makefile': 'var(--seti-file-make)',
+  dockerfile: 'var(--seti-file-docker)',
+  makefile: 'var(--seti-file-make)',
   'readme.md': 'var(--seti-file-markdown)',
 };
 
@@ -65,7 +65,11 @@ const EXTENSION_COLORS: Record<string, string> = {
 
 const DEFAULT_FILE_COLOR = 'var(--seti-file-default)';
 
-export function SetiFolderIcon({ className, style, ...rest }: SetiFolderIconProps) {
+export function SetiFolderIcon({
+  className,
+  style,
+  ...rest
+}: SetiFolderIconProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -82,9 +86,14 @@ export function SetiFolderIcon({ className, style, ...rest }: SetiFolderIconProp
   );
 }
 
-export function SetiFileIcon({ fileName, className, style, ...rest }: SetiFileIconProps) {
+export function SetiFileIcon({
+  fileName,
+  className,
+  style,
+  ...rest
+}: SetiFileIconProps) {
   const lowerName = fileName.toLowerCase();
-  const ext = lowerName.includes('.') ? lowerName.split('.').pop() ?? '' : '';
+  const ext = lowerName.includes('.') ? (lowerName.split('.').pop() ?? '') : '';
   const color =
     EXACT_FILE_COLORS[lowerName] ??
     (ext ? EXTENSION_COLORS[ext] : undefined) ??
@@ -94,7 +103,10 @@ export function SetiFileIcon({ fileName, className, style, ...rest }: SetiFileIc
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
-      className={cn('shrink-0 text-[color:var(--seti-file-default)]', className)}
+      className={cn(
+        'shrink-0 text-[color:var(--seti-file-default)]',
+        className
+      )}
       style={{ color, ...style }}
       {...rest}
     >

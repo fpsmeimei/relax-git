@@ -24,9 +24,7 @@ import { AccountSecurityService } from '../services/account-security.service';
 @UseGuards(RolesGuard)
 @Roles(UserRole.ADMIN)
 export class SecurityAdminController {
-  constructor(
-    private readonly accountSecurity: AccountSecurityService
-  ) {}
+  constructor(private readonly accountSecurity: AccountSecurityService) {}
 
   @Get('stats')
   @ApiOperation({ summary: '获取安全统计信息' })
@@ -69,7 +67,6 @@ export class SecurityAdminController {
       timestamp: new Date().toISOString(),
     };
   }
-
 
   @Get('account-locks')
   @ApiOperation({ summary: '获取被锁定的账户列表' })

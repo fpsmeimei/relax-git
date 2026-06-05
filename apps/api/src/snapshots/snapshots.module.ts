@@ -9,6 +9,7 @@ import { WebSocketModule } from '../websocket/websocket.module';
 import { ArtifactService } from './artifact.service';
 import { ArtifactsController } from './artifacts.controller';
 import { BaseSnapshotService } from './base-snapshot.service';
+import { BranchArtifactsController } from './branch-artifacts.controller';
 import { UnifiedSnapshotsController } from './controllers/unified-snapshots.controller';
 import { MetricsController } from './metrics.controller';
 import { PerformanceOptimizerController } from './performance-optimizer.controller';
@@ -36,6 +37,7 @@ import { SnapshotMetricsService } from './snapshot-metrics.service';
     // 统一快照控制器
     UnifiedSnapshotsController,
     ArtifactsController,
+    BranchArtifactsController,
     MetricsController, // Phase 1.4: 监控API
     PerformanceOptimizerController, // Phase 3.2: 性能优化API
   ],

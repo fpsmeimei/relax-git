@@ -5,7 +5,7 @@
     1) 连续三个及以上的问号：/\?{3,}/
     2) Unicode Replacement Character：\uFFFD （�）
     3) 明显控制字符（除 \t\n\r 之外的 C0 控制符）
-  - 默认扫描 apps/web/src；也可传入要扫描的目录参数
+  - 默认扫描 apps；也可传入要扫描的目录参数
   - 退出码：
     0 -> 未发现；
     2 -> 发现疑似乱码；
@@ -27,7 +27,7 @@ const IGNORES = new Set([
 const EXTS = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.json']);
 
 const ROOT = process.cwd();
-const target = process.argv[2] || 'apps/web/src';
+const target = process.argv[2] || 'apps';
 const startDir = path.resolve(ROOT, target);
 
 /** 控制字符（除 \t\n\r） */

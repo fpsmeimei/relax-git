@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { apiClient } from '@/lib/api/client';
 import { GitBranch, Loader2 } from 'lucide-react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
@@ -55,6 +56,12 @@ function LoginPageInner() {
     setIsLoading(true);
 
     try {
+      // Browser-side login is required so backend HttpOnly cookies land in the browser.
+      await apiClient.post('/_auth/login', {
+        username: formData.username,
+        password: formData.password,
+      });
+
       const result = await signIn('credentials', {
         username: formData.username,
         password: formData.password,
@@ -62,6 +69,7 @@ function LoginPageInner() {
       });
 
       if (result?.error) {
+        await apiClient.post('/_auth/logout').catch(() => void 0);
         toast({
           title: '登录失败',
           description: result.error || '用户名或密码错误',

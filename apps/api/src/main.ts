@@ -27,6 +27,22 @@ async function bootstrap() {
     })
   );
 
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onRequest', async (_request, reply) => {
+      reply.header('X-Content-Type-Options', 'nosniff');
+      reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+      reply.header('Server', 'Relax-Git API');
+
+      if (process.env['NODE_ENV'] === 'production') {
+        reply.header(
+          'Strict-Transport-Security',
+          'max-age=31536000; includeSubDomains; preload'
+        );
+      }
+    });
+
   // 文件上传（头像）与静态资源（/uploads）
   // 确保静态根目录存在
   const uploadsRoot = join(process.cwd(), 'uploads');
@@ -114,7 +130,7 @@ async function bootstrap() {
           if (corsList.includes(origin)) {
             return cb(null, true);
           }
-          return cb(new Error('Not allowed by CORS'));
+          return cb(new Error('Not allowed by CORS'), false);
         }
 
         // 开发默认：允许 localhost / 127.0.0.1 的任意端口
@@ -124,7 +140,7 @@ async function bootstrap() {
         }
 
         // 生产环境：无白名单则拒绝
-        return cb(new Error('Not allowed by CORS'));
+        return cb(new Error('Not allowed by CORS'), false);
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -153,7 +169,7 @@ async function bootstrap() {
     SwaggerModule.setup('api/docs', app, document);
   }
 
-  const port = parseInt(process.env['API_PORT'] ?? '4000', 10);
+  const port = parseInt(process.env['API_PORT'] ?? '3001', 10);
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Relax-Git API Server is running on http://localhost:${port}`);

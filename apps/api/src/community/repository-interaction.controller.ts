@@ -21,7 +21,7 @@ import { CommunityService } from './community.service';
 import {
   RepositoryLikeResponseDto,
   RepositoryCollectionResponseDto,
-  CreateRepositoryCommentDto,
+  CreateRepositoryInteractionCommentDto,
   RepositoryCommentDto,
   RepositoryCommentsResponseDto,
 } from './dto/repository-interaction.dto';
@@ -105,7 +105,7 @@ export class RepositoryInteractionController {
   async createComment(
     @CurrentUser('id') userId: string,
     @Param('id') repoId: string,
-    @Body() dto: CreateRepositoryCommentDto
+    @Body() dto: CreateRepositoryInteractionCommentDto
   ): Promise<RepositoryCommentDto> {
     this.logger.warn(
       '[DEPRECATED] 使用了旧端点 /api/repositories/:id/comments，已转发至 /api/community/repositories/:id/comments'

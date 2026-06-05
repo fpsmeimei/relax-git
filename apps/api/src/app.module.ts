@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -7,7 +7,6 @@ import performanceConfig from './config/performance.config';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { CommentsModule } from './comments/comments.module';
-import { SecurityHeadersMiddleware } from './common/middleware/security-headers.middleware';
 import { ConfigModule as AppConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 
@@ -82,9 +81,4 @@ import { WebSocketModule } from './websocket/websocket.module';
     },
   ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    // 应用安全头中间件到所有路由
-    consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}

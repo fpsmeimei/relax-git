@@ -328,29 +328,14 @@ export const useArtifactPerformance = (artifactId: string) => {
     return atob(response.data.content);
   };
 
-  // 上传到 S3
-  const uploadToS3 = async (localPath: string): Promise<string> => {
-    if (!ENABLE_PERF) throw new Error('Performance API is disabled');
-    const response = await apiClient.post(
-      `/performance/artifacts/${artifactId}/upload-s3`,
-      { localPath }
-    );
-    if (!response.data.success) {
-      throw new Error('Failed to upload to S3');
-    }
-    return response.data.s3Location;
+  // 本地毕业设计模式不开放浏览器触发的本机路径 S3 操作
+  const uploadToS3 = async (_localPath: string): Promise<string> => {
+    throw new Error('Local S3 file operations are disabled');
   };
 
-  // 从 S3 下载
-  const downloadFromS3 = async (targetPath: string): Promise<void> => {
-    if (!ENABLE_PERF) throw new Error('Performance API is disabled');
-    const response = await apiClient.post(
-      `/performance/artifacts/${artifactId}/download-s3`,
-      { targetPath }
-    );
-    if (!response.data.success) {
-      throw new Error('Failed to download from S3');
-    }
+  // 本地毕业设计模式不开放浏览器触发的本机路径 S3 操作
+  const downloadFromS3 = async (_targetPath: string): Promise<void> => {
+    throw new Error('Local S3 file operations are disabled');
   };
 
   return {

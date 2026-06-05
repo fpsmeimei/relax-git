@@ -50,6 +50,8 @@ export class AuthController {
 
   @Post('register')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RateLimitPresets.REGISTER)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '用户注册' })
   @ApiResponse({
@@ -177,63 +179,6 @@ export class AuthController {
       user: req.user,
       timestamp: new Date().toISOString(),
     };
-  }
-
-  /**
-   * 设置认证 Cookie（使用 Bearer Token）
-   * 用于 NextAuth 登录后设置浏览器 Cookie
-   */
-  @Post('set-cookie')
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '设置认证 Cookie' })
-  @ApiResponse({ status: 200, description: 'Cookie 设置成功' })
-  async setCookie(
-    @Request() req: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply
-  ) {
-    // 从 Authorization Bearer 头提取 token
-    const auth = (req.headers['authorization'] || '').toString();
-    const match = /^Bearer\s+(.+)$/i.exec(auth);
-    if (!match) {
-      throw new UnauthorizedException('缺少 Bearer Token');
-    }
-
-    const accessToken = match[1];
-
-    // 验证 access token
-    try {
-      const decoded = await this.tokenService.verifyAccessToken(accessToken);
-      if (!decoded || decoded?.type !== 'access' || !decoded?.sub) {
-        throw new UnauthorizedException('无效的 Token 类型');
-      }
-
-      // 回源确认用户
-      const user = await this.prisma.user.findUnique({
-        where: { id: decoded.sub },
-        select: { id: true, isActive: true },
-      });
-
-      if (!user?.isActive) {
-        throw new UnauthorizedException('用户不存在或已被禁用');
-      }
-
-      // 从 NextAuth session 中应该也包含了 refreshToken
-      // 这里我们需要重新生成 refreshToken 或者接收前端传递的
-      const { token: refreshToken } = await this.tokenService.signRefreshToken(
-        user.id
-      );
-
-      // 设置 Cookie
-      this.tokenService.setAuthCookies(reply, accessToken, refreshToken);
-
-      return {
-        success: true,
-        message: 'Cookie 设置成功',
-      };
-    } catch (error) {
-      throw new UnauthorizedException('Token 验证失败');
-    }
   }
 
   /** 刷新 accessToken 并轮换 refreshToken */

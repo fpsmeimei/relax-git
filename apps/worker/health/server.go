@@ -33,8 +33,12 @@ func NewHealthServer(processor *worker.Processor, logger zerolog.Logger, port in
 	mux := http.NewServeMux()
 
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: mux,
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	hs := &HealthServer{

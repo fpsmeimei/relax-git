@@ -56,7 +56,9 @@ export class TokenService {
     return await this.jwt.signAsync(payload, { expiresIn });
   }
 
-  async signRefreshToken(userId: string): Promise<{ token: string; jti: string }>{
+  async signRefreshToken(
+    userId: string
+  ): Promise<{ token: string; jti: string }> {
     const jti = randomUUID();
     const payload: RefreshPayload = {
       sub: userId,
@@ -92,7 +94,11 @@ export class TokenService {
 
   // ===== Cookie helpers =====
 
-  setAuthCookies(reply: FastifyReply, accessToken: string, refreshToken: string) {
+  setAuthCookies(
+    reply: FastifyReply,
+    accessToken: string,
+    refreshToken: string
+  ) {
     const accessMaxAge = this.accessTtlMinutes * 60; // seconds
     const refreshMaxAge = this.refreshTtlDays * 24 * 3600; // seconds
 
@@ -130,7 +136,9 @@ export class TokenService {
     return m ? m[1] : null;
   }
 
-  async verifyRefreshToken(token: string): Promise<{ sub: string; jti: string } | null> {
+  async verifyRefreshToken(
+    token: string
+  ): Promise<{ sub: string; jti: string } | null> {
     try {
       const decoded = (await this.jwt.verifyAsync(token)) as any;
       if (decoded?.type !== 'refresh' || !decoded?.sub || !decoded?.jti) {

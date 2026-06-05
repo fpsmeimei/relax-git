@@ -1,9 +1,5 @@
 import { Controller, Get, Put, Body } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ConfigService } from './config.service';
 import { UpdateProxyConfigDto } from './dto/update-proxy-config.dto';
 import { ProxyConfigDto } from './dto/proxy-config.dto';

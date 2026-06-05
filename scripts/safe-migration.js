@@ -3,10 +3,10 @@
 /**
  * Relax-Git 安全数据迁移脚本
  * 只迁移核心数据，跳过快照系统相关数据
- * 
+ *
  * 使用方法：
  * 1. 确保本地数据库正在运行
- * 2. 确保 Railway 数据库连接正常
+ * 2. 确认远程数据库连接与迁移目标
  * 3. 运行: node scripts/safe-migration.js
  */
 
@@ -15,31 +15,51 @@ require('dotenv').config({ path: '.env.local' });
 
 // 使用共享的 Prisma 客户端
 const { PrismaClient } = require('../libs/shared/src/generated/prisma-client');
-const fs = require('fs');
-const path = require('path');
 
-// 数据库连接配置
-const localPrisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.LOCAL_DATABASE_URL || 'postgresql://postgres:localpass@localhost:5432/relax_git'
-    }
-  }
-});
+let localPrisma;
+let remotePrisma;
 
-const remotePrisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL // Railway 数据库
-    }
+function requireRemoteMigrationOptIn() {
+  if (process.env.ALLOW_REMOTE_DATA_MIGRATION !== 'true') {
+    throw new Error(
+      'Refusing remote data migration. Set ALLOW_REMOTE_DATA_MIGRATION=true to run this script.'
+    );
   }
-});
+
+  if (!process.env.LOCAL_DATABASE_URL) {
+    throw new Error('Missing LOCAL_DATABASE_URL');
+  }
+
+  if (!process.env.DATABASE_URL) {
+    throw new Error('Missing DATABASE_URL');
+  }
+
+  if (process.env.LOCAL_DATABASE_URL === process.env.DATABASE_URL) {
+    throw new Error('LOCAL_DATABASE_URL and DATABASE_URL must be different');
+  }
+
+  localPrisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.LOCAL_DATABASE_URL,
+      },
+    },
+  });
+
+  remotePrisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
+}
 
 // 要迁移的表（按依赖顺序）
 const MIGRATION_TABLES = [
   'User',
-  'Repository', 
-  'RepositoryBranch',  // 正确的分支表名
+  'Repository',
+  'RepositoryBranch', // 正确的分支表名
   'Friendship',
   'ChatMessage',
   // 'Comment',        // 跳过：依赖 BaseSnapshot
@@ -49,17 +69,19 @@ const MIGRATION_TABLES = [
 
 // 跳过的表（快照相关 + 依赖快照的表）
 const SKIPPED_TABLES = [
-  'BaseSnapshot',      // 快照系统重新创建
-  'SessionSnapshot',   // 快照系统重新创建
-  'Comment',          // 依赖 BaseSnapshot.snapshotId
-  'CommentLike',      // 依赖 Comment
-  'Notification',     // 可能依赖 Comment 和 Repository 事件
+  'BaseSnapshot', // 快照系统重新创建
+  'SessionSnapshot', // 快照系统重新创建
+  'Comment', // 依赖 BaseSnapshot.snapshotId
+  'CommentLike', // 依赖 Comment
+  'Notification', // 可能依赖 Comment 和 Repository 事件
 ];
 
 async function main() {
   console.log('🚀 开始 Relax-Git 安全数据迁移...\n');
-  
+
   try {
+    requireRemoteMigrationOptIn();
+
     // 1. 验证连接
     console.log('🔍 验证数据库连接...');
     await localPrisma.$connect();
@@ -94,7 +116,7 @@ async function main() {
 
     // 5. 执行迁移
     console.log('🔄 开始数据迁移...\n');
-    
+
     for (const tableName of MIGRATION_TABLES) {
       await migrateTable(tableName);
     }
@@ -118,34 +140,33 @@ async function main() {
     console.log('2. 添加仓库，测试快照系统');
     console.log('3. 验证浏览代码功能');
     console.log('4. 检查评论和社交功能');
-
   } catch (error) {
     console.error('❌ 迁移失败：', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
-    await localPrisma.$disconnect();
-    await remotePrisma.$disconnect();
+    await localPrisma?.$disconnect();
+    await remotePrisma?.$disconnect();
   }
 }
 
 // Prisma 客户端方法名映射
 function getClientMethodName(tableName) {
   const methodMap = {
-    'User': 'user',
-    'Repository': 'repository',
-    'RepositoryBranch': 'repositoryBranch',
-    'Friendship': 'friendship',
-    'Comment': 'comment',
-    'CommentLike': 'commentLike',
-    'ChatMessage': 'chatMessage',
-    'Notification': 'notification'
+    User: 'user',
+    Repository: 'repository',
+    RepositoryBranch: 'repositoryBranch',
+    Friendship: 'friendship',
+    Comment: 'comment',
+    CommentLike: 'commentLike',
+    ChatMessage: 'chatMessage',
+    Notification: 'notification',
   };
   return methodMap[tableName] || tableName.toLowerCase();
 }
 
 async function getDataStats(prisma) {
   const stats = {};
-  
+
   for (const table of MIGRATION_TABLES) {
     try {
       const clientMethodName = getClientMethodName(table);
@@ -155,20 +176,20 @@ async function getDataStats(prisma) {
       stats[table] = 0;
     }
   }
-  
+
   return stats;
 }
 
 async function migrateTable(tableName) {
   console.log(`🔄 迁移 ${tableName}...`);
-  
+
   try {
     // 获取正确的 Prisma 客户端方法名
     const clientMethodName = getClientMethodName(tableName);
-    
+
     // 获取本地数据
     const localData = await localPrisma[clientMethodName].findMany();
-    
+
     if (localData.length === 0) {
       console.log(`  ℹ️  ${tableName}: 无数据需要迁移`);
       return;
@@ -176,31 +197,30 @@ async function migrateTable(tableName) {
 
     // 清空远程表（如果有数据）
     await remotePrisma[clientMethodName].deleteMany();
-    
+
     // 批量插入数据
     if (localData.length > 0) {
       // 处理特殊字段（如日期）
       const processedData = localData.map(item => {
         const processed = { ...item };
-        
+
         // 确保日期字段正确格式化
         Object.keys(processed).forEach(key => {
           if (processed[key] instanceof Date) {
             processed[key] = new Date(processed[key]);
           }
         });
-        
+
         return processed;
       });
 
       await remotePrisma[clientMethodName].createMany({
         data: processedData,
-        skipDuplicates: true
+        skipDuplicates: true,
       });
     }
-    
+
     console.log(`  ✅ ${tableName}: ${localData.length} 条记录迁移成功`);
-    
   } catch (error) {
     console.error(`  ❌ ${tableName} 迁移失败:`, error.message);
     throw error;

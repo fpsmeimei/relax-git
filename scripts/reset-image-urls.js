@@ -3,7 +3,7 @@
 /**
  * Relax-Git 图像 URL 重置脚本
  * 将本地文件路径重置为 null，让系统使用默认图像
- * 
+ *
  * 使用方法：
  * 1. 确保数据库连接正常
  * 2. 运行: node scripts/reset-image-urls.js
@@ -18,14 +18,14 @@ const { PrismaClient } = require('../libs/shared/src/generated/prisma-client');
 const remotePrisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL
-    }
-  }
+      url: process.env.DATABASE_URL,
+    },
+  },
 });
 
 async function main() {
   console.log('🚀 开始重置图像 URL...\n');
-  
+
   try {
     // 连接数据库
     console.log('🔍 连接数据库...');
@@ -37,12 +37,12 @@ async function main() {
     const userResult = await remotePrisma.user.updateMany({
       where: {
         avatar: {
-          startsWith: '/uploads/avatars/'
-        }
+          startsWith: '/uploads/avatars/',
+        },
       },
       data: {
-        avatar: null
-      }
+        avatar: null,
+      },
     });
     console.log(`✅ 重置了 ${userResult.count} 个用户头像`);
 
@@ -51,12 +51,12 @@ async function main() {
     const repoResult = await remotePrisma.repository.updateMany({
       where: {
         coverImage: {
-          startsWith: '/uploads/repositories/'
-        }
+          startsWith: '/uploads/repositories/',
+        },
       },
       data: {
-        coverImage: null
-      }
+        coverImage: null,
+      },
     });
     console.log(`✅ 重置了 ${repoResult.count} 个仓库封面`);
 
@@ -69,7 +69,6 @@ async function main() {
     console.log('1. 刷新浏览器页面');
     console.log('2. 验证默认图像显示');
     console.log('3. 测试重新上传功能');
-
   } catch (error) {
     console.error('❌ 重置失败：', error);
     process.exit(1);

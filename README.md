@@ -80,7 +80,7 @@ go run .
 
 - Web：首页/社区：[http://localhost:3000](http://localhost:3000)
 - API 文档：[http://localhost:3001/api/docs](http://localhost:3001/api/docs)
-- API 健康检查：[http://localhost:3001/health](http://localhost:3001/health)
+- API 健康检查：[http://localhost:3001/api/health](http://localhost:3001/api/health)
 - Worker 健康检查：[http://localhost:3002/health](http://localhost:3002/health)
 - 管理控制台：[http://localhost:3000/console](http://localhost:3000/console)
 
@@ -114,7 +114,7 @@ go run .
 1. `pnpm docker:dev` 后 PostgreSQL 与 Redis 正常启动
 2. `pnpm dev` 后 Web 与 API 正常启动
 3. `go run .` 后 Worker 正常启动
-4. API `http://localhost:3001/health` 返回正常
+4. API `http://localhost:3001/api/health` 返回正常
 5. Worker `http://localhost:3002/health` 返回正常
 6. 管理员账号可以进入 `/console`
 7. 社区、快照、评论、私信、控制台至少各有一条真实本地数据

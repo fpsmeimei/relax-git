@@ -36,7 +36,7 @@ interface AuthenticatedSocket extends Socket {
  * 应届生学习项目版本：简化实现，重点学习WebSocket基础
  */
 @WSGateway({
-  // 不指定 port，附着在 Nest HTTP 服务器（4000）上，路径为 /socket.io
+  // 不指定 port，附着在 Nest HTTP 服务器上，路径为 /socket.io
   path: '/socket.io',
   cors: {
     // 通过 Next 同源代理到 API，放宽为 true 以避免握手阶段 CORS 问题

@@ -38,6 +38,7 @@ export class TimelineStatsDto {
   @ApiProperty({
     description: '按事件类型分组的统计',
     type: 'object',
+    additionalProperties: { type: 'number' },
     example: {
       COMMENT_CREATED: 450,
       SNAPSHOT_CREATED: 320,
@@ -118,6 +119,7 @@ export class RepositoryTimelineStatsDto {
   @ApiProperty({
     description: '按事件类型分组的统计',
     type: 'object',
+    additionalProperties: { type: 'number' },
     example: {
       COMMENT_CREATED: 180,
       SNAPSHOT_CREATED: 120,

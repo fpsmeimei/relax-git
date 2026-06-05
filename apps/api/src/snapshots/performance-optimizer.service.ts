@@ -2,11 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
+import { S3Client } from '@aws-sdk/client-s3';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as zlib from 'zlib';
@@ -55,120 +51,6 @@ export class PerformanceOptimizerService {
       this.logger.log('S3 client initialized');
     } else {
       this.logger.warn('S3 is not configured, using local storage');
-    }
-  }
-
-  /**
-   * 将工件上传到 S3
-   */
-  async uploadArtifactToS3(
-    artifactId: string,
-    localPath: string
-  ): Promise<string> {
-    if (!this.s3) {
-      throw new Error('S3 is not configured');
-    }
-
-    const bucket = this.configService.get('s3.bucket', 'relax-git-artifacts');
-    const key = `artifacts/${artifactId}/bundle.tar.gz`;
-
-    try {
-      // 压缩文件
-      const compressed = await this.compressDirectory(localPath);
-
-      // 上传到 S3
-      const uploadParams = {
-        Bucket: bucket,
-        Key: key,
-        Body: compressed,
-        ContentType: 'application/gzip',
-        Metadata: {
-          artifactId,
-          uploadDate: new Date().toISOString(),
-        },
-      };
-
-      const command = new PutObjectCommand(uploadParams);
-      await this.s3.send(command);
-
-      this.logger.log(
-        `Artifact ${artifactId} uploaded to S3: ${bucket}/${key}`
-      );
-
-      // 更新数据库记录
-      await this.prisma.snapshotArtifact.update({
-        where: { id: artifactId },
-        data: {
-          metadata: {
-            s3Location: `${bucket}/${key}`,
-            s3Bucket: bucket,
-            s3Key: key,
-            compressionRatio:
-              compressed.length / (await this.getDirectorySize(localPath)),
-          },
-        },
-      });
-
-      return `${bucket}/${key}`;
-    } catch (error) {
-      this.logger.error(
-        `Failed to upload artifact ${artifactId} to S3:`,
-        error
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * 从 S3 下载工件
-   */
-  async downloadArtifactFromS3(
-    artifactId: string,
-    targetPath: string
-  ): Promise<void> {
-    if (!this.s3) {
-      throw new Error('S3 is not configured');
-    }
-
-    const artifact = await this.prisma.snapshotArtifact.findUnique({
-      where: { id: artifactId },
-    });
-
-    if (!artifact || !artifact.metadata) {
-      throw new Error('Artifact not found or missing S3 metadata');
-    }
-
-    const metadata = artifact.metadata as any;
-    if (!metadata.s3Bucket || !metadata.s3Key) {
-      throw new Error('S3 metadata is incomplete');
-    }
-
-    try {
-      // 下载从 S3
-      const downloadParams = {
-        Bucket: metadata.s3Bucket,
-        Key: metadata.s3Key,
-      };
-
-      const command = new GetObjectCommand(downloadParams);
-      const data = await this.s3.send(command);
-
-      // 解压缩到目标路径
-      if (!data.Body) {
-        throw new Error('S3 object body is empty');
-      }
-      const bodyBuffer = Buffer.from(await data.Body.transformToByteArray());
-      await this.decompressToDirectory(bodyBuffer, targetPath);
-
-      this.logger.log(
-        `Artifact ${artifactId} downloaded from S3 to ${targetPath}`
-      );
-    } catch (error) {
-      this.logger.error(
-        `Failed to download artifact ${artifactId} from S3:`,
-        error
-      );
-      throw error;
     }
   }
 
@@ -369,38 +251,6 @@ export class PerformanceOptimizerService {
     };
 
     return report;
-  }
-
-  /**
-   * 压缩目录
-   */
-  private async compressDirectory(dirPath: string): Promise<Buffer> {
-    // 简化实现，实际应该使用 tar + gzip
-    const content = await fs.readFile(dirPath);
-    return gzip(content);
-  }
-
-  /**
-   * 解压缩到目录
-   */
-  private async decompressToDirectory(
-    compressed: Buffer,
-    targetPath: string
-  ): Promise<void> {
-    const decompressed = await gunzip(compressed);
-    await fs.writeFile(targetPath, decompressed);
-  }
-
-  /**
-   * 获取目录大小
-   */
-  private async getDirectorySize(dirPath: string): Promise<number> {
-    const stats = await fs.stat(dirPath);
-    if (stats.isFile()) {
-      return stats.size;
-    }
-    // 简化实现
-    return 1024 * 1024; // 假设1MB
   }
 
   /**

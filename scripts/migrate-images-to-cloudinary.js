@@ -3,7 +3,7 @@
 /**
  * Relax-Git 图像迁移脚本
  * 将本地存储的图像文件上传到 Cloudinary 并更新数据库 URL
- * 
+ *
  * 使用方法：
  * 1. 确保 Cloudinary 配置正确
  * 2. 确保本地图像文件存在
@@ -18,48 +18,75 @@ const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
 const path = require('path');
 
-// 配置 Cloudinary
-const requiredCloudinaryVars = [
+const REQUIRED_CLOUDINARY_VARS = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
 ];
-for (const key of requiredCloudinaryVars) {
-  if (!process.env[key]) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-}
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// 数据库连接
-const localPrisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.LOCAL_DATABASE_URL
-    }
-  }
-});
-
-const remotePrisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL
-    }
-  }
-});
+let localPrisma;
+let remotePrisma;
 
 // 本地文件根目录（根据您的项目结构调整）
 const LOCAL_UPLOADS_ROOT = path.join(__dirname, '..', 'apps', 'api', 'uploads');
 
+function requireRemoteMigrationOptIn() {
+  if (process.env.ALLOW_REMOTE_IMAGE_MIGRATION !== 'true') {
+    throw new Error(
+      'Refusing remote image migration. Set ALLOW_REMOTE_IMAGE_MIGRATION=true to run this script.'
+    );
+  }
+
+  if (!process.env.LOCAL_DATABASE_URL) {
+    throw new Error('Missing LOCAL_DATABASE_URL');
+  }
+
+  if (!process.env.DATABASE_URL) {
+    throw new Error('Missing DATABASE_URL');
+  }
+
+  if (process.env.LOCAL_DATABASE_URL === process.env.DATABASE_URL) {
+    throw new Error('LOCAL_DATABASE_URL and DATABASE_URL must be different');
+  }
+
+  localPrisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.LOCAL_DATABASE_URL,
+      },
+    },
+  });
+
+  remotePrisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
+}
+
+function configureCloudinary() {
+  for (const key of REQUIRED_CLOUDINARY_VARS) {
+    if (!process.env[key]) {
+      throw new Error(`Missing required environment variable: ${key}`);
+    }
+  }
+
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+
 async function main() {
   console.log('🚀 开始图像迁移到 Cloudinary...\n');
-  
+
   try {
+    requireRemoteMigrationOptIn();
+    configureCloudinary();
+
     // 1. 验证 Cloudinary 配置
     console.log('🔍 验证 Cloudinary 配置...');
     await verifyCloudinaryConfig();
@@ -85,13 +112,12 @@ async function main() {
     console.log('2. 检查用户头像显示');
     console.log('3. 检查仓库封面显示');
     console.log('4. 验证图像加载速度');
-
   } catch (error) {
     console.error('❌ 图像迁移失败：', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
-    await localPrisma.$disconnect();
-    await remotePrisma.$disconnect();
+    await localPrisma?.$disconnect();
+    await remotePrisma?.$disconnect();
   }
 }
 
@@ -112,14 +138,14 @@ async function migrateUserAvatars() {
     where: {
       avatar: {
         not: null,
-        startsWith: '/uploads/avatars/'
-      }
+        startsWith: '/uploads/avatars/',
+      },
     },
     select: {
       id: true,
       username: true,
-      avatar: true
-    }
+      avatar: true,
+    },
   });
 
   console.log(`找到 ${users.length} 个用户需要迁移头像`);
@@ -127,10 +153,13 @@ async function migrateUserAvatars() {
   for (const user of users) {
     try {
       console.log(`🔄 迁移用户 ${user.username} 的头像...`);
-      
+
       // 构建本地文件路径
-      const localFilePath = path.join(LOCAL_UPLOADS_ROOT, user.avatar.replace('/uploads/', ''));
-      
+      const localFilePath = path.join(
+        LOCAL_UPLOADS_ROOT,
+        user.avatar.replace('/uploads/', '')
+      );
+
       // 检查文件是否存在
       if (!fs.existsSync(localFilePath)) {
         console.log(`  ⚠️  文件不存在: ${localFilePath}`);
@@ -144,18 +173,17 @@ async function migrateUserAvatars() {
         resource_type: 'image',
         transformation: [
           { width: 200, height: 200, crop: 'fill', gravity: 'face' },
-          { quality: 'auto', fetch_format: 'auto' }
-        ]
+          { quality: 'auto', fetch_format: 'auto' },
+        ],
       });
 
       // 更新远程数据库
       await remotePrisma.user.update({
         where: { id: user.id },
-        data: { avatar: uploadResult.secure_url }
+        data: { avatar: uploadResult.secure_url },
       });
 
       console.log(`  ✅ ${user.username}: ${uploadResult.secure_url}`);
-      
     } catch (error) {
       console.error(`  ❌ ${user.username} 迁移失败:`, error.message);
     }
@@ -168,14 +196,14 @@ async function migrateRepositoryCovers() {
     where: {
       coverImage: {
         not: null,
-        startsWith: '/uploads/repositories/'
-      }
+        startsWith: '/uploads/repositories/',
+      },
     },
     select: {
       id: true,
       name: true,
-      coverImage: true
-    }
+      coverImage: true,
+    },
   });
 
   console.log(`找到 ${repositories.length} 个仓库需要迁移封面`);
@@ -183,10 +211,13 @@ async function migrateRepositoryCovers() {
   for (const repo of repositories) {
     try {
       console.log(`🔄 迁移仓库 ${repo.name} 的封面...`);
-      
+
       // 构建本地文件路径
-      const localFilePath = path.join(LOCAL_UPLOADS_ROOT, repo.coverImage.replace('/uploads/', ''));
-      
+      const localFilePath = path.join(
+        LOCAL_UPLOADS_ROOT,
+        repo.coverImage.replace('/uploads/', '')
+      );
+
       // 检查文件是否存在
       if (!fs.existsSync(localFilePath)) {
         console.log(`  ⚠️  文件不存在: ${localFilePath}`);
@@ -200,18 +231,17 @@ async function migrateRepositoryCovers() {
         resource_type: 'image',
         transformation: [
           { width: 800, height: 400, crop: 'fill' },
-          { quality: 'auto', fetch_format: 'auto' }
-        ]
+          { quality: 'auto', fetch_format: 'auto' },
+        ],
       });
 
       // 更新远程数据库
       await remotePrisma.repository.update({
         where: { id: repo.id },
-        data: { coverImage: uploadResult.secure_url }
+        data: { coverImage: uploadResult.secure_url },
       });
 
       console.log(`  ✅ ${repo.name}: ${uploadResult.secure_url}`);
-      
     } catch (error) {
       console.error(`  ❌ ${repo.name} 迁移失败:`, error.message);
     }

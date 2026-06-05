@@ -24,8 +24,8 @@ import {
 import { GitValidationService } from './services/git-validation.service';
 
 /**
- * ??????
- * ?????CRUD???????
+ * 仓库服务
+ * 处理仓库 CRUD、导入和权限校验。
  */
 @Injectable()
 export class RepositoriesService {
@@ -38,7 +38,7 @@ export class RepositoriesService {
   ) {}
 
   /**
-   * ?? Git URL ????????????????????????
+   * 公开校验 Git URL，用于导入仓库前的快速检查。
    */
   async validateGitUrlPublic(gitUrl: string) {
     return this.gitValidationService.validateGitUrl(gitUrl);
@@ -75,7 +75,7 @@ export class RepositoriesService {
   }
 
   /**
-   * ????
+   * 创建仓库。
    */
   async create(
     userId: string,
@@ -89,7 +89,7 @@ export class RepositoriesService {
       description,
     } = createRepositoryDto;
 
-    // ??????????????????
+    // 同一用户下仓库名称不能重复
     const existingRepo = await this.prisma.repository.findUnique({
       where: {
         ownerId_name: {
@@ -100,25 +100,25 @@ export class RepositoriesService {
     });
 
     if (existingRepo) {
-      throw new ConflictException(`???? "${name}" ???`);
+      throw new ConflictException(`仓库 "${name}" 已存在`);
     }
 
-    // ??Git????
+    // 校验 Git 地址
     const validation = await this.gitValidationService.validateGitUrl(gitUrl);
     if (!validation.isValid) {
-      throw new BadRequestException(`Git??????: ${validation.error}`);
+      throw new BadRequestException(`Git 地址无效: ${validation.error}`);
     }
 
-    // ??????????????????
+    // 校验默认分支是否存在
     if (
       defaultBranch !== 'main' &&
       validation.branches &&
       !validation.branches.includes(defaultBranch)
     ) {
-      throw new BadRequestException(`??????? "${defaultBranch}" ???`);
+      throw new BadRequestException(`默认分支 "${defaultBranch}" 不存在`);
     }
 
-    // ??????
+    // 创建仓库
     const repository = await this.prisma.repository.create({
       data: {
         name,
@@ -139,19 +139,19 @@ export class RepositoriesService {
       },
     });
 
-    // ????????????OWNER?
+    // 创建者默认是仓库 OWNER
     await this.prisma.member.upsert({
       where: { repoId_userId: { repoId: repository.id, userId } } as any,
       update: { role: MemberRole.OWNER },
       create: { repoId: repository.id, userId, role: MemberRole.OWNER },
     });
 
-    this.logger.log(`?? ${userId} ?????: ${name}`);
+    this.logger.log(`用户 ${userId} 创建仓库: ${name}`);
     return repository;
   }
 
   /**
-   * ??????
+   * 查询仓库列表。
    */
   async findAll(
     userId: string,
@@ -232,10 +232,10 @@ export class RepositoriesService {
     });
 
     if (!repository) {
-      throw new NotFoundException('?????');
+      throw new NotFoundException('仓库不存在');
     }
 
-    // ????
+    // 检查访问权限
     this.checkRepositoryAccess(repository as any, userId, userRole);
 
     return repository as any;
@@ -249,15 +249,15 @@ export class RepositoriesService {
   ): Promise<Repository> {
     const repository = await this.findOne(id, userId, userRole);
 
-    // ???????????????
+    // 只有仓库所有者或平台管理员可以更新
     if (repository.ownerId !== userId && userRole !== UserRole.ADMIN) {
-      throw new ForbiddenException('?????????????????');
+      throw new ForbiddenException('只有仓库所有者或管理员可以操作');
     }
 
     const { name, defaultBranch, visibility, description, isPublished } =
       updateRepositoryDto as any;
 
-    // ?????????????
+    // 检查仓库名称是否重复
     if (name && name !== repository.name) {
       const existingRepo = await this.prisma.repository.findUnique({
         where: {
@@ -269,18 +269,18 @@ export class RepositoriesService {
       });
 
       if (existingRepo) {
-        throw new ConflictException(`???? "${name}" ???`);
+        throw new ConflictException(`仓库 "${name}" 已存在`);
       }
     }
 
-    // ?????????????????
+    // 校验默认分支是否存在
     if (defaultBranch && defaultBranch !== repository.defaultBranch) {
       const branchExists = await this.gitValidationService.checkBranchExists(
         repository.gitUrl,
         defaultBranch
       );
       if (!branchExists) {
-        throw new BadRequestException(`?? "${defaultBranch}" ???`);
+        throw new BadRequestException(`分支 "${defaultBranch}" 不存在`);
       }
     }
 
@@ -314,22 +314,22 @@ export class RepositoriesService {
       },
     });
 
-    this.logger.log(`?? ${id} ???`);
+    this.logger.log(`仓库 ${id} 更新成功`);
     return updatedRepository;
   }
 
   /**
-   * ????
+   * 删除仓库。
    */
   async remove(id: string, userId: string, userRole: UserRole): Promise<void> {
     const repository = await this.findOne(id, userId, userRole);
 
-    // ???????????????
+    // 只有仓库所有者或平台管理员可以删除
     if (repository.ownerId !== userId && userRole !== UserRole.ADMIN) {
-      throw new ForbiddenException('?????????????????');
+      throw new ForbiddenException('只有仓库所有者或管理员可以操作');
     }
 
-    // ????????????
+    // 软删除仓库
     await this.prisma.repository.update({
       where: { id },
       data: {
@@ -337,11 +337,11 @@ export class RepositoriesService {
       },
     });
 
-    this.logger.log(`?? ${id} ???`);
+    this.logger.log(`仓库 ${id} 删除成功`);
   }
 
   /**
-   * ??????????? HEAD SHA
+   * 获取指定分支的 HEAD SHA。
    */
   async getBranchHeadSha(
     repoId: string,
@@ -355,13 +355,13 @@ export class RepositoriesService {
       branchName
     );
     if (!sha) {
-      throw new BadRequestException(`????? ${branchName} ? HEAD ??`);
+      throw new BadRequestException(`无法获取分支 ${branchName} 的 HEAD SHA`);
     }
     return { branch: branchName, sha };
   }
 
   /**
-   * ??Git????
+   * 校验 Git 连接。
    */
   async validateGitConnection(id: string, userId: string, userRole: UserRole) {
     const repository = await this.findOne(id, userId, userRole);
@@ -370,7 +370,7 @@ export class RepositoriesService {
       repository.gitUrl
     );
 
-    // ???????????????
+    // 校验成功后更新时间戳
     if (validation.isValid) {
       await this.prisma.repository.update({
         where: { id },
@@ -384,24 +384,24 @@ export class RepositoriesService {
   }
 
   /**
-   * ????????
+   * 检查仓库访问权限。
    */
   private checkRepositoryAccess(
     repository: Repository,
     userId: string,
     userRole: UserRole
   ): void {
-    // ???????????
+    // 平台管理员允许访问
     if (userRole === UserRole.ADMIN) {
       return;
     }
 
-    // ?????????
+    // 仓库所有者允许访问
     if (repository.ownerId === userId) {
       return;
     }
 
-    // ????????????
+    // 公共或内部仓库允许已登录用户读取
     if (
       repository.visibility === RepositoryVisibility.PUBLIC ||
       repository.visibility === RepositoryVisibility.INTERNAL
@@ -409,12 +409,12 @@ export class RepositoriesService {
       return;
     }
 
-    // ????????
-    throw new ForbiddenException('???????');
+    // 私有仓库需要成员权限
+    throw new ForbiddenException('无权访问仓库');
   }
 
   /**
-   * ????????????branchId?
+   * 获取仓库分支列表，缺失时尝试从 Git 重新生成。
    */
   async getRepositoryBranches(
     repoId: string,
@@ -429,23 +429,23 @@ export class RepositoriesService {
     }>;
     defaultBranch: string;
   }> {
-    // ????
+    // 检查访问权限
     const repository = await this.findOne(repoId, userId, userRole);
 
-    // ???????????
+    // 查询数据库中的分支
     const repositoryBranches = await this.prisma.repositoryBranch.findMany({
       where: { repoId },
       orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
     });
 
-    // ????????????????Git?????
+    // 如果数据库中没有分支，尝试从 Git 重新生成
     if (repositoryBranches.length === 0) {
       this.logger.log(
         `No branches found in DB for repo ${repoId}, creating from Git`
       );
       try {
         await this.baseSnapshotService.createBaseSnapshotsForRepository(repoId);
-        // ????????
+        // 重新查询分支
         const newBranches = await this.prisma.repositoryBranch.findMany({
           where: { repoId },
           orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
@@ -464,11 +464,11 @@ export class RepositoriesService {
           `Failed to create base snapshots for repo ${repoId}:`,
           error
         );
-        // ??????Git??????
+        // 回退到远程 Git 分支信息
         const info = await this.validateGitConnection(repoId, userId, userRole);
         return {
           branches: (info.branches || []).map(name => ({
-            id: `temp-${name}`, // ??ID??????????
+            id: `temp-${name}`, // 临时 ID，仅用于前端展示
             name,
             isDefault: name === repository.defaultBranch,
             commitSha: '',
@@ -490,7 +490,7 @@ export class RepositoriesService {
   }
 
   /**
-   * ??????? Git URL -> ??/???? -> ???? HEAD -> ???? -> ???? Diff
+   * 导入仓库：校验 Git URL、创建或复用仓库、确认分支 HEAD 并创建基础快照。
    */
   async importRepository(
     userId: string,
@@ -499,16 +499,16 @@ export class RepositoriesService {
   ): Promise<ImportRepositoryResponseDto> {
     const gitUrl = (dto.gitUrl ?? '').trim();
     if (!gitUrl) {
-      throw new BadRequestException('gitUrl ????');
+      throw new BadRequestException('gitUrl 不能为空');
     }
 
-    // 1) ?? Git URL ?????
+    // 1) 校验 Git URL 可访问性
     const validation = await this.gitValidationService.validateGitUrl(gitUrl);
     if (!validation.isValid) {
-      throw new BadRequestException(`Git ??????: ${validation.error}`);
+      throw new BadRequestException(`Git 地址无效: ${validation.error}`);
     }
 
-    // 2) ????
+    // 2) 推导仓库名称
     const deriveName = (url: string): string => {
       try {
         const u = new URL(url.replace(/\.git$/, ''));
@@ -520,10 +520,12 @@ export class RepositoriesService {
     };
     const name = (dto.name ?? '').trim() || deriveName(gitUrl);
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-      throw new BadRequestException('?????????????????????');
+      throw new BadRequestException(
+        '仓库名称只能包含字母、数字、下划线和短横线'
+      );
     }
 
-    // 3) ??/????
+    // 3) 创建或复用仓库
     const existing = await this.prisma.repository.findUnique({
       where: { ownerId_name: { ownerId: userId, name } },
     });
@@ -531,14 +533,14 @@ export class RepositoriesService {
 
     let repository: Repository;
     if (existing) {
-      // ????????????????
+      // 复用已软删除的同名仓库
       if (!existing.isActive) {
-        this.logger.log(`??????????: ${name}`);
+        this.logger.log(`重新启用已删除仓库: ${name}`);
         repository = await this.prisma.repository.update({
           where: { id: existing.id },
           data: {
             isActive: true,
-            gitUrl, // ??Git URL???????
+            gitUrl, // 使用新的 Git URL 覆盖旧值
             defaultBranch,
             visibility:
               this.normalizeVisibility(dto.visibility) ?? existing.visibility,
@@ -550,7 +552,7 @@ export class RepositoriesService {
         repository = existing;
       }
     } else {
-      // ?????
+      // 创建新仓库
       repository = await this.prisma.repository.create({
         data: {
           name,
@@ -565,7 +567,7 @@ export class RepositoriesService {
         },
       });
 
-      // ????????????OWNER?
+      // 创建者默认是仓库 OWNER
       await this.prisma.member.upsert({
         where: { repoId_userId: { repoId: repository.id, userId } } as any,
         update: { role: MemberRole.OWNER },
@@ -573,7 +575,7 @@ export class RepositoriesService {
       });
     }
 
-    // 4) ????
+    // 4) 校验分支 HEAD
     const baseBranch = (dto.baseBranch ?? defaultBranch).trim();
     const featureBranch = (dto.featureBranch ?? '').trim() || undefined;
 
@@ -582,7 +584,7 @@ export class RepositoriesService {
       baseBranch
     );
     if (!baseSha) {
-      throw new BadRequestException(`????? ${baseBranch} ? HEAD ??`);
+      throw new BadRequestException(`无法获取分支 ${baseBranch} 的 HEAD SHA`);
     }
     let featureSha: string | null = null;
     if (featureBranch) {
@@ -591,12 +593,14 @@ export class RepositoriesService {
         featureBranch
       );
       if (!featureSha) {
-        // ???????????? Warning
-        this.logger.warn(`?????????? ${featureBranch} ? HEAD??? Diff ??`);
+        // feature 分支缺失时记录警告，后续不创建 Diff 快照
+        this.logger.warn(
+          `无法获取分支 ${featureBranch} 的 HEAD SHA，跳过 Diff 快照`
+        );
       }
     }
 
-    // 5) ???????????????
+    // 5) 创建基础快照
     try {
       const baseSnapshots =
         await this.baseSnapshotService.createBaseSnapshotsForRepository(
@@ -606,11 +610,10 @@ export class RepositoriesService {
         `Created ${baseSnapshots.length} base snapshots for repository ${repository.id}`
       );
     } catch (e) {
-      this.logger.warn(`?????????repo=${repository.id}`, e as any);
+      this.logger.warn(`创建基础快照失败 repo=${repository.id}`, e as any);
     }
 
-    // 6) ??????????BaseSnapshot???????????
-    // ?????????????????BaseSnapshot????
+    // 6) 返回快照标识。当前基础快照由异步任务补齐。
     let baseSnapshotId: string | undefined;
     let featureSnapshotId: string | undefined;
 
@@ -627,7 +630,7 @@ export class RepositoriesService {
   }
 
   /**
-   * ?????????????????????? Web ??my-status????
+   * 获取当前用户在仓库中的成员状态，供 Web 的 my-status 使用。
    */
   async getMyStatus(
     repoId: string,
@@ -636,7 +639,7 @@ export class RepositoriesService {
     role: any | null;
     joinRequest: { id: string; status: any } | null;
   }> {
-    // ????
+    // 已是成员时直接返回角色
     const member = await this.prisma.member.findUnique({
       where: { repoId_userId: { repoId, userId } } as any,
       select: { role: true },
@@ -645,7 +648,7 @@ export class RepositoriesService {
       return { role: member.role, joinRequest: null } as any;
     }
 
-    // ????????????
+    // 否则返回最近一次加入申请状态
     const jr = await this.prisma.joinRequest.findFirst({
       where: { repoId, userId },
       orderBy: { createdAt: 'desc' },

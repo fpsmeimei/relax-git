@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../database/prisma.service';
+import { getJwtSecret } from '../../config/jwt.config';
 
 // 自 Cookie 或 Authorization Bearer 提取 JWT
 const cookieExtractor = (req: any): string | null => {
@@ -22,7 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'dev_jwt_secret_change_me',
+      secretOrKey: getJwtSecret(),
     });
   }
 

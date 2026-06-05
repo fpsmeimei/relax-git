@@ -19,10 +19,10 @@ interface UseAsyncOptions<T> {
 
 /**
  * 统一的异步请求状态管理 Hook
- * 
+ *
  * @example
  * const { execute, isLoading, data } = useAsync(fetchRepositories);
- * 
+ *
  * <button onClick={() => execute()} disabled={isLoading}>
  *   {isLoading ? '加载中...' : '获取仓库'}
  * </button>
@@ -50,7 +50,7 @@ export function useAsync<T, Args extends any[] = []>(
 
       try {
         const data = await asyncFunction(...args);
-        
+
         setState({
           data,
           error: null,
@@ -73,7 +73,7 @@ export function useAsync<T, Args extends any[] = []>(
         return data;
       } catch (error) {
         const err = error as Error;
-        
+
         setState({
           data: null,
           error: err,
@@ -119,7 +119,7 @@ export function useAsync<T, Args extends any[] = []>(
 
 /**
  * 使用示例：
- * 
+ *
  * // 基础用法
  * const { execute: createRepo, isLoading } = useAsync(
  *   createRepository,
@@ -128,13 +128,13 @@ export function useAsync<T, Args extends any[] = []>(
  *     onSuccess: (data) => router.push(`/repositories/${data.id}`),
  *   }
  * );
- * 
+ *
  * // 带参数
  * const { execute: deleteRepo, isLoading } = useAsync(
  *   (id: string) => deleteRepository(id),
  *   { successMessage: '删除成功' }
  * );
- * 
+ *
  * <button onClick={() => deleteRepo('repo-id')} disabled={isLoading}>
  *   {isLoading ? '删除中...' : '删除'}
  * </button>

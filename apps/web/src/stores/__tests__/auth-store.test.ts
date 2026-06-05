@@ -25,7 +25,7 @@ beforeEach(() => {
     writable: true,
   });
   localStorage.clear();
-  
+
   // 重置 store 状态
   useAuthStore.setState({
     user: null,

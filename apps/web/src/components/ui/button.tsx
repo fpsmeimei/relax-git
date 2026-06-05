@@ -15,8 +15,7 @@ const buttonVariants = cva(
         success: 'bg-success text-success-foreground hover:bg-success/90',
         warning: 'bg-warning text-warning-foreground hover:bg-warning/90',
         info: 'bg-info text-info-foreground hover:bg-info/90',
-        soft:
-          'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 shadow-sm',
+        soft: 'bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 shadow-sm',
         'success-soft': 'bg-success/12 text-success hover:bg-success/20',
         'warning-soft': 'bg-warning/12 text-warning hover:bg-warning/20',
         'info-soft': 'bg-info/12 text-info hover:bg-info/20',
@@ -27,8 +26,7 @@ const buttonVariants = cva(
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'text-primary hover:bg-primary/10 hover:text-primary',
-        glow:
-          'relative border border-[var(--brand-green)]/55 bg-transparent text-foreground shadow-[0_0_0_rgba(0,0,0,0)] hover:shadow-spotify-glow before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-gradient-to-r before:from-[var(--brand-green)]/20 before:via-[var(--brand-blue)]/14 before:to-[var(--brand-purple)]/10 before:opacity-80 before:blur-xl',
+        glow: 'relative border border-[var(--brand-green)]/55 bg-transparent text-foreground shadow-[0_0_0_rgba(0,0,0,0)] hover:shadow-spotify-glow before:absolute before:inset-0 before:-z-10 before:rounded-full before:bg-gradient-to-r before:from-[var(--brand-green)]/20 before:via-[var(--brand-blue)]/14 before:to-[var(--brand-purple)]/10 before:opacity-80 before:blur-xl',
         link: 'text-[var(--brand-green)] smooth-underline',
       },
       size: {

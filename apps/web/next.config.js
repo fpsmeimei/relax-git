@@ -111,35 +111,12 @@ const nextConfig = {
   //   ];
   // },
 
-  // 头部配置
-  async headers() {
-    return [
-      {
-        source: '/api/:path*',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, POST, PUT, DELETE, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
-          },
-        ],
-      },
-    ];
-  },
-
   // 重写规则：将前端 /api/* 代理到后端 API 服务
   // 🔥 全栈部署架构：Web 服务在主端口，API 服务在内部端口
   async rewrites() {
     // 根据环境变量确定 API 基础 URL
     // 开发环境：使用 API_URL（服务端代理目标）
-    // 生产环境：使用内部端口 4000
+    // 本地默认：API 服务监听 3001
     const apiBaseUrl = process.env.API_URL || 'http://localhost:3001';
 
     return {

@@ -26,7 +26,7 @@ export class RepositoryCollectionResponseDto {
 /**
  * 创建仓库评论DTO
  */
-export class CreateRepositoryCommentDto {
+export class CreateRepositoryInteractionCommentDto {
   @ApiProperty({ description: '评论内容', maxLength: 2000 })
   @IsString()
   @IsNotEmpty()

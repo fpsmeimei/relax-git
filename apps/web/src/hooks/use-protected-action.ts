@@ -95,11 +95,11 @@ export function useProtectedAction() {
 
 /**
  * 使用示例：
- * 
+ *
  * // 在组件中
  * function MyComponent() {
  *   const { withAuth, requireAuth } = useProtectedAction();
- * 
+ *
  *   // 方式1：包装函数
  *   const handleCreateRepo = withAuth(async () => {
  *     // 这里的代码只有在登录后才会执行
@@ -107,7 +107,7 @@ export function useProtectedAction() {
  *   }, {
  *     message: '创建仓库需要登录',
  *   });
- * 
+ *
  *   // 方式2：手动检查
  *   const handleImportRepo = () => {
  *     if (!requireAuth('导入仓库需要登录')) {
@@ -115,7 +115,7 @@ export function useProtectedAction() {
  *     }
  *     // 执行导入逻辑
  *   };
- * 
+ *
  *   return (
  *     <button onClick={handleCreateRepo}>创建仓库</button>
  *   );

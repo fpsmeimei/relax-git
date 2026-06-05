@@ -113,9 +113,7 @@ describe('useAsync Hook', () => {
     const mockFn = vi.fn().mockResolvedValue(mockData);
     const onSuccess = vi.fn();
 
-    const { result } = renderHook(() =>
-      useAsync(mockFn, { onSuccess })
-    );
+    const { result } = renderHook(() => useAsync(mockFn, { onSuccess }));
 
     await act(async () => {
       await result.current.execute();
@@ -132,9 +130,7 @@ describe('useAsync Hook', () => {
     const mockFn = vi.fn().mockRejectedValue(mockError);
     const onError = vi.fn();
 
-    const { result } = renderHook(() =>
-      useAsync(mockFn, { onError })
-    );
+    const { result } = renderHook(() => useAsync(mockFn, { onError }));
 
     await act(async () => {
       try {

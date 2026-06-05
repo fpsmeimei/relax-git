@@ -44,6 +44,16 @@ class HealthChecker {
     }
   }
 
+  checkOptionalFile(filePath, description) {
+    if (fs.existsSync(filePath)) {
+      this.log('success', `${description}: ${filePath}`);
+      return true;
+    }
+
+    this.log('warning', `Optional ${description} not found: ${filePath}`);
+    return false;
+  }
+
   checkDirectory(dirPath, description) {
     if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
       this.log('success', `${description}: ${dirPath}`);
@@ -269,8 +279,8 @@ class HealthChecker {
 
     // 检查 VS Code 配置
     this.log('info', 'Checking VS Code configuration...');
-    this.checkFile('.vscode/settings.json', 'VS Code settings');
-    this.checkFile('.vscode/extensions.json', 'VS Code extensions');
+    this.checkOptionalFile('.vscode/settings.json', 'VS Code settings');
+    this.checkOptionalFile('.vscode/extensions.json', 'VS Code extensions');
 
     // 生成报告
     this.generateReport();

@@ -11,7 +11,7 @@
 - `cleanup-temp.js` - 清理临时文件
 - `db-setup.js` - 数据库初始化
 - `health-check.js` - 健康检查
-- `lint-garbled.js` - 检查疑似乱码文本
+- `lint-garbled.js` - 检查 apps 目录中的疑似乱码文本
 
 历史调试脚本、一次性修复脚本和临时测试脚本已从仓库中移除，避免干扰当前主链路开发与毕业设计答辩叙事。
 
