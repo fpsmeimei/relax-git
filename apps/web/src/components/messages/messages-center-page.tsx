@@ -28,6 +28,7 @@ import {
   MessageSquarePlus,
   Search,
   SendHorizonal,
+  X,
   Trash2,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -35,6 +36,38 @@ import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type FriendEntry = FriendItem & { type: 'friend' };
+type AiAssistantMode = 'recommend' | 'summary' | 'search';
+
+const AI_ASSISTANT_MODEL_LABEL = 'DeepSeek V4 Flash';
+const AI_ASSISTANT_WELCOME_CONTENT = `你好！我是你的仓库发现助手，由 ${AI_ASSISTANT_MODEL_LABEL} 驱动。
+
+你可以这样问我：
+- 帮我推荐目前热度前十的仓库
+- 帮我找 AI Agent / 前端工程化 / Go 并发方向的仓库
+- 帮我简单介绍一下某个仓库
+
+我会优先围绕仓库发现与仓库理解来回答。`;
+
+function inferAiAssistantMode(text: string): AiAssistantMode {
+  const normalized = text.toLowerCase();
+
+  if (/简介|介绍|摘要|总结|分析/.test(text)) {
+    return 'summary';
+  }
+
+  if (
+    /方向|检索|查找|寻找|找/.test(text) ||
+    normalized.includes('ai agent') ||
+    normalized.includes('agent') ||
+    normalized.includes('go ') ||
+    normalized.includes('react') ||
+    text.includes('前端')
+  ) {
+    return 'search';
+  }
+
+  return 'recommend';
+}
 
 export default function MessagesCenterPage() {
   const searchParams = useSearchParams();
@@ -81,13 +114,11 @@ export default function MessagesCenterPage() {
   const requestedChatId = searchParams.get('chat');
   const shouldOpenAssistant = searchParams.get('assistant') === 'repo';
   const [aiMessages, setAiMessages] = useState<ChatMessage[]>([]);
-  const [aiMode, setAiMode] = useState<'recommend' | 'summary' | 'search'>(
-    'recommend'
-  );
 
   const chatInitialLoaded = useRef(new Set<string>());
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
+  const aiAbortControllerRef = useRef<AbortController | null>(null);
 
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -101,14 +132,27 @@ export default function MessagesCenterPage() {
 
       if (saved) {
         const parsed = JSON.parse(saved);
-        setAiMessages(parsed);
+        const migratedMessages = Array.isArray(parsed)
+          ? parsed.map(message =>
+              message?.id?.startsWith?.('ai-welcome-') &&
+              typeof message.content === 'string'
+                ? {
+                    ...message,
+                    content: message.content.replace(
+                      'DeepSeek v3.2',
+                      AI_ASSISTANT_MODEL_LABEL
+                    ),
+                  }
+                : message
+            )
+          : [];
+        setAiMessages(migratedMessages);
       } else {
         // 如果没有该用户的AI消息，添加欢迎消息
         const welcomeMessage: ChatMessage = {
           id: `ai-welcome-${Date.now()}`,
           chatId: 'ai-chat',
-          content:
-            '你好！我是你的仓库发现助手，由 DeepSeek v3.2 驱动。\n\n你可以这样问我：\n- 帮我推荐目前热度前十的仓库\n- 帮我找 AI Agent / 前端工程化 / Go 并发方向的仓库\n- 帮我简单介绍一下某个仓库\n\n我会优先围绕仓库发现与仓库理解来回答。',
+          content: AI_ASSISTANT_WELCOME_CONTENT,
           senderId: 'ai-assistant',
           createdAt: new Date().toISOString(),
           type: 'text',
@@ -199,9 +243,10 @@ export default function MessagesCenterPage() {
       };
     });
 
-    // AI 助手始终显示在第一位
-    return [aiBot, ...friendsWithUnread];
-  }, [friends, chats]);
+    return shouldOpenAssistant
+      ? [aiBot, ...friendsWithUnread]
+      : friendsWithUnread;
+  }, [friends, chats, shouldOpenAssistant]);
 
   const filteredFriends = useMemo(() => {
     const trimmed = keyword.trim().toLowerCase();
@@ -348,6 +393,15 @@ export default function MessagesCenterPage() {
     [toast, markRead]
   );
 
+  useEffect(() => {
+    if (shouldOpenAssistant) return;
+    if (selectedFriend?.id === 'ai-assistant') {
+      setSelectedFriend(null);
+      setSelectedChatId(null);
+      setMessageInput('');
+    }
+  }, [selectedFriend?.id, shouldOpenAssistant]);
+
   // 根据 query 或默认策略自动选择会话
   useEffect(() => {
     if (!selectedFriend && allFriends.length > 0) {
@@ -372,162 +426,202 @@ export default function MessagesCenterPage() {
     shouldOpenAssistant,
   ]);
 
-  const handleSendChatMessage = useCallback(async () => {
-    if (!selectedChatId) return;
-    const text = messageInput.trim();
-    if (!text || sending) return;
+  const handleSendChatMessage = useCallback(
+    async (overrideText?: string) => {
+      if (!selectedChatId) return;
+      const text = (overrideText ?? messageInput).trim();
+      if (!text || sending) return;
+      const activeAiMode = inferAiAssistantMode(text);
 
-    try {
-      setSending(true);
+      try {
+        setSending(true);
 
-      // 检查是否是 AI 助手
-      if (selectedFriend?.id === 'ai-assistant') {
-        // AI 对话完全在本地管理，不调用后端私信接口
-        const userMessage: ChatMessage = {
-          id: `user-${Date.now()}`,
-          chatId: 'ai-chat',
-          content: text,
-          senderId: user?.id || '',
-          createdAt: new Date().toISOString(),
-          type: 'text',
-          isRead: true,
-          readAt: new Date().toISOString(),
-        };
+        // 检查是否是 AI 助手
+        if (selectedFriend?.id === 'ai-assistant') {
+          // AI 对话完全在本地管理，不调用后端私信接口
+          const requestId = Date.now();
+          const userMessage: ChatMessage = {
+            id: `user-${requestId}`,
+            chatId: 'ai-chat',
+            content: text,
+            senderId: user?.id || '',
+            createdAt: new Date().toISOString(),
+            type: 'text',
+            isRead: true,
+            readAt: new Date().toISOString(),
+          };
 
-        // 添加用户消息到本地状态
-        setAiMessages(prev => [...prev, userMessage]);
-        setMessageInput('');
-        scrollToBottom();
+          // 添加用户消息到本地状态
+          setAiMessages(prev => [...prev, userMessage]);
+          setMessageInput('');
+          scrollToBottom();
 
-        // 添加"思考中"状态消息
-        const thinkingMessage: ChatMessage = {
-          id: `thinking-${Date.now()}`,
-          chatId: 'ai-chat',
-          content: '思考中...',
-          senderId: 'ai-assistant',
-          createdAt: new Date().toISOString(),
-          type: 'text',
-          isRead: true,
-          readAt: new Date().toISOString(),
-        };
+          // 添加"思考中"状态消息
+          const thinkingMessage: ChatMessage = {
+            id: `thinking-${requestId}`,
+            chatId: 'ai-chat',
+            content: '正在连接 DeepSeek V4 Flash...',
+            senderId: 'ai-assistant',
+            createdAt: new Date().toISOString(),
+            type: 'text',
+            isRead: true,
+            readAt: new Date().toISOString(),
+          };
 
-        setAiMessages(prev => [...prev, thinkingMessage]);
-        scrollToBottom();
+          setAiMessages(prev => [...prev, thinkingMessage]);
+          scrollToBottom();
 
-        // 根据模式调整对话历史数量
-        const historyCount = aiMode === 'summary' ? 15 : 30;
-        const conversationHistory = aiMessages
-          .slice(-historyCount)
-          .map(msg => ({
-            role: msg.senderId === user?.id ? 'user' : 'assistant',
-            content: msg.content,
-          }));
+          // 根据模式调整对话历史数量
+          const historyCount = activeAiMode === 'summary' ? 15 : 30;
+          const conversationHistory = aiMessages
+            .slice(-historyCount)
+            .map(msg => ({
+              role: msg.senderId === user?.id ? 'user' : 'assistant',
+              content: msg.content,
+            }));
 
-        try {
-          // 调用 AI API，传递当前模式
-          const response = await apiClient.post<{
-            reply: string;
-            reasoning?: string;
-            timestamp: string;
-          }>('/ai/chat', {
-            message: text,
-            conversationHistory,
-            mode:
-              aiMode === 'recommend'
-                ? 'discovery'
-                : aiMode === 'summary'
-                  ? 'thinking'
-                  : 'chat',
-          });
+          const controller = new AbortController();
+          aiAbortControllerRef.current = controller;
 
-          // 移除"思考中"消息，添加思考过程（如果有）和 AI 回复
-          setAiMessages(prev => {
-            const withoutThinking = prev.filter(
-              msg => msg.id !== thinkingMessage.id
+          try {
+            // 调用 AI API，传递当前模式
+            const response = await apiClient.post<{
+              reply: string;
+              reasoning?: string;
+              elapsedMs?: number;
+              model?: string;
+              timestamp: string;
+            }>(
+              '/ai/chat',
+              {
+                message: text,
+                conversationHistory,
+                mode:
+                  activeAiMode === 'recommend'
+                    ? 'discovery'
+                    : activeAiMode === 'summary'
+                      ? 'thinking'
+                      : 'chat',
+              },
+              {
+                signal: controller.signal,
+                timeout: 45000,
+                __noRetry: true,
+              } as any
             );
-            const newMessages: ChatMessage[] = [];
 
-            // 如果有思考过程，先添加思考消息
-            if (response.data.reasoning) {
-              const reasoningMessage: ChatMessage = {
-                id: `ai-reasoning-${Date.now()}`,
+            // 移除"思考中"消息，添加思考过程（如果有）和 AI 回复
+            setAiMessages(prev => {
+              const withoutThinking = prev.filter(
+                msg => msg.id !== thinkingMessage.id
+              );
+              const newMessages: ChatMessage[] = [];
+
+              // 如果有思考过程，先添加思考消息
+              if (response.data.reasoning) {
+                const reasoningMessage: ChatMessage = {
+                  id: `ai-reasoning-${Date.now()}`,
+                  chatId: 'ai-chat',
+                  content: response.data.reasoning,
+                  senderId: 'ai-assistant',
+                  createdAt: new Date().toISOString(),
+                  type: 'text',
+                  isRead: true,
+                  readAt: new Date().toISOString(),
+                };
+                newMessages.push(reasoningMessage);
+              }
+
+              // 添加最终回复
+              const aiMessage: ChatMessage = {
+                id: `ai-${Date.now()}`,
                 chatId: 'ai-chat',
-                content: response.data.reasoning,
+                content: response.data.elapsedMs
+                  ? `${response.data.reply || '抱歉，我暂时无法回答。'}\n\n（DeepSeek 响应用时 ${(response.data.elapsedMs / 1000).toFixed(1)}s）`
+                  : response.data.reply || '抱歉，我暂时无法回答。',
                 senderId: 'ai-assistant',
                 createdAt: new Date().toISOString(),
                 type: 'text',
                 isRead: true,
                 readAt: new Date().toISOString(),
               };
-              newMessages.push(reasoningMessage);
+              newMessages.push(aiMessage);
+
+              return [...withoutThinking, ...newMessages];
+            });
+            scrollToBottom();
+          } catch (aiError) {
+            const isCanceled =
+              (aiError as any)?.code === 'ERR_CANCELED' ||
+              (aiError as any)?.name === 'CanceledError' ||
+              controller.signal.aborted;
+
+            if (isCanceled) {
+              setAiMessages(prev =>
+                prev.filter(
+                  msg =>
+                    msg.id !== userMessage.id && msg.id !== thinkingMessage.id
+                )
+              );
+              return;
             }
 
-            // 添加最终回复
-            const aiMessage: ChatMessage = {
-              id: `ai-${Date.now()}`,
-              chatId: 'ai-chat',
-              content: response.data.reply || '抱歉，我暂时无法回答。',
-              senderId: 'ai-assistant',
-              createdAt: new Date().toISOString(),
-              type: 'text',
-              isRead: true,
-              readAt: new Date().toISOString(),
-            };
-            newMessages.push(aiMessage);
-
-            return [...withoutThinking, ...newMessages];
-          });
+            // 移除"思考中"消息，添加错误消息
+            setAiMessages(prev => {
+              const withoutThinking = prev.filter(
+                msg => msg.id !== thinkingMessage.id
+              );
+              const errorMessage: ChatMessage = {
+                id: `ai-error-${Date.now()}`,
+                chatId: 'ai-chat',
+                content: '抱歉，我遇到了一些技术问题。请稍后再试。',
+                senderId: 'ai-assistant',
+                createdAt: new Date().toISOString(),
+                type: 'text',
+                isRead: true,
+                readAt: new Date().toISOString(),
+              };
+              return [...withoutThinking, errorMessage];
+            });
+          } finally {
+            if (aiAbortControllerRef.current === controller) {
+              aiAbortControllerRef.current = null;
+            }
+          }
+        } else {
+          // 发送给真实用户
+          await sendMessage(selectedChatId, text);
+          setMessageInput('');
+          // 移除自动标记已读，让用户主动控制
+          // void markRead(selectedChatId);
           scrollToBottom();
-        } catch (aiError) {
-          void aiError;
-
-          // 移除"思考中"消息，添加错误消息
-          setAiMessages(prev => {
-            const withoutThinking = prev.filter(
-              msg => msg.id !== thinkingMessage.id
-            );
-            const errorMessage: ChatMessage = {
-              id: `ai-error-${Date.now()}`,
-              chatId: 'ai-chat',
-              content: '抱歉，我遇到了一些技术问题。请稍后再试。',
-              senderId: 'ai-assistant',
-              createdAt: new Date().toISOString(),
-              type: 'text',
-              isRead: true,
-              readAt: new Date().toISOString(),
-            };
-            return [...withoutThinking, errorMessage];
-          });
         }
-      } else {
-        // 发送给真实用户
-        await sendMessage(selectedChatId, text);
-        setMessageInput('');
-        // 移除自动标记已读，让用户主动控制
-        // void markRead(selectedChatId);
-        scrollToBottom();
+      } catch (error: any) {
+        toast({
+          title: '消息发送失败',
+          description: error?.message ?? '请稍后重试',
+          variant: 'destructive',
+        });
+      } finally {
+        setSending(false);
       }
-    } catch (error: any) {
-      toast({
-        title: '消息发送失败',
-        description: error?.message ?? '请稍后重试',
-        variant: 'destructive',
-      });
-    } finally {
-      setSending(false);
-    }
-  }, [
-    aiMessages,
-    aiMode,
-    messageInput,
-    scrollToBottom,
-    selectedChatId,
-    selectedFriend,
-    sendMessage,
-    sending,
-    toast,
-    user?.id,
-  ]);
+    },
+    [
+      aiMessages,
+      messageInput,
+      scrollToBottom,
+      selectedChatId,
+      selectedFriend,
+      sendMessage,
+      sending,
+      toast,
+      user?.id,
+    ]
+  );
+
+  const handleCancelAiRequest = useCallback(() => {
+    aiAbortControllerRef.current?.abort();
+  }, []);
 
   const handleSend = useCallback(() => {
     if (!selectedFriend) return;
@@ -537,7 +631,9 @@ export default function MessagesCenterPage() {
   const onTextareaKeyDown: React.KeyboardEventHandler<
     HTMLTextAreaElement
   > = e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key !== 'Enter') return;
+
+    if (e.metaKey || e.ctrlKey) {
       e.preventDefault();
       handleSend();
     }
@@ -554,8 +650,7 @@ export default function MessagesCenterPage() {
         const welcomeMessage: ChatMessage = {
           id: `ai-welcome-${Date.now()}`,
           chatId: 'ai-chat',
-          content:
-            '你好！我是你的仓库发现助手，由 DeepSeek v3.2 驱动。\n\n你可以这样问我：\n- 帮我推荐目前热度前十的仓库\n- 帮我找 AI Agent / 前端工程化 / Go 并发方向的仓库\n- 帮我简单介绍一下某个仓库\n\n我会优先围绕仓库发现与仓库理解来回答。',
+          content: AI_ASSISTANT_WELCOME_CONTENT,
           senderId: 'ai-assistant',
           createdAt: new Date().toISOString(),
           type: 'text',
@@ -702,8 +797,14 @@ export default function MessagesCenterPage() {
   const renderConversation = () => {
     if (!selectedFriend) {
       return (
-        <div className="flex h-full items-center justify-center text-muted-foreground">
-          请选择左侧联系人开始私信
+        <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+          <MessageSquarePlus className="h-9 w-9 text-primary/70" />
+          <div className="text-base font-medium text-foreground">
+            选择好友开始私信
+          </div>
+          <div className="max-w-sm text-sm">
+            可以在左侧搜索用户并发送好友申请；对方通过后会出现在好友列表中。
+          </div>
         </div>
       );
     }
@@ -711,78 +812,44 @@ export default function MessagesCenterPage() {
     const friendAvatar = selectedFriend.avatar ?? null;
     return (
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between border-b pb-3">
-          <div className="flex items-center gap-3">
-            <div className="relative h-10 w-10">
-              <div className="h-full w-full rounded-full overflow-hidden bg-muted">
-                {friendAvatar ? (
-                  <Image
-                    src={friendAvatar}
-                    alt={selectedFriend.username}
-                    width={40}
-                    height={40}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-semibold">
-                    {selectedFriend.username.charAt(0).toUpperCase()}
-                  </div>
+        <div className="flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="relative h-10 w-10 flex-shrink-0">
+                <div className="h-full w-full rounded-full overflow-hidden bg-muted">
+                  {friendAvatar ? (
+                    <Image
+                      src={friendAvatar}
+                      alt={selectedFriend.username}
+                      width={40}
+                      height={40}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 text-white text-sm font-semibold">
+                      {selectedFriend.username.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                {selectedFriend.isOnline && (
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
                 )}
               </div>
-              {selectedFriend.isOnline && (
-                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
-              )}
-            </div>
-            <div>
-              <div className="text-base font-semibold">
-                {selectedFriend.username}
-              </div>
-              <div className="text-base text-muted-foreground">
-                {selectedFriend.isOnline ? '在线' : '离线'}
+              <div className="min-w-0">
+                <div className="truncate text-base font-semibold">
+                  {selectedFriend.username}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {selectedFriend.isOnline ? '在线' : '离线'}
+                </div>
               </div>
             </div>
-
-            {/* AI 模式切换 - 仅 AI 助手显示 */}
-            {selectedFriend?.id === 'ai-assistant' && (
-              <div className="flex items-center gap-1.5 ml-4">
-                <button
-                  onClick={() => setAiMode('recommend')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all shadow-sm ${
-                    aiMode === 'recommend'
-                      ? 'bg-[#88C0D0] text-white shadow-[#88C0D0]/30'
-                      : 'bg-[#3B4252] text-[#D8DEE9] hover:bg-[#434C5E] hover:shadow-md'
-                  }`}
-                >
-                  推荐
-                </button>
-                <button
-                  onClick={() => setAiMode('summary')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all shadow-sm ${
-                    aiMode === 'summary'
-                      ? 'bg-[#B48EAD] text-white shadow-[#B48EAD]/30'
-                      : 'bg-[#3B4252] text-[#D8DEE9] hover:bg-[#434C5E] hover:shadow-md'
-                  }`}
-                >
-                  简介
-                </button>
-                <button
-                  onClick={() => setAiMode('search')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-full transition-all shadow-sm ${
-                    aiMode === 'search'
-                      ? 'bg-[#A3BE8C] text-white shadow-[#A3BE8C]/30'
-                      : 'bg-[#3B4252] text-[#D8DEE9] hover:bg-[#434C5E] hover:shadow-md'
-                  }`}
-                >
-                  检索
-                </button>
-              </div>
-            )}
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setClearConfirmOpen(true)}
-            className="text-muted-foreground hover:text-destructive"
+            className="self-start text-muted-foreground hover:text-destructive sm:self-auto"
           >
             <Trash2 className="h-4 w-4 mr-1" />
             清屏
@@ -825,75 +892,60 @@ export default function MessagesCenterPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 功能按钮 - 仅AI助手显示 */}
-        {selectedFriend?.id === 'ai-assistant' && (
-          <div className="border-t pt-3 pb-2">
-            {/* 功能快捷按钮 */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setMessageInput('请帮我推荐目前热度前十的仓库');
-                  setAiMode('recommend');
-                  setTimeout(() => void handleSendChatMessage(), 100);
-                }}
-                className="px-3 py-1.5 text-sm bg-muted hover:bg-accent rounded-full transition-colors"
-              >
-                🔥 热门仓库
-              </button>
-              <button
-                onClick={() => {
-                  setMessageInput('请帮我找 AI Agent 方向值得看的仓库');
-                  setAiMode('search');
-                  setTimeout(() => void handleSendChatMessage(), 100);
-                }}
-                className="px-3 py-1.5 text-sm bg-muted hover:bg-accent rounded-full transition-colors"
-              >
-                🧭 按方向找仓库
-              </button>
-              <button
-                onClick={() => {
-                  setMessageInput('请帮我简单介绍一下 openclaw');
-                  setAiMode('summary');
-                  setTimeout(() => void handleSendChatMessage(), 100);
-                }}
-                className="px-3 py-1.5 text-sm bg-muted hover:bg-accent rounded-full transition-colors"
-              >
-                📦 仓库简介
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="border-t pt-3">
           <div className="flex items-start gap-3">
             <textarea
               value={messageInput}
               onChange={e => setMessageInput(e.target.value)}
               onKeyDown={onTextareaKeyDown}
-              rows={4}
+              rows={3}
               placeholder={
                 selectedFriend?.id === 'ai-assistant'
                   ? '例如：帮我推荐目前热度前十的仓库'
-                  : '输入消息，按 Enter 发送，Shift+Enter 换行'
+                  : '输入消息，Command + Enter 发送'
               }
-              className="flex-1 resize-none rounded-md border bg-background px-3 py-3 text-lg"
+              className="flex-1 resize-none rounded-md border bg-background px-3 py-2.5 text-base"
               disabled={sending}
             />
-            <Button
-              onClick={handleSend}
-              disabled={!messageInput.trim() || sending}
-              size="lg"
-              className="h-12 w-12 rounded-full p-0"
-            >
-              {sending ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <SendHorizonal className="h-5 w-5" />
-              )}
-            </Button>
+            {sending && selectedFriend?.id === 'ai-assistant' ? (
+              <Button
+                onClick={handleCancelAiRequest}
+                variant="outline"
+                size="lg"
+                className="h-12 w-12 rounded-full p-0"
+                aria-label="取消本次 AI 回复"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSend}
+                disabled={!messageInput.trim() || sending}
+                size="lg"
+                className="h-12 w-12 rounded-full p-0"
+                aria-label="发送消息"
+              >
+                {sending ? (
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <SendHorizonal className="h-5 w-5" />
+                )}
+              </Button>
+            )}
           </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            WebSocket 状态：{isConnected ? '已连接' : '未连接'}
+          <div className="mt-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span>Command + Enter 发送，Enter 换行</span>
+            {sending && selectedFriend?.id === 'ai-assistant' ? (
+              <button
+                type="button"
+                onClick={handleCancelAiRequest}
+                className="rounded-full px-2 py-1 text-destructive transition-colors hover:bg-destructive/10"
+              >
+                取消本次回复
+              </button>
+            ) : (
+              <span>WebSocket 状态：{isConnected ? '已连接' : '未连接'}</span>
+            )}
           </div>
         </div>
       </div>
@@ -906,207 +958,221 @@ export default function MessagesCenterPage() {
         <div className="container-responsive flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageSquarePlus className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">消息中心</span>
+            <span className="text-xl font-bold">
+              {shouldOpenAssistant ? '仓库助手' : '消息中心'}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            <FriendRequestsDrawer />
-          </div>
+          {!shouldOpenAssistant && (
+            <div className="flex items-center gap-2">
+              <FriendRequestsDrawer />
+            </div>
+          )}
         </div>
       </nav>
 
       <div className="flex-1 py-4">
-        <div className="container-responsive max-w-6xl mx-auto h-[1200px] flex gap-6">
-          <aside className="w-72 border border-border/40 bg-card/40 backdrop-blur-sm rounded-2xl flex flex-col overflow-hidden text-foreground">
-            <div className="px-4 py-3 border-b">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={keyword}
-                  onChange={e => setKeyword(e.target.value)}
-                  placeholder="搜索用户"
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {friendsLoading || searchLoading ? (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                  {friendsLoading ? '正在加载好友...' : '正在搜索...'}
+        <div
+          className={cn(
+            'container-responsive mx-auto flex max-w-6xl flex-col gap-4',
+            shouldOpenAssistant
+              ? 'h-[calc(100vh-6rem)] min-h-[640px] max-h-[900px]'
+              : 'lg:h-[calc(100vh-11rem)] lg:min-h-[560px] lg:max-h-[760px] lg:flex-row lg:gap-6'
+          )}
+        >
+          {!shouldOpenAssistant && (
+            <aside className="flex h-[260px] w-full flex-col overflow-hidden rounded-2xl border border-border/40 bg-card/40 text-foreground backdrop-blur-sm lg:h-full lg:w-72">
+              <div className="px-4 py-3 border-b">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={keyword}
+                    onChange={e => setKeyword(e.target.value)}
+                    placeholder="搜索用户添加好友"
+                    className="pl-10"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* 好友列表 */}
-                  {filteredFriends.length > 0 && (
-                    <div className="px-3 py-3">
-                      <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
-                        我的好友
-                      </div>
-                      <div className="space-y-1">
-                        {filteredFriends.map(friend => {
-                          const isSelected = selectedFriend?.id === friend.id;
-                          const avatar = friend.avatar ?? null;
-                          return (
-                            <button
-                              key={friend.id}
-                              onClick={() => void handleSelectFriend(friend)}
-                              className={cn(
-                                'w-full h-16 rounded-xl px-3 py-2 transition-colors flex items-center gap-3 text-left',
-                                isSelected
-                                  ? 'bg-primary/10 text-primary-foreground'
-                                  : 'hover:bg-muted/60'
-                              )}
-                            >
-                              <div className="relative h-11 w-11 flex-shrink-0">
-                                <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
-                                  {avatar ? (
-                                    <Image
-                                      src={avatar}
-                                      alt={friend.username}
-                                      width={44}
-                                      height={44}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <span className="text-base font-semibold">
-                                      {friend.username.charAt(0).toUpperCase()}
-                                    </span>
-                                  )}
-                                </div>
-                                {friend.isOnline && (
-                                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {friendsLoading || searchLoading ? (
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                    {friendsLoading ? '正在加载好友...' : '正在搜索...'}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* 好友列表 */}
+                    {filteredFriends.length > 0 && (
+                      <div className="px-3 py-3">
+                        <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
+                          我的好友
+                        </div>
+                        <div className="space-y-1">
+                          {filteredFriends.map(friend => {
+                            const isSelected = selectedFriend?.id === friend.id;
+                            const avatar = friend.avatar ?? null;
+                            return (
+                              <button
+                                key={friend.id}
+                                onClick={() => void handleSelectFriend(friend)}
+                                className={cn(
+                                  'w-full h-16 rounded-xl px-3 py-2 transition-colors flex items-center gap-3 text-left',
+                                  isSelected
+                                    ? 'bg-primary/10 text-primary-foreground'
+                                    : 'hover:bg-muted/60'
                                 )}
-                              </div>
-                              <div className="min-w-0 flex-1 flex flex-col justify-between py-1">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium truncate text-card-foreground flex-1 pr-2">
-                                    {friend.username}
-                                  </span>
-                                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                    {friend.lastMessage?.createdAt && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(
-                                          friend.lastMessage.createdAt
-                                        ).toLocaleTimeString([], {
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        })}
-                                      </span>
-                                    )}
-                                    {friend.unreadCount > 0 && (
-                                      <span className="inline-flex h-3.5 min-w-[14px] px-1 items-center justify-center rounded-full bg-destructive text-[9px] font-medium text-destructive-foreground mt-0.5">
-                                        {friend.unreadCount > 99
-                                          ? '99+'
-                                          : friend.unreadCount}
+                              >
+                                <div className="relative h-11 w-11 flex-shrink-0">
+                                  <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
+                                    {avatar ? (
+                                      <Image
+                                        src={avatar}
+                                        alt={friend.username}
+                                        width={44}
+                                        height={44}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="text-base font-semibold">
+                                        {friend.username
+                                          .charAt(0)
+                                          .toUpperCase()}
                                       </span>
                                     )}
                                   </div>
+                                  {friend.isOnline && (
+                                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+                                  )}
                                 </div>
-                                <div className="text-base text-muted-foreground truncate leading-tight mt-0.5">
-                                  {friend.lastMessage?.content ?? '暂无消息'}
+                                <div className="min-w-0 flex-1 flex flex-col justify-between py-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium truncate text-card-foreground flex-1 pr-2">
+                                      {friend.username}
+                                    </span>
+                                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                      {friend.lastMessage?.createdAt && (
+                                        <span className="text-xs text-muted-foreground">
+                                          {new Date(
+                                            friend.lastMessage.createdAt
+                                          ).toLocaleTimeString([], {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          })}
+                                        </span>
+                                      )}
+                                      {friend.unreadCount > 0 && (
+                                        <span className="inline-flex h-3.5 min-w-[14px] px-1 items-center justify-center rounded-full bg-destructive text-[9px] font-medium text-destructive-foreground mt-0.5">
+                                          {friend.unreadCount > 99
+                                            ? '99+'
+                                            : friend.unreadCount}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="text-base text-muted-foreground truncate leading-tight mt-0.5">
+                                    {friend.lastMessage?.content ?? '暂无消息'}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 搜索到的外部用户 */}
+                    {keyword.trim() && externalResults.length > 0 && (
+                      <div className="px-3 py-3">
+                        <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
+                          搜索结果
+                        </div>
+                        <div className="space-y-1">
+                          {externalResults.map(user => (
+                            <div
+                              key={user.id}
+                              className="w-full rounded-xl px-3 py-2 border bg-card/50 flex items-center gap-3"
+                            >
+                              <div className="relative h-10 w-10 flex-shrink-0">
+                                <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
+                                  {user.avatar ? (
+                                    <Image
+                                      src={user.avatar}
+                                      alt={user.username}
+                                      width={40}
+                                      height={40}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-sm font-semibold">
+                                      {user.username.charAt(0).toUpperCase()}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 搜索到的外部用户 */}
-                  {keyword.trim() && externalResults.length > 0 && (
-                    <div className="px-3 py-3">
-                      <div className="text-xs font-medium text-muted-foreground mb-2 px-1">
-                        搜索结果
-                      </div>
-                      <div className="space-y-1">
-                        {externalResults.map(user => (
-                          <div
-                            key={user.id}
-                            className="w-full rounded-xl px-3 py-2 border bg-card/50 flex items-center gap-3"
-                          >
-                            <div className="relative h-10 w-10 flex-shrink-0">
-                              <div className="h-full w-full rounded-full overflow-hidden bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white">
-                                {user.avatar ? (
-                                  <Image
-                                    src={user.avatar}
-                                    alt={user.username}
-                                    width={40}
-                                    height={40}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-sm font-semibold">
-                                    {user.username.charAt(0).toUpperCase()}
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium text-card-foreground">
+                                  {user.username}
+                                </div>
+                                {(user.status === 'pendingOutgoing' ||
+                                  user.status === 'pendingIncoming') && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {user.status === 'pendingOutgoing'
+                                      ? '等待对方通过'
+                                      : '请求通过你'}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                {user.status === 'none' && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      void handleSendFriendRequest(user.id)
+                                    }
+                                    className="text-xs"
+                                  >
+                                    添加好友
+                                  </Button>
+                                )}
+                                {user.status === 'pendingOutgoing' && (
+                                  <span className="text-xs text-muted-foreground">
+                                    等待通过
+                                  </span>
+                                )}
+                                {user.status === 'pendingIncoming' && (
+                                  <span className="text-xs text-primary">
+                                    待处理
                                   </span>
                                 )}
                               </div>
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium text-card-foreground">
-                                {user.username}
-                              </div>
-                              {(user.status === 'pendingOutgoing' ||
-                                user.status === 'pendingIncoming') && (
-                                <div className="text-xs text-muted-foreground">
-                                  {user.status === 'pendingOutgoing'
-                                    ? '等待对方通过'
-                                    : '请求通过你'}
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              {user.status === 'none' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    void handleSendFriendRequest(user.id)
-                                  }
-                                  className="text-xs"
-                                >
-                                  添加好友
-                                </Button>
-                              )}
-                              {user.status === 'pendingOutgoing' && (
-                                <span className="text-xs text-muted-foreground">
-                                  等待通过
-                                </span>
-                              )}
-                              {user.status === 'pendingIncoming' && (
-                                <span className="text-xs text-primary">
-                                  待处理
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 无结果提示 */}
-                  {!friendsLoading &&
-                    !searchLoading &&
-                    filteredFriends.length === 0 &&
-                    (!keyword.trim() || externalResults.length === 0) && (
-                      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                        {keyword.trim() ? '未找到匹配的用户' : '暂无好友'}
+                          ))}
+                        </div>
                       </div>
                     )}
-                </div>
-              )}
-            </div>
-          </aside>
 
-          <main className="flex-1 bg-background">
-            <div className="h-full flex flex-col rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border/20">
-                <h2 className="text-lg font-semibold">私信</h2>
-                <div className="flex items-center gap-2"></div>
+                    {/* 无结果提示 */}
+                    {!friendsLoading &&
+                      !searchLoading &&
+                      filteredFriends.length === 0 &&
+                      (!keyword.trim() || externalResults.length === 0) && (
+                        <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                          {keyword.trim() ? '未找到匹配的用户' : '暂无好友'}
+                        </div>
+                      )}
+                  </div>
+                )}
               </div>
-              <div className="flex-1 overflow-hidden rounded-b-2xl bg-card p-6">
-                {renderConversation()}
-              </div>
+            </aside>
+          )}
+
+          <main
+            className={cn(
+              'w-full min-w-0 flex-1 bg-background',
+              shouldOpenAssistant ? 'min-h-0' : 'min-h-[560px] lg:min-h-0'
+            )}
+          >
+            <div className="h-full overflow-hidden rounded-2xl border border-border/40 bg-card p-5 shadow-sm sm:p-6">
+              {renderConversation()}
             </div>
           </main>
         </div>

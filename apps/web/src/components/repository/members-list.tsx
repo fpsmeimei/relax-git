@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/services/apiClient';
+import { useContactsStore } from '@/stores/contacts-store';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -25,7 +33,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Search, UserMinus, Shield, Loader2, Crown } from 'lucide-react';
+import {
+  Search,
+  UserMinus,
+  Shield,
+  Loader2,
+  Crown,
+  UserPlus,
+  Check,
+  Users,
+} from 'lucide-react';
 import { formatSmartTime } from '@/lib/utils/format-time';
 
 interface Member {
@@ -83,11 +100,20 @@ export function MembersList({ repositoryId, myRole }: MembersListProps) {
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [page, setPage] = useState(1);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const { friends, friendsLoading, loadFriends } = useContactsStore();
   const queryClient = useQueryClient();
 
   const canManage = myRole === 'OWNER' || myRole === 'ADMIN';
+
+  useEffect(() => {
+    if (showAddDialog) {
+      void loadFriends();
+    }
+  }, [loadFriends, showAddDialog]);
 
   // 查询成员列表
   const { data, isLoading } = useQuery<MembersResponse>({
@@ -106,6 +132,43 @@ export function MembersList({ repositoryId, myRole }: MembersListProps) {
       return response.data;
     },
   });
+
+  const memberUserIds = useMemo(() => {
+    return new Set(data?.items.map(member => member.user.id) ?? []);
+  }, [data?.items]);
+
+  const addableFriends = useMemo(() => {
+    return friends.filter(friend => !memberUserIds.has(friend.id));
+  }, [friends, memberUserIds]);
+
+  const handleAddFriendMember = async (friendId: string, username: string) => {
+    setAddingId(friendId);
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        created: boolean;
+      }>(
+        `/repositories/${repositoryId}/members`,
+        { userId: friendId, role: 'MEMBER' },
+        { __noRetry: true } as any
+      );
+
+      if (response.data.created) {
+        toast.success(`已将 ${username} 添加为仓库成员`);
+      } else {
+        toast.info(`${username} 已经是仓库成员`);
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ['repository-members', repositoryId],
+      });
+    } catch (error: any) {
+      console.error('添加成员失败:', error);
+      toast.error(error?.message || '添加成员失败，请重试');
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   // 移除成员
   const handleRemoveMember = async (member: Member) => {
@@ -140,7 +203,7 @@ export function MembersList({ repositoryId, myRole }: MembersListProps) {
   return (
     <div className="space-y-4">
       {/* 搜索和筛选 */}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-3 md:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -151,7 +214,7 @@ export function MembersList({ repositoryId, myRole }: MembersListProps) {
           />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-full md:w-32">
             <SelectValue placeholder="全部角色" />
           </SelectTrigger>
           <SelectContent>
@@ -161,6 +224,17 @@ export function MembersList({ repositoryId, myRole }: MembersListProps) {
             <SelectItem value="MEMBER">成员</SelectItem>
           </SelectContent>
         </Select>
+        {canManage && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowAddDialog(true)}
+            className="md:w-auto"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            从好友添加
+          </Button>
+        )}
       </div>
 
       {/* 统计信息 */}
@@ -286,6 +360,104 @@ export function MembersList({ repositoryId, myRole }: MembersListProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent
+          className="w-[560px] max-w-[92vw]"
+          onClose={() => setShowAddDialog(false)}
+        >
+          <DialogHeader>
+            <DialogTitle>从好友添加成员</DialogTitle>
+            <DialogDescription>
+              添加后，该好友会成为普通成员，可参与成员可评论的仓库讨论。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[420px] overflow-y-auto pr-1">
+            {friendsLoading ? (
+              <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                正在加载好友...
+              </div>
+            ) : friends.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <Users className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                <p className="font-medium text-foreground">暂无好友</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  先到消息中心添加好友，再回到这里设置仓库成员。
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {friends.map(friend => {
+                  const alreadyMember = memberUserIds.has(friend.id);
+                  const isAdding = addingId === friend.id;
+                  const avatar = friend.avatar ?? null;
+
+                  return (
+                    <div
+                      key={friend.id}
+                      className="flex items-center justify-between rounded-lg border bg-card p-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarImage src={avatar || undefined} />
+                          <AvatarFallback>
+                            {friend.username.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {friend.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {alreadyMember
+                              ? '已是仓库成员'
+                              : '可添加为普通成员'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={alreadyMember ? 'secondary' : 'default'}
+                        disabled={alreadyMember || isAdding}
+                        onClick={() =>
+                          void handleAddFriendMember(friend.id, friend.username)
+                        }
+                      >
+                        {alreadyMember ? (
+                          <>
+                            <Check className="h-4 w-4 mr-1" />
+                            已添加
+                          </>
+                        ) : isAdding ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            添加中
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="h-4 w-4 mr-1" />
+                            添加
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
+
+                {addableFriends.length === 0 && (
+                  <p className="pt-2 text-center text-xs text-muted-foreground">
+                    当前好友都已经是该仓库成员。
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

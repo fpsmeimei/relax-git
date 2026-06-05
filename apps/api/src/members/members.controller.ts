@@ -73,8 +73,8 @@ export class MembersController {
     @CurrentUser('id') operatorId: string,
     @CurrentUser('role') _userRole: UserRole
   ) {
-    await this.membersService.add(repoId, dto, operatorId);
-    return { success: true };
+    const result = await this.membersService.add(repoId, dto, operatorId);
+    return { success: true, ...result };
   }
 
   @Delete('me')

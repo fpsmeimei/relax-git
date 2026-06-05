@@ -906,10 +906,18 @@ export class CommentsService {
     limit = 20
   ): Promise<{ items: any[]; total: number; page: number; limit: number }> {
     const skip = (page - 1) * limit;
+    const where = {
+      authorId: userId,
+      snapshot: {
+        repository: {
+          isActive: true,
+        },
+      },
+    };
 
     const [items, total] = await Promise.all([
       this.prisma.comment.findMany({
-        where: { authorId: userId },
+        where,
         include: {
           author: {
             select: {
@@ -931,7 +939,7 @@ export class CommentsService {
         skip,
         take: limit,
       }),
-      this.prisma.comment.count({ where: { authorId: userId } }),
+      this.prisma.comment.count({ where }),
     ]);
 
     // 标记 liked（对自己是否点赞意义不大，但保持一致）
@@ -968,6 +976,11 @@ export class CommentsService {
     const where = {
       authorId: userId,
       parentId: { not: null },
+      snapshot: {
+        repository: {
+          isActive: true,
+        },
+      },
     };
 
     const [items, total] = await Promise.all([

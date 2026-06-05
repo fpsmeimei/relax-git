@@ -20,6 +20,7 @@ import {
   Shield,
   Users,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -88,14 +89,36 @@ type ConsoleData = {
   generatedAt: string;
 };
 
-const summaryCards = [
-  { key: 'users', title: '用户总数', icon: Users },
-  { key: 'repositories', title: '仓库总数', icon: FolderGit2 },
-  { key: 'publishedRepositories', title: '已发布仓库', icon: Activity },
-  { key: 'comments', title: '评论总数', icon: MessageSquare },
-  { key: 'activeSessionSnapshots', title: '活跃会话快照', icon: Database },
-  { key: 'admins', title: '管理员', icon: Shield },
-] as const;
+type SummaryCard = {
+  title: string;
+  icon: LucideIcon;
+  getValue: (overview: ConsoleData['overview']) => number;
+};
+
+const summaryCards: SummaryCard[] = [
+  { title: '用户总数', icon: Users, getValue: overview => overview.users },
+  {
+    title: '仓库总数',
+    icon: FolderGit2,
+    getValue: overview => overview.repositories,
+  },
+  {
+    title: '已发布仓库',
+    icon: Activity,
+    getValue: overview => overview.publishedRepositories,
+  },
+  {
+    title: '评论总数',
+    icon: MessageSquare,
+    getValue: overview => overview.comments,
+  },
+  {
+    title: '快照总数',
+    icon: Database,
+    getValue: overview => overview.baseSnapshots + overview.sessionSnapshots,
+  },
+  { title: '管理员', icon: Shield, getValue: overview => overview.admins },
+];
 
 function StatusBadge({ healthy, label }: { healthy: boolean; label: string }) {
   return <Badge variant={healthy ? 'success' : 'destructive'}>{label}</Badge>;
@@ -218,9 +241,9 @@ export default function ConsolePage() {
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {summaryCards.map(item => {
             const Icon = item.icon;
-            const value = data.overview[item.key];
+            const value = item.getValue(data.overview);
             return (
-              <Card key={item.key}>
+              <Card key={item.title}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                   <CardTitle className="text-base">{item.title}</CardTitle>
                   <Icon className="h-4 w-4 text-muted-foreground" />

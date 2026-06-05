@@ -525,7 +525,7 @@ export function ImportRepositoryForm({
                   <div className="text-base font-medium">内部</div>
                 </div>
                 <div className="mt-2 text-sm text-muted-foreground">
-                  组织成员可访问
+                  公开可读，成员可评论
                 </div>
               </button>
             </div>

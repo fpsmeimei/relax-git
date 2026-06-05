@@ -326,23 +326,23 @@ export default function RepositorySettingsDialog({
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
       <DialogContent
         onClose={onClose}
-        className="max-w-6xl p-0 border-0 sm:rounded-3xl shadow-2xl overflow-hidden bg-gradient-to-br from-background via-background to-muted/20"
+        className="flex max-h-[calc(100dvh-2rem)] max-w-5xl flex-col overflow-hidden border-0 bg-gradient-to-br from-background via-background to-muted/20 p-0 shadow-2xl sm:rounded-3xl"
       >
-        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-8 pb-6">
+        <div className="shrink-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 pb-4">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <DialogTitle className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-xl font-bold text-transparent">
               仓库设置
             </DialogTitle>
-            <DialogDescription className="text-base text-muted-foreground mt-2">
+            <DialogDescription className="mt-1 text-sm text-muted-foreground">
               编辑仓库基本信息、可见性、发布状态与社区封面
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="px-8 pb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="min-h-0 overflow-y-auto px-6 pb-6">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             {/* 基本信息 */}
-            <div className="space-y-8">
+            <div className="space-y-5">
               <div className="space-y-3">
                 <Label
                   htmlFor="repo-name"
@@ -373,7 +373,7 @@ export default function RepositorySettingsDialog({
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="为仓库添加一句话简介"
-                  className="min-h-[100px] border-2 focus:border-primary/50 transition-all duration-200 resize-none"
+                  className="min-h-20 resize-none border-2 transition-all duration-200 focus:border-primary/50"
                 />
               </div>
               <div className="space-y-3">
@@ -407,7 +407,7 @@ export default function RepositorySettingsDialog({
                   </li>
                 </ul>
               </div>
-              <div className="flex items-center justify-between bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl p-5 border border-primary/20">
+              <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 p-4">
                 <div className="mr-4">
                   <Label
                     htmlFor="publish-toggle"
@@ -487,12 +487,12 @@ export default function RepositorySettingsDialog({
             </div>
 
             {/* 社区封面 */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               <Label className="text-sm font-semibold text-foreground">
                 社区封面
               </Label>
               {/* 预览图：横向封面效果 */}
-              <div className="relative w-full h-48 md:h-60 rounded-2xl overflow-hidden bg-gradient-to-br from-muted/50 to-muted border-2 border-dashed border-muted-foreground/20 shadow-inner">
+              <div className="relative h-36 w-full overflow-hidden rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-gradient-to-br from-muted/50 to-muted shadow-inner md:h-40">
                 {currentCoverUrl ? (
                   <Image
                     src={currentCoverUrl}
@@ -511,13 +511,13 @@ export default function RepositorySettingsDialog({
                 )}
               </div>
 
-              <Separator className="my-4 bg-gradient-to-r from-transparent via-border to-transparent" />
+              <Separator className="my-3 bg-gradient-to-r from-transparent via-border to-transparent" />
 
               {/* 下方正方形选择/裁剪区域：左右与上方预览对齐（填满整列宽度） */}
               <div className="space-y-4 flex flex-col items-stretch">
                 <div
                   className={cn(
-                    'relative w-full aspect-[16/9] rounded-2xl border-2 border-dashed bg-gradient-to-br from-muted/20 to-muted/40 overflow-hidden transition-all duration-200',
+                    'relative h-44 w-full overflow-hidden rounded-2xl border-2 border-dashed bg-gradient-to-br from-muted/20 to-muted/40 transition-all duration-200 md:h-52',
                     !imageSrc
                       ? 'cursor-pointer hover:border-primary/50 hover:bg-primary/5'
                       : 'cursor-default border-primary/30'
@@ -557,7 +557,7 @@ export default function RepositorySettingsDialog({
                 </div>
 
                 {imageSrc && (
-                  <div className="flex items-center gap-4 w-full bg-muted/30 rounded-xl p-4">
+                  <div className="flex w-full items-center gap-4 rounded-xl bg-muted/30 p-3">
                     <span className="text-sm font-medium text-muted-foreground shrink-0">
                       缩放调节
                     </span>
@@ -577,7 +577,7 @@ export default function RepositorySettingsDialog({
                 )}
 
                 {/* 重置按钮和文件格式说明 */}
-                <div className="flex items-center justify-between gap-4 w-full">
+                <div className="flex w-full flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     {imageSrc && (
                       <Button
@@ -604,7 +604,7 @@ export default function RepositorySettingsDialog({
                 </div>
 
                 {/* 上传封面按钮 - 与左侧删除仓库按钮对齐 */}
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end pt-1">
                   <Button
                     onClick={doUploadCover}
                     disabled={!imageSrc || uploading}

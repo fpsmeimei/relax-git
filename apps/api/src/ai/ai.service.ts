@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RepositoryVisibility } from '@relax-git/shared/generated/prisma-client';
 import OpenAI from 'openai';
+import { PrismaService } from '../database/prisma.service';
+
+const DEFAULT_DEEPSEEK_MODEL = 'deepseek-v4-flash';
 
 /**
  * AI 服务 - 集成 DeepSeek API
@@ -11,8 +15,15 @@ export class AiService {
   private readonly logger = new Logger(AiService.name);
   private client: OpenAI | null = null;
   private isEnabled = false;
+  private readonly modelName: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly prisma: PrismaService
+  ) {
+    this.modelName =
+      this.configService.get<string>('DEEPSEEK_MODEL')?.trim() ||
+      DEFAULT_DEEPSEEK_MODEL;
     this.initializeClient();
   }
 
@@ -32,7 +43,9 @@ export class AiService {
         baseURL: 'https://api.deepseek.com',
       });
       this.isEnabled = true;
-      this.logger.log('DeepSeek v3.2 initialized successfully');
+      this.logger.log(
+        `DeepSeek AI initialized successfully (model: ${this.modelName})`
+      );
     } catch (error) {
       this.logger.error('Failed to initialize DeepSeek AI:', error);
     }
@@ -45,6 +58,10 @@ export class AiService {
     return this.isEnabled && this.client !== null;
   }
 
+  getModelName(): string {
+    return this.modelName;
+  }
+
   /**
    * 仓库助手问答（支持三种模式）
    * @param message 用户消息
@@ -55,7 +72,12 @@ export class AiService {
     message: string,
     conversationHistory: Array<{ role: string; content: string }> = [],
     mode: 'discovery' | 'thinking' | 'chat' = 'discovery'
-  ): Promise<{ reply: string; reasoning?: string }> {
+  ): Promise<{
+    reply: string;
+    reasoning?: string;
+    elapsedMs?: number;
+    model?: string;
+  }> {
     if (!this.isAvailable()) {
       return {
         reply: '仓库助手当前不可用，请稍后再试。',
@@ -65,11 +87,12 @@ export class AiService {
     try {
       // 根据模式选择系统提示词
       const systemPrompt = this.getSystemPrompt(mode);
+      const repositoryContext = await this.buildRepositoryContext(message);
 
       const messages: any[] = [
         {
           role: 'system',
-          content: systemPrompt,
+          content: `${systemPrompt}\n\n${repositoryContext}`,
         },
         ...conversationHistory.map(msg => ({
           role: msg.role,
@@ -81,37 +104,47 @@ export class AiService {
         },
       ];
 
-      this.logger.debug(
-        `Sending repository assistant request to DeepSeek v3.2 (mode: ${mode})`
+      this.logger.log(
+        `Sending repository assistant request to DeepSeek (model: ${this.modelName}, mode: ${mode})`
       );
 
       // 根据模式调整参数
       const params = this.getModelParams(mode);
 
       // 根据模式调整超时时间
-      const timeout = mode === 'thinking' ? 30000 : 60000; // 思考模式30秒，其他60秒
+      const timeout = 45000;
+      const startedAt = Date.now();
 
       const response = await this.client!.chat.completions.create(
         {
-          model: 'deepseek-chat',
+          model: this.modelName,
           messages,
           ...params,
+          ...this.getThinkingParams(mode),
           stream: false,
-        },
+        } as any,
         { timeout }
       );
+      const elapsedMs = Date.now() - startedAt;
 
       const content =
         response.choices[0]?.message?.content ||
         '抱歉，我现在无法完成这次回答。';
+      const reasoning = (response.choices[0]?.message as any)
+        ?.reasoning_content;
 
-      this.logger.debug(`DeepSeek v3.2 response received (mode: ${mode})`);
+      this.logger.log(
+        `DeepSeek response received (model: ${this.modelName}, mode: ${mode}, elapsedMs: ${elapsedMs})`
+      );
 
       return {
         reply: content,
+        ...(reasoning ? { reasoning } : {}),
+        elapsedMs,
+        model: this.modelName,
       };
     } catch (error: any) {
-      this.logger.error('DeepSeek v3.2 error:', error);
+      this.logger.error(`DeepSeek error (model: ${this.modelName}):`, error);
       this.logger.error('Error details:', {
         status: error?.status,
         message: error?.message,
@@ -152,7 +185,7 @@ export class AiService {
 
     try {
       const response = await this.client!.chat.completions.create({
-        model: 'deepseek-chat',
+        model: this.modelName,
         messages: [
           {
             role: 'system',
@@ -198,7 +231,7 @@ feat: 添加用户头像上传功能
 
     try {
       const response = await this.client!.chat.completions.create({
-        model: 'deepseek-chat',
+        model: this.modelName,
         messages: [
           {
             role: 'system',
@@ -311,6 +344,125 @@ ${formatInstruction}
     }
   }
 
+  private async buildRepositoryContext(message: string): Promise<string> {
+    try {
+      const baseWhere = {
+        isActive: true,
+        isPublished: true,
+        visibility: {
+          in: [RepositoryVisibility.PUBLIC, RepositoryVisibility.INTERNAL],
+        },
+      };
+      const terms = this.extractRepositorySearchTerms(message);
+      const matchWhere =
+        terms.length > 0
+          ? {
+              ...baseWhere,
+              OR: terms.flatMap(term => [
+                { name: { contains: term, mode: 'insensitive' } },
+                { description: { contains: term, mode: 'insensitive' } },
+                { language: { contains: term, mode: 'insensitive' } },
+                { tags: { has: term } },
+              ]),
+            }
+          : baseWhere;
+
+      const select = {
+        id: true,
+        name: true,
+        description: true,
+        tags: true,
+        language: true,
+        stars: true,
+        viewCount: true,
+        trendingScore: true,
+        updatedAt: true,
+      };
+      const orderBy = [
+        { trendingScore: 'desc' },
+        { stars: 'desc' },
+        { viewCount: 'desc' },
+        { updatedAt: 'desc' },
+      ];
+
+      const [matched, popular] = await Promise.all([
+        this.prisma.repository.findMany({
+          where: matchWhere as any,
+          select,
+          orderBy: orderBy as any,
+          take: 8,
+        }),
+        this.prisma.repository.findMany({
+          where: baseWhere as any,
+          select,
+          orderBy: orderBy as any,
+          take: 8,
+        }),
+      ]);
+
+      const seen = new Set<string>();
+      const repositories = [...matched, ...popular].filter(repo => {
+        if (seen.has(repo.id)) return false;
+        seen.add(repo.id);
+        return true;
+      });
+
+      if (repositories.length === 0) {
+        return [
+          '本地社区仓库数据：当前没有已发布的公开或内部仓库。',
+          '回答仓库推荐问题时，请直接说明暂无本地社区数据，不要编造仓库。',
+        ].join('\n');
+      }
+
+      const lines = repositories.slice(0, 10).map((repo, index) => {
+        const tags =
+          Array.isArray(repo.tags) && repo.tags.length > 0
+            ? repo.tags.join(', ')
+            : '无标签';
+        const description =
+          repo.description?.replace(/\s+/g, ' ').trim() || '暂无简介';
+        return `${index + 1}. ${repo.name} | 语言: ${repo.language || '未知'} | 标签: ${tags} | 点赞: ${repo.stars} | 浏览: ${repo.viewCount} | 热度: ${repo.trendingScore.toFixed(2)} | 简介: ${description}`;
+      });
+
+      return [
+        '本地社区仓库数据（仅包含已发布的公开/内部仓库，优先使用这些数据回答推荐、检索和简介问题）：',
+        ...lines,
+        '回答约束：推荐仓库时优先引用上面的真实仓库；如果用户方向与数据不匹配，请说明未找到完全匹配项并给出相近仓库。',
+      ].join('\n');
+    } catch (error) {
+      this.logger.warn(`Failed to build repository context: ${error}`);
+      return '本地社区仓库数据暂时不可读取。回答时请说明数据源暂不可用，避免编造本地仓库。';
+    }
+  }
+
+  private extractRepositorySearchTerms(message: string): string[] {
+    const ignore = new Set([
+      '帮我',
+      '请帮',
+      '推荐',
+      '仓库',
+      '项目',
+      '方向',
+      '简介',
+      '介绍',
+      '热门',
+      '检索',
+      '查找',
+      '一下',
+      '目前',
+      '前十',
+    ]);
+    const matches =
+      message.match(/[A-Za-z0-9+#._-]{2,}|[\u4e00-\u9fff]{2,}/g) ?? [];
+    return Array.from(
+      new Set(
+        matches
+          .map(term => term.trim())
+          .filter(term => term.length >= 2 && !ignore.has(term))
+      )
+    ).slice(0, 8);
+  }
+
   /**
    * 根据模式获取模型参数（完全对标 DeepSeek 官网配置）
    */
@@ -325,9 +477,9 @@ ${formatInstruction}
       case 'discovery':
         // 探索模式 - 对标官网 Creative 模式
         return {
-          temperature: 1.0, // 官网 Creative 标准值
-          max_tokens: 4096, // 官网标准长输出
-          top_p: 0.95, // 官网默认值
+          temperature: 0.7,
+          max_tokens: 900,
+          top_p: 0.9,
           frequency_penalty: 0.0, // 官网默认（让模型自然发挥）
           presence_penalty: 0.0, // 官网默认
         };
@@ -335,9 +487,9 @@ ${formatInstruction}
       case 'thinking':
         // 思考模式 - 平衡深度与速度
         return {
-          temperature: 1.1, // 保持创造力但更聚焦
-          max_tokens: 4096, // 足够深度分析，响应更快
-          top_p: 0.92, // 稍微降低随机性，提升速度
+          temperature: 0.8,
+          max_tokens: 1200,
+          top_p: 0.9,
           frequency_penalty: 0.0, // 让模型充分思考
           presence_penalty: 0.0, // 鼓励深度探讨
         };
@@ -345,9 +497,9 @@ ${formatInstruction}
       case 'chat':
         // 补充问答模式
         return {
-          temperature: 1.0, // 官网标准对话温度
-          max_tokens: 4096, // 官网标准输出长度
-          top_p: 0.95, // 官网默认值
+          temperature: 0.7,
+          max_tokens: 800,
+          top_p: 0.9,
           frequency_penalty: 0.0, // 自然对话，不限制重复
           presence_penalty: 0.0, // 让对话自然流畅
         };
@@ -355,5 +507,19 @@ ${formatInstruction}
       default:
         return this.getModelParams('discovery');
     }
+  }
+
+  private getThinkingParams(mode: 'discovery' | 'thinking' | 'chat') {
+    if (mode === 'thinking') {
+      return {
+        thinking: { type: 'enabled' },
+        reasoning_effort: 'high',
+      };
+    }
+
+    return {
+      // deepseek-v4-flash 默认开启 thinking；普通聊天显式关闭，避免非流式回复被推慢。
+      thinking: { type: 'disabled' },
+    };
   }
 }

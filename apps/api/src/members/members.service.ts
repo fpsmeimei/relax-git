@@ -14,14 +14,32 @@ export class MembersService {
   async add(
     repoId: string,
     dto: AddMemberDto,
-    _operatorId: string
-  ): Promise<void> {
+    operatorId: string
+  ): Promise<{ created: boolean }> {
     const role = dto.role ?? MemberRole.MEMBER;
-    await this.prisma.member.upsert({
+
+    const existed = await this.prisma.member.findUnique({
       where: { repoId_userId: { repoId, userId: dto.userId } } as any,
-      update: { role },
-      create: { repoId, userId: dto.userId, role },
     });
+    if (existed) return { created: false };
+
+    if (role === MemberRole.OWNER) {
+      const operator = await this.prisma.member.findUnique({
+        where: { repoId_userId: { repoId, userId: operatorId } } as any,
+        select: { role: true },
+      });
+      if (operator?.role !== MemberRole.OWNER) {
+        throw new ForbiddenException({
+          code: 'ROLE_OPERATION_FORBIDDEN',
+          message: '仅 OWNER 可执行该操作',
+        });
+      }
+    }
+
+    await this.prisma.member.create({
+      data: { repoId, userId: dto.userId, role },
+    });
+    return { created: true };
   }
 
   async remove(

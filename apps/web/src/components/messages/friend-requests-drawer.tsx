@@ -62,8 +62,14 @@ export function FriendRequestsDrawer() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button size="sm" variant="ghost" className="relative">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="relative gap-1.5 rounded-full border border-border/50 bg-background/60 px-3"
+          aria-label="查看好友申请"
+        >
           <Bell className="h-4 w-4" />
+          <span className="text-sm">好友申请</span>
           {unreadRequestCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium">
               {unreadRequestCount > 99 ? '99+' : unreadRequestCount}

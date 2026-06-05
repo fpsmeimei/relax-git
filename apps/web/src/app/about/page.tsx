@@ -1,6 +1,5 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
   Bell,
   Bot,
@@ -9,8 +8,6 @@ import {
   MessageSquare,
   Shield,
 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import Link from 'next/link';
 
 const coreModules = [
   {
@@ -49,10 +46,6 @@ const supportModules = [
 ];
 
 export default function AboutPage() {
-  const { data: session } = useSession();
-  const isAuthenticated = !!session?.user;
-  const isAdmin = session?.user?.role === 'ADMIN';
-
   return (
     <div className="min-h-screen bg-background">
       <main className="container-responsive py-16 md:py-24">
@@ -68,36 +61,6 @@ export default function AboutPage() {
               一个围绕仓库导入、代码快照浏览、协作评论与社区展示构建的全栈项目。
               这一版本的目标不是继续堆叠功能，而是把系统收敛成一个更适合毕业答辩与本地稳定演示的完整产品。
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Button asChild size="lg">
-              <Link
-                href={
-                  isAuthenticated
-                    ? '/community'
-                    : '/auth/login?callbackUrl=%2Fcommunity'
-                }
-              >
-                进入社区
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link
-                href={
-                  isAuthenticated
-                    ? '/repositories/import'
-                    : '/auth/login?callbackUrl=%2Frepositories%2Fimport'
-                }
-              >
-                导入仓库
-              </Link>
-            </Button>
-            {isAdmin && (
-              <Button asChild variant="secondary" size="lg">
-                <Link href="/console">进入控制台</Link>
-              </Button>
-            )}
           </div>
         </section>
 
@@ -161,24 +124,6 @@ export default function AboutPage() {
               );
             })}
           </div>
-
-          {isAdmin && (
-            <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    管理员演示入口已就绪
-                  </h3>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    你当前账号具备管理员权限，可以直接进入控制台查看平台概览、仓库动态、内容动态与系统状态。
-                  </p>
-                </div>
-                <Button asChild>
-                  <Link href="/console">打开控制台</Link>
-                </Button>
-              </div>
-            </div>
-          )}
         </section>
 
         <section className="mx-auto mt-16 max-w-5xl rounded-3xl border border-border/60 bg-muted/20 p-8 md:p-10">

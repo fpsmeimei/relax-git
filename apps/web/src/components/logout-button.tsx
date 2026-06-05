@@ -49,7 +49,11 @@ export function LogoutButton({
       logout();
       setPending(false);
       setConfirmOpen(false);
-      router.push('/');
+      if (typeof window !== 'undefined') {
+        window.location.replace('/');
+        return;
+      }
+      router.replace('/');
     }
   };
 

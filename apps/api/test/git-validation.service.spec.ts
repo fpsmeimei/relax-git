@@ -3,7 +3,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { GitValidationService } from '../src/repositories/services/git-validation.service';
+import {
+  buildGitCommandEnv,
+  GitValidationService,
+} from '../src/repositories/services/git-validation.service';
 
 const execFileAsync = promisify(execFile);
 
@@ -55,5 +58,37 @@ describe('GitValidationService local repositories', () => {
     const sha = await service.getCommitSha(repoPath, 'main');
 
     expect(sha).toMatch(/^[0-9a-f]{40}$/);
+  });
+});
+
+describe('GitValidationService proxy environment', () => {
+  it('does not pass Docker loopback proxy settings to git commands', () => {
+    const env = buildGitCommandEnv(
+      {
+        GIT_HTTP_PROXY: 'http://127.0.0.1:7899',
+        GIT_HTTPS_PROXY: 'http://localhost:7899',
+      },
+      { isContainer: true }
+    );
+
+    expect(env['HTTP_PROXY']).toBeUndefined();
+    expect(env['http_proxy']).toBeUndefined();
+    expect(env['HTTPS_PROXY']).toBeUndefined();
+    expect(env['https_proxy']).toBeUndefined();
+  });
+
+  it('keeps Docker-compatible host proxy settings for git commands', () => {
+    const env = buildGitCommandEnv(
+      {
+        GIT_HTTP_PROXY: 'http://host.docker.internal:7899',
+        GIT_HTTPS_PROXY: 'http://host.docker.internal:7899',
+      },
+      { isContainer: true }
+    );
+
+    expect(env['HTTP_PROXY']).toBe('http://host.docker.internal:7899');
+    expect(env['http_proxy']).toBe('http://host.docker.internal:7899');
+    expect(env['HTTPS_PROXY']).toBe('http://host.docker.internal:7899');
+    expect(env['https_proxy']).toBe('http://host.docker.internal:7899');
   });
 });

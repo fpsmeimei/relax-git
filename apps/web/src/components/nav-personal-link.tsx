@@ -17,6 +17,7 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
   const { unreadCount, setUnreadCount } = useNotificationsStore();
   const { isAuthenticated, isInitialized, user } = useAuth();
   const [avatarError, setAvatarError] = useState(false);
+  const unreadLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   const { currentAvatar, fetchLatestAvatar } = useAvatarSync(user?.avatar);
 
@@ -85,9 +86,19 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
     <div className={cn('relative flex items-center gap-3.5', className)}>
       <Link
         href="/me"
-        className="relative flex items-center justify-center transition-opacity duration-200 hover:opacity-80"
+        aria-label={
+          unreadCount > 0 ? `个人中心，${unreadLabel} 条未读通知` : '个人中心'
+        }
+        className="group relative flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200 hover:bg-accent/70"
       >
-        <div className="relative h-9 w-9 overflow-hidden rounded-full border border-border/20 shadow-md">
+        <div
+          className={cn(
+            'relative h-9 w-9 overflow-hidden rounded-full border bg-background shadow-sm transition-all duration-200 group-hover:shadow-md',
+            unreadCount > 0
+              ? 'border-primary/35 ring-2 ring-primary/10'
+              : 'border-border/25'
+          )}
+        >
           {(currentAvatar || user?.avatar) && !avatarError ? (
             <Image
               src={currentAvatar || user?.avatar || ''}
@@ -107,12 +118,12 @@ export function NavPersonalLink({ className }: NavPersonalLinkProps) {
               </span>
             </div>
           )}
-          {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-medium text-white ring-2 ring-background">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </span>
-          )}
         </div>
+        {unreadCount > 0 && (
+          <span className="pointer-events-none absolute right-0 top-0 inline-flex h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full border-2 border-background bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow-[0_6px_14px_rgba(59,130,246,0.28)]">
+            {unreadLabel}
+          </span>
+        )}
       </Link>
     </div>
   );

@@ -35,9 +35,191 @@ services:
     networks:
       - relax-git-network
 
+  node-deps:
+    build:
+      context: .
+      dockerfile: docker/dev/node.Dockerfile
+    container_name: relax-git-node-deps
+    working_dir: /workspace
+    environment:
+      HUSKY: "0"
+    volumes:
+      - .:/workspace:cached
+      - pnpm_store:/pnpm/store
+      - node_modules:/workspace/node_modules
+      - api_node_modules:/workspace/apps/api/node_modules
+      - web_node_modules:/workspace/apps/web/node_modules
+      - shared_node_modules:/workspace/libs/shared/node_modules
+    command: >
+      sh -lc "
+        pnpm config set store-dir /pnpm/store &&
+        pnpm install --frozen-lockfile &&
+        pnpm -C apps/api db:generate &&
+        pnpm -C libs/shared build
+      "
+    networks:
+      - relax-git-network
+
+  db-init:
+    build:
+      context: .
+      dockerfile: docker/dev/node.Dockerfile
+    container_name: relax-git-db-init
+    working_dir: /workspace
+    env_file:
+      - apps/api/.env
+    environment:
+      HUSKY: "0"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/relax_git_dev
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - .:/workspace:cached
+      - pnpm_store:/pnpm/store
+      - node_modules:/workspace/node_modules
+      - api_node_modules:/workspace/apps/api/node_modules
+      - web_node_modules:/workspace/apps/web/node_modules
+      - shared_node_modules:/workspace/libs/shared/node_modules
+    command: >
+      sh -lc "
+        pnpm config set store-dir /pnpm/store &&
+        pnpm -C apps/api db:push
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+      node-deps:
+        condition: service_completed_successfully
+    networks:
+      - relax-git-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/dev/node.Dockerfile
+    container_name: relax-git-api
+    working_dir: /workspace
+    env_file:
+      - apps/api/.env
+    environment:
+      HUSKY: "0"
+      NODE_ENV: development
+      API_PORT: "3001"
+      CORS_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/relax_git_dev
+      REDIS_URL: redis://redis:6379
+      WORKER_HEALTH_URL: http://worker:3002/health
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/workspace:cached
+      - ${HOME}:${HOME}:ro,cached
+      - pnpm_store:/pnpm/store
+      - node_modules:/workspace/node_modules
+      - api_node_modules:/workspace/apps/api/node_modules
+      - shared_node_modules:/workspace/libs/shared/node_modules
+      - ./apps/api/uploads:/workspace/apps/api/uploads:cached
+      - worker_data:/workspace/apps/worker/data
+    command: pnpm -C apps/api dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - relax-git-network
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/dev/node.Dockerfile
+    container_name: relax-git-web
+    working_dir: /workspace
+    env_file:
+      - apps/web/.env
+    environment:
+      HUSKY: "0"
+      NODE_ENV: development
+      API_URL: http://api:3001
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: /api
+      NEXTAUTH_URL: http://localhost:3000
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/workspace:cached
+      - pnpm_store:/pnpm/store
+      - node_modules:/workspace/node_modules
+      - web_node_modules:/workspace/apps/web/node_modules
+      - shared_node_modules:/workspace/libs/shared/node_modules
+    command: pnpm -C apps/web dev --hostname 0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/community"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - relax-git-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/dev/worker.Dockerfile
+    container_name: relax-git-worker
+    working_dir: /workspace/apps/worker
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/relax_git_dev?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      WORKER_CONCURRENCY: "3"
+      WORKER_QUEUE_NAME: snapshot:queue
+      WORKER_WORK_DIR: /workspace/apps/worker/data/worker
+      GIT_TEMP_DIR: /workspace/apps/worker/data/git/worktrees
+      GIT_BUNDLE_DIR: /workspace/apps/worker/data/git/bundles
+      LOG_LEVEL: info
+    ports:
+      - "3002:3002"
+    volumes:
+      - .:/workspace:cached
+      - ${HOME}:${HOME}:ro,cached
+      - go_pkg_mod:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+      - worker_data:/workspace/apps/worker/data
+    command: sh /workspace/docker/dev/worker-dev.sh
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    networks:
+      - relax-git-network
+
 volumes:
   postgres_data:
   redis_data:
+  pnpm_store:
+  node_modules:
+  api_node_modules:
+  web_node_modules:
+  shared_node_modules:
+  worker_data:
+  go_pkg_mod:
+  go_build_cache:
 
 networks:
   relax-git-network:

@@ -2,34 +2,35 @@
 
 import { Sparkles } from 'lucide-react';
 
+const ASSISTANT_MODEL_LABEL = 'DeepSeek V4 Flash';
+
 export function AssistantWelcome() {
   return (
-    <div className="flex min-h-[500px] items-center justify-center px-6 py-12">
-      <div className="w-full max-w-3xl space-y-8">
-        <div className="space-y-4 text-center">
-          <div className="relative inline-flex items-center justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-[#88C0D0] to-[#81A1C1] shadow-lg shadow-[#88C0D0]/20">
-              <Sparkles className="h-10 w-10 text-white" strokeWidth={1.5} />
-            </div>
+    <div className="flex min-h-[240px] items-center justify-center px-4 py-6">
+      <div className="w-full max-w-2xl space-y-5">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary shadow-sm">
+            <Sparkles className="h-7 w-7" strokeWidth={1.8} />
           </div>
 
-          <div className="space-y-2">
-            <h1 className="text-3xl font-light tracking-wide text-[#ECEFF4]">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold text-foreground">
               仓库发现助手
             </h1>
-            <p className="text-sm font-light text-[#D8DEE9]/50">
-              面向 Relax-Git 社区的仓库推荐、方向检索与仓库简介生成 · 由
-              DeepSeek v3.2 驱动
+            <p className="mx-auto max-w-xl text-sm leading-6 text-muted-foreground">
+              {`面向 Relax-Git 社区的仓库推荐、方向检索与仓库简介生成 · 由 ${ASSISTANT_MODEL_LABEL} 驱动`}
             </p>
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-[#4C566A]/30 bg-[#3B4252]/70 p-4 text-sm text-[#D8DEE9]/80">
+          <div className="rounded-xl border border-border/70 bg-muted/35 p-3 text-sm leading-6 text-foreground shadow-sm">
+            <div className="mb-2 h-1 w-10 rounded-full bg-primary/60" />
             我可以根据社区数据推荐热门仓库，或者帮你按 AI Agent、前端工程化、Go
             并发这类方向寻找值得看的项目。
           </div>
-          <div className="rounded-2xl border border-[#4C566A]/30 bg-[#3B4252]/70 p-4 text-sm text-[#D8DEE9]/80">
+          <div className="rounded-xl border border-border/70 bg-muted/35 p-3 text-sm leading-6 text-foreground shadow-sm">
+            <div className="mb-2 h-1 w-10 rounded-full bg-primary/60" />
             如果你已经选中某个仓库，我也可以先给出一个简洁介绍，帮助你判断它适不适合继续深入阅读和讨论。
           </div>
         </div>

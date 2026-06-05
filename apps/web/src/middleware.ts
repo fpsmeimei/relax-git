@@ -2,6 +2,17 @@ import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 const HOME_ROUTE = process.env['NEXT_PUBLIC_HOME_ROUTE'] || '/';
+const PUBLIC_ROUTES = new Set(['/', '/about', '/health']);
+const PUBLIC_ROUTE_PREFIXES = ['/community'];
+
+function isPublicRoute(pathname: string) {
+  return (
+    PUBLIC_ROUTES.has(pathname) ||
+    PUBLIC_ROUTE_PREFIXES.some(
+      prefix => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    )
+  );
+}
 
 // 🔥 NextAuth middleware 包装（内联导出，避免类型推断报错）
 const _mw = auth((req: any) => {
@@ -9,9 +20,8 @@ const _mw = auth((req: any) => {
   const isLoggedIn = !!req.auth;
 
   const isAuthPage = nextUrl.pathname.startsWith('/auth');
-  // 🔥 公开页面：仅 首页 + 认证页面 + 健康检查
-  const isPublicPage =
-    nextUrl.pathname === '/' || isAuthPage || nextUrl.pathname === '/health';
+  // 公开页面：介绍页对未登录访客开放，其余功能页按需登录
+  const isPublicPage = isAuthPage || isPublicRoute(nextUrl.pathname);
 
   // 已登录用户访问登录/注册页，重定向到首页（可配置）
   if (isLoggedIn && isAuthPage) {

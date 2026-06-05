@@ -86,11 +86,14 @@ export class CommunityService {
       search,
     } = query;
 
-    // 构建查询条件 - 社区显示所有可见性的仓库（包括私有）
+    // 构建查询条件 - 社区只展示已发布且可公开发现的仓库。
+    // PRIVATE 仓库不进入社区 feed，避免列表页暴露受限仓库信息。
     const where: any = {
       isPublished: true,
       isActive: true,
-      // 移除 visibility 过滤，允许所有类型仓库在社区显示
+      visibility: {
+        in: [RepositoryVisibility.PUBLIC, RepositoryVisibility.INTERNAL],
+      },
     };
 
     // 语言过滤

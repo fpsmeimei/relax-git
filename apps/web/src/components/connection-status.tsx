@@ -2,10 +2,16 @@
 
 import { cn } from '@/lib/utils';
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 import { useSocket } from './socket-provider';
 
 export function ConnectionStatus() {
   const { isConnected, isConnecting } = useSocket();
+  const { isAuthenticated, isInitialized } = useAuth();
+
+  if (!isInitialized || !isAuthenticated) {
+    return null;
+  }
 
   // 如果已连接且不在连接中，不显示状态指示器
   if (isConnected && !isConnecting) {

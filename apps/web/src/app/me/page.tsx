@@ -10,6 +10,7 @@ import { useAuth } from '@/stores/auth-store';
 import { useNotificationsStore } from '@/stores/notifications-store';
 import { Bell, MessageCircle, Settings, User, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface NotificationDto {
@@ -65,7 +66,8 @@ interface CommentRespDto {
 }
 
 export default function MePage() {
-  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, isInitialized } = useAuth();
   const [tab, setTab] = useState<'notifications' | 'my-comments' | 'overview'>(
     'overview'
   );
@@ -83,6 +85,12 @@ export default function MePage() {
   const [myComments, setMyComments] = useState<CommentRespDto[]>([]);
   const [myCommentsTotal, setMyCommentsTotal] = useState(0);
   const [loadingComments, setLoadingComments] = useState(false);
+
+  useEffect(() => {
+    if (isInitialized && !isAuthenticated) {
+      router.replace('/auth/login?callbackUrl=%2Fme');
+    }
+  }, [isAuthenticated, isInitialized, router]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -175,6 +183,21 @@ export default function MePage() {
       // 忽略失败（不回滚），刷新列表时会以服务端为准
     }
   };
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">正在加载...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="container mx-auto px-4 py-6">

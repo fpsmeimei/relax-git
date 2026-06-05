@@ -51,6 +51,12 @@ class ChatResponseDto {
   @ApiProperty({ required: false })
   reasoning?: string;
 
+  @ApiProperty({ required: false })
+  elapsedMs?: number;
+
+  @ApiProperty({ required: false })
+  model?: string;
+
   @ApiProperty()
   timestamp: string;
 }
@@ -78,7 +84,7 @@ export class AiController {
     return {
       available: this.aiService.isAvailable(),
       provider: 'DeepSeek',
-      model: 'deepseek-chat (v3.2)',
+      model: this.aiService.getModelName(),
       timestamp: new Date().toISOString(),
     };
   }
@@ -108,6 +114,8 @@ export class AiController {
     return {
       reply: result.reply,
       reasoning: result.reasoning,
+      elapsedMs: result.elapsedMs,
+      model: result.model,
       timestamp: new Date().toISOString(),
     };
   }

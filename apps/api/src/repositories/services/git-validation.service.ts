@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { execFile } from 'child_process';
+import { existsSync } from 'fs';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
@@ -10,25 +11,69 @@ const getRemoteTimeout = () =>
 const getHeadTimeout = () =>
   Number(process.env['GIT_REMOTE_HEAD_TIMEOUT_MS'] ?? '60000');
 
-function withProxyEnv() {
-  const httpProxy =
-    process.env['GIT_HTTP_PROXY'] ||
-    process.env['HTTP_PROXY'] ||
-    process.env['http_proxy'];
-  const httpsProxy =
-    process.env['GIT_HTTPS_PROXY'] ||
-    process.env['HTTPS_PROXY'] ||
-    process.env['https_proxy'];
-  const extra: Record<string, string> = {};
+interface GitEnvOptions {
+  isContainer?: boolean;
+}
+
+const isContainerRuntime = () =>
+  process.env['RELAX_GIT_CONTAINER'] === 'true' || existsSync('/.dockerenv');
+
+const isLoopbackProxy = (proxyUrl: string) => {
+  try {
+    const parsed = new URL(proxyUrl);
+    return ['127.0.0.1', 'localhost', '::1'].includes(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const selectProxy = (
+  candidates: Array<string | undefined>,
+  isContainer: boolean
+) => {
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    if (isContainer && isLoopbackProxy(candidate)) continue;
+    return candidate;
+  }
+  return undefined;
+};
+
+export function buildGitCommandEnv(
+  baseEnv: NodeJS.ProcessEnv = process.env,
+  options: GitEnvOptions = {}
+): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...baseEnv };
+  const isContainer = options.isContainer ?? isContainerRuntime();
+
+  const httpProxy = selectProxy(
+    [baseEnv['GIT_HTTP_PROXY'], baseEnv['HTTP_PROXY'], baseEnv['http_proxy']],
+    isContainer
+  );
+  const httpsProxy = selectProxy(
+    [
+      baseEnv['GIT_HTTPS_PROXY'],
+      baseEnv['HTTPS_PROXY'],
+      baseEnv['https_proxy'],
+    ],
+    isContainer
+  );
+
+  delete env['HTTP_PROXY'];
+  delete env['http_proxy'];
+  delete env['HTTPS_PROXY'];
+  delete env['https_proxy'];
+
   if (httpProxy) {
-    extra['HTTP_PROXY'] = httpProxy;
-    extra['http_proxy'] = httpProxy;
+    env['HTTP_PROXY'] = httpProxy;
+    env['http_proxy'] = httpProxy;
   }
   if (httpsProxy) {
-    extra['HTTPS_PROXY'] = httpsProxy;
-    extra['https_proxy'] = httpsProxy;
+    env['HTTPS_PROXY'] = httpsProxy;
+    env['https_proxy'] = httpsProxy;
   }
-  return { ...process.env, ...extra } as NodeJS.ProcessEnv;
+
+  return env;
 }
 
 /**
@@ -42,7 +87,7 @@ export class GitValidationService {
   private async runGit(args: string[], timeout: number) {
     return execFileAsync('git', args, {
       timeout,
-      env: withProxyEnv(),
+      env: buildGitCommandEnv(),
       maxBuffer: 1024 * 1024,
     });
   }

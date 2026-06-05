@@ -3,6 +3,7 @@
 import { NavPersonalLink } from '@/components/nav-personal-link';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/hooks/use-auth';
+import { Bot, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -16,6 +17,7 @@ const NO_NAV_PATHS = ['/auth'];
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const { isAuthenticated, user } = useAuth();
+  const assistantHref = '/messages?assistant=repo';
 
   // 认证页面不显示导航栏（它们有自己的 layout）
   const shouldShowNav = !NO_NAV_PATHS.some(path => pathname.startsWith(path));
@@ -40,10 +42,38 @@ export function AppLayout({ children }: AppLayoutProps) {
           <nav className="flex items-center overflow-x-auto scrollbar-hide">
             <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 min-w-max px-1 sm:px-0">
               <Link
+                href="/about"
+                className="text-sm text-muted-foreground hover:text-foreground rounded-full px-2.5 lg:px-4 py-1.5 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
+              >
+                介绍
+              </Link>
+              <Link
                 href={isAuthenticated ? '/community' : '/'}
                 className="text-sm text-muted-foreground hover:text-foreground rounded-full px-2.5 lg:px-4 py-1.5 transition-colors duration-200 hover:bg-accent font-medium whitespace-nowrap"
               >
                 社区
+              </Link>
+              <Link
+                href={
+                  isAuthenticated
+                    ? assistantHref
+                    : `/auth/login?callbackUrl=${encodeURIComponent(assistantHref)}`
+                }
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-sm font-medium text-primary transition-colors duration-200 hover:border-primary/30 hover:bg-primary/10 whitespace-nowrap lg:px-4"
+              >
+                <Bot className="h-4 w-4" />
+                AI 聊天
+              </Link>
+              <Link
+                href={
+                  isAuthenticated
+                    ? '/messages'
+                    : '/auth/login?callbackUrl=%2Fmessages'
+                }
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground whitespace-nowrap lg:px-4"
+              >
+                <MessageCircle className="h-4 w-4" />
+                消息中心
               </Link>
               <Link
                 href={

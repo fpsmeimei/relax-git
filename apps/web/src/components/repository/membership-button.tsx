@@ -29,7 +29,7 @@ interface MembershipButtonProps {
  * 成员申请按钮组件
  *
  * 状态机：
- * 1. 所有者：灰色禁用，文本"申请加入"
+ * 1. 所有者：不显示申请入口
  * 2. 非成员：可点击，文本"申请加入"
  * 3. 等待审批：禁用，文本"等待审批"
  * 4. 已是成员：红色可点击，文本"退出成员"
@@ -107,12 +107,7 @@ export function MembershipButton({
 
   // 1. 所有者状态
   if (isOwner) {
-    return (
-      <Button disabled variant="outline" className="gap-2">
-        <UserPlus className="h-4 w-4" />
-        申请加入
-      </Button>
-    );
+    return null;
   }
 
   // 2. 等待审批状态

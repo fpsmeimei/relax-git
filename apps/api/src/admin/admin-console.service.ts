@@ -169,8 +169,9 @@ export class AdminConsoleService {
   }
 
   private async checkWorkerHealth() {
-    const workerPort = process.env['WORKER_PORT'] ?? '3002';
-    const url = `http://127.0.0.1:${workerPort}/health`;
+    const url =
+      process.env['WORKER_HEALTH_URL'] ??
+      `http://${process.env['WORKER_HOST'] ?? 'worker'}:${process.env['WORKER_PORT'] ?? '3002'}/health`;
 
     try {
       const response = await fetch(url, { method: 'GET' });

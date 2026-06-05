@@ -119,6 +119,7 @@ export class RepositoriesService {
     }
 
     // 创建仓库
+    const shouldPublish = this.isCommunityVisible(visibility);
     const repository = await this.prisma.repository.create({
       data: {
         name,
@@ -127,6 +128,8 @@ export class RepositoriesService {
         defaultBranch: validation.defaultBranch ?? defaultBranch,
         visibility,
         description: description ?? null,
+        isPublished: shouldPublish,
+        publishedAt: shouldPublish ? new Date() : null,
         lastSyncAt: new Date(),
       },
       include: {
@@ -329,13 +332,23 @@ export class RepositoriesService {
       throw new ForbiddenException('只有仓库所有者或管理员可以操作');
     }
 
-    // 软删除仓库
-    await this.prisma.repository.update({
-      where: { id },
-      data: {
-        isActive: false,
-      },
-    });
+    await this.prisma.$transaction([
+      this.prisma.comment.deleteMany({
+        where: {
+          snapshot: {
+            repoId: id,
+          },
+        },
+      }),
+      this.prisma.repository.update({
+        where: { id },
+        data: {
+          isActive: false,
+          isPublished: false,
+          publishedAt: null,
+        },
+      }),
+    ]);
 
     this.logger.log(`仓库 ${id} 删除成功`);
   }
@@ -536,15 +549,19 @@ export class RepositoriesService {
       // 复用已软删除的同名仓库
       if (!existing.isActive) {
         this.logger.log(`重新启用已删除仓库: ${name}`);
+        const nextVisibility =
+          this.normalizeVisibility(dto.visibility) ?? existing.visibility;
+        const shouldPublish = this.isCommunityVisible(nextVisibility);
         repository = await this.prisma.repository.update({
           where: { id: existing.id },
           data: {
             isActive: true,
             gitUrl, // 使用新的 Git URL 覆盖旧值
             defaultBranch,
-            visibility:
-              this.normalizeVisibility(dto.visibility) ?? existing.visibility,
+            visibility: nextVisibility,
             description: dto.description ?? existing.description,
+            isPublished: shouldPublish,
+            publishedAt: shouldPublish ? new Date() : null,
             lastSyncAt: new Date(),
           },
         });
@@ -553,16 +570,20 @@ export class RepositoriesService {
       }
     } else {
       // 创建新仓库
+      const visibility =
+        this.normalizeVisibility(dto.visibility) ??
+        RepositoryVisibility.PRIVATE;
+      const shouldPublish = this.isCommunityVisible(visibility);
       repository = await this.prisma.repository.create({
         data: {
           name,
           gitUrl,
           ownerId: userId,
           defaultBranch,
-          visibility:
-            this.normalizeVisibility(dto.visibility) ??
-            RepositoryVisibility.PRIVATE,
+          visibility,
           description: dto.description ?? null,
+          isPublished: shouldPublish,
+          publishedAt: shouldPublish ? new Date() : null,
           lastSyncAt: new Date(),
         },
       });
@@ -671,5 +692,12 @@ export class RepositoriesService {
       return RepositoryVisibility.INTERNAL as any;
     if (s === 'private') return RepositoryVisibility.PRIVATE as any;
     return v as any;
+  }
+
+  private isCommunityVisible(visibility: RepositoryVisibility): boolean {
+    return (
+      visibility === RepositoryVisibility.PUBLIC ||
+      visibility === RepositoryVisibility.INTERNAL
+    );
   }
 }

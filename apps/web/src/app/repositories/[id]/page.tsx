@@ -10,6 +10,12 @@ import { LoadingHint } from '@/components/snapshot/loading-hint';
 import { SnapshotCodeViewer } from '@/components/snapshot/snapshot-code-viewer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from '@/components/ui/select';
 import { useRepositoryPermission } from '@/hooks/use-repository-permission';
 import { toast } from '@/hooks/use-toast';
 import { apiClient } from '@/services/apiClient';
@@ -310,6 +316,10 @@ const RepositoryBranches = ({ repositoryId }: { repositoryId: string }) => {
     };
   }, [sessionSnapshotId, selectedBranchId, handleCreateSnapshot]);
 
+  const selectedBranch = branches.find(
+    branch => branch.id === selectedBranchId
+  );
+
   return (
     <div className="space-y-4">
       <div className="card p-4 bg-card text-card-foreground">
@@ -330,23 +340,60 @@ const RepositoryBranches = ({ repositoryId }: { repositoryId: string }) => {
             {branches.length === 0 ? (
               <EmptyHint message={'未检测到远程分支'} className="text-sm" />
             ) : (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-foreground">选择分支：</span>
-                <select
-                  className="border border-border bg-background text-foreground rounded px-2 py-1 text-sm"
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <span className="text-sm font-medium text-muted-foreground">
+                  选择分支
+                </span>
+                <Select
                   value={selectedBranchId}
-                  onChange={e => setSelectedBranchId(e.target.value)}
+                  onValueChange={setSelectedBranchId}
                 >
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} {b.isDefault ? '(默认)' : ''}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    aria-label="选择分支"
+                    className="h-10 w-full min-w-0 rounded-full border-primary/20 bg-primary/5 px-3 text-primary shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 focus:ring-primary/20 sm:w-[240px]"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <GitBranch className="h-4 w-4 shrink-0" />
+                      <span className="truncate font-medium">
+                        {selectedBranch?.name ?? '选择分支'}
+                      </span>
+                      {selectedBranch?.isDefault && (
+                        <Badge
+                          variant="soft"
+                          className="shrink-0 px-2 py-0 text-[11px]"
+                        >
+                          默认
+                        </Badge>
+                      )}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="min-w-[240px] rounded-xl border-border/70 bg-popover/95 p-1.5 shadow-xl backdrop-blur-md">
+                    {branches.map(branch => (
+                      <SelectItem
+                        key={branch.id}
+                        value={branch.id}
+                        className="rounded-lg py-2 pl-8 pr-3"
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <GitBranch className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{branch.name}</span>
+                          {branch.isDefault && (
+                            <Badge
+                              variant="outline-subtle"
+                              className="ml-auto shrink-0 px-2 py-0 text-[11px] font-medium"
+                            >
+                              默认
+                            </Badge>
+                          )}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button
                   size="sm"
                   variant="soft"
-                  className="halo-accent halo-accent-pulse"
+                  className="h-10 rounded-full px-5 halo-accent halo-accent-pulse"
                   onClick={() => void handleCreateSnapshot()}
                   disabled={creating}
                 >
