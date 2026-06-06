@@ -259,6 +259,8 @@ export class RepositoriesService {
 
     const { name, defaultBranch, visibility, description, isPublished } =
       updateRepositoryDto as any;
+    const nextVisibility =
+      this.normalizeVisibility(visibility) ?? repository.visibility;
 
     // 检查仓库名称是否重复
     if (name && name !== repository.name) {
@@ -287,12 +289,23 @@ export class RepositoriesService {
       }
     }
 
-    // compute publishedAt update when toggling publish state
+    // compute publication state. PUBLIC/INTERNAL repositories are discoverable
+    // in community by default; PRIVATE repositories must never stay published.
+    let isPublishedUpdate: boolean | undefined = undefined;
     let publishedAtUpdate: Date | null | undefined = undefined;
     if (typeof isPublished === 'boolean') {
-      if (isPublished && !repository.isPublished)
+      isPublishedUpdate =
+        isPublished && this.isCommunityVisible(nextVisibility);
+      if (isPublishedUpdate && !repository.isPublished)
         publishedAtUpdate = new Date();
-      if (!isPublished && repository.isPublished) publishedAtUpdate = null;
+      if (!isPublishedUpdate && repository.isPublished)
+        publishedAtUpdate = null;
+    } else if (visibility !== undefined) {
+      const shouldPublish = this.isCommunityVisible(nextVisibility);
+      isPublishedUpdate = shouldPublish;
+      if (shouldPublish && !repository.isPublished)
+        publishedAtUpdate = new Date();
+      if (!shouldPublish && repository.isPublished) publishedAtUpdate = null;
     }
 
     const updatedRepository = await this.prisma.repository.update({
@@ -300,9 +313,11 @@ export class RepositoriesService {
       data: {
         ...(name && { name }),
         ...(defaultBranch && { defaultBranch }),
-        ...(visibility && { visibility }),
+        ...(visibility && { visibility: nextVisibility }),
         ...(description !== undefined && { description }),
-        ...(isPublished !== undefined && { isPublished }),
+        ...(isPublishedUpdate !== undefined && {
+          isPublished: isPublishedUpdate,
+        }),
         ...(publishedAtUpdate !== undefined && {
           publishedAt: publishedAtUpdate,
         }),
@@ -566,7 +581,36 @@ export class RepositoriesService {
           },
         });
       } else {
-        repository = existing;
+        const nextVisibility =
+          this.normalizeVisibility(dto.visibility) ?? existing.visibility;
+        const shouldPublish = this.isCommunityVisible(nextVisibility);
+        if (
+          existing.gitUrl !== gitUrl ||
+          existing.defaultBranch !== defaultBranch ||
+          existing.visibility !== nextVisibility ||
+          (dto.description !== undefined &&
+            existing.description !== dto.description) ||
+          existing.isPublished !== shouldPublish
+        ) {
+          repository = await this.prisma.repository.update({
+            where: { id: existing.id },
+            data: {
+              gitUrl,
+              defaultBranch,
+              visibility: nextVisibility,
+              ...(dto.description !== undefined && {
+                description: dto.description,
+              }),
+              isPublished: shouldPublish,
+              publishedAt: shouldPublish
+                ? (existing.publishedAt ?? new Date())
+                : null,
+              lastSyncAt: new Date(),
+            },
+          });
+        } else {
+          repository = existing;
+        }
       }
     } else {
       // 创建新仓库

@@ -70,3 +70,6 @@ apps/worker/vendor/
 
 # Testing
 .jest/
+
+# Graduation PPT build artifacts (screenshots, renders, generation scripts)
+outputs/
